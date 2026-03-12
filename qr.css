@@ -1,0 +1,59 @@
+:root {
+  --bg:     #0d1117;
+  --surf:   #161b22;
+  --surf2:  #1c2330;
+  --border: rgba(255,255,255,0.08);
+  --text:   #e6edf3;
+  --muted:  #7d8590;
+  --accent: #58a6ff;
+  --green:  #3fb950;
+  --red:    #f85149;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+.page {
+  width: 100%; max-width: 520px;
+  padding: 32px 20px; display: flex; flex-direction: column; gap: 20px;
+}
+.header { text-align: center; }
+.logo {
+  font-size: 22px; font-weight: 700; letter-spacing: -.3px;
+}
+.logo em { color: var(--accent); font-style: normal; }
+.card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px;
+}
+.drop-zone {
+  border: 2px dashed var(--border); border-radius: 10px;
+  padding: 44px 20px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s; position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent); background: rgba(88,166,255,0.06);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon  { font-size: 44px; margin-bottom: 12px; }
+.drop-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.drop-sub   { font-size: 13px; color: var(--muted); }
+.status { font-size: 13px; color: var(--muted); text-align: center; min-height: 18px; }
+.result {
+  background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3);
+  border-radius: 8px; padding: 18px; text-align: center; display: flex;
+  flex-direction: column; gap: 8px;
+}
+.result-icon  { font-size: 32px; }
+.result-title { font-size: 15px; font-weight: 600; color: var(--green); }
+.result-sub   { font-size: 13px; color: var(--muted); }
+.error {
+  background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3);
+  border-radius: 8px; padding: 14px; font-size: 13px; color: var(--red); text-align: center;
+}
+.hint { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 2,
+  "name": "Vault 2FA",
+  "version": "1.0.0",
+  "description": "Local-first TOTP/HOTP authenticator with optional Firefox Sync session upload.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "vault2fa@addon.local",
+      "strict_min_version": "91.0"
+    }
+  },
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "tabs"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Vault 2FA"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "web_accessible_resources": [
+    "qr.html",
+    "qr.js",
+    "qr.css",
+    "otpauth.min.js",
+    "qr-scanner.umd.min.js",
+    "qr-scanner-worker.min.js",
+    "icons/icon48.png"
+  ]
+}
