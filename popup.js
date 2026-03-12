@@ -98,41 +98,132 @@ function updateVisibleCodes(){
 
 function buildCard(acc){
   const { code, remaining, period } = getToken(acc);
-  const color = pal((acc.issuer||'') + (acc.label||''));
-  const level = remaining !== null && remaining <= 5 ? 'urgent' : remaining !== null && remaining <= 10 ? 'warn' : '';
+  const color = pal((acc.issuer || '') + (acc.label || ''));
+  const level =
+    remaining !== null && remaining <= 5 ? 'urgent' :
+    remaining !== null && remaining <= 10 ? 'warn' : '';
+
   const da = 2 * Math.PI * 13;
-  const doff = remaining !== null ? (da * (1 - remaining / period)).toFixed(2) : 0;
+  const doff = remaining !== null ? (da * (1 - remaining / period)).toFixed(2) : '0';
   const id = sid(acc);
 
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.id = String(acc.id);
-  card.innerHTML =
-    '<div class="card-top">'+
-      '<div class="card-info">'+
-        '<div class="card-issuer"><span class="dot" style="background:'+color+'"></span>'+escHtml(acc.issuer||'Unknown')+'</div>'+
-        '<div class="card-label">'+escHtml(acc.label||'')+'</div>'+
-      '</div>'+
-      '<div class="card-acts">'+
-        (acc.type==='hotp' ? '<button class="act-btn" data-a="next" data-id="'+acc.id+'" title="Next code">&#8635;</button>' : '')+
-        '<button class="act-btn del" data-a="del" data-id="'+acc.id+'" title="Delete">&#x2715;</button>'+
-      '</div>'+
-    '</div>'+
-    '<div class="card-otp">'+
-      '<div>'+
-        '<div class="otp-code '+level+'" id="code-'+id+'">'+fmt(code, acc.digits||6)+'</div>'+
-        '<div class="otp-hint">click to copy</div>'+
-      '</div>'+
-      (acc.type!=='hotp'
-        ? '<div class="ring-wrap">'+
-            '<svg class="ring-svg" width="34" height="34" viewBox="0 0 34 34">'+
-              '<circle class="ring-bg" cx="17" cy="17" r="13" fill="none" stroke-width="2.5"/>'+
-              '<circle class="ring-fg '+level+'" cx="17" cy="17" r="13" fill="none" stroke-width="2.5" stroke-dasharray="'+da.toFixed(2)+'" stroke-dashoffset="'+doff+'" id="rfg-'+id+'"/>'+
-            '</svg>'+
-            '<div class="ring-num" id="rtxt-'+id+'">'+remaining+'</div>'+
-          '</div>'
-        : '')+
-    '</div>';
+
+  const top = document.createElement('div');
+  top.className = 'card-top';
+
+  const info = document.createElement('div');
+  info.className = 'card-info';
+
+  const issuer = document.createElement('div');
+  issuer.className = 'card-issuer';
+
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  dot.style.backgroundColor = color;
+
+  issuer.appendChild(dot);
+  issuer.appendChild(document.createTextNode(acc.issuer || 'Unknown'));
+
+  const label = document.createElement('div');
+  label.className = 'card-label';
+  label.textContent = acc.label || '';
+
+  info.appendChild(issuer);
+  info.appendChild(label);
+
+  const acts = document.createElement('div');
+  acts.className = 'card-acts';
+
+  if (acc.type === 'hotp') {
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'act-btn';
+    nextBtn.dataset.a = 'next';
+    nextBtn.dataset.id = String(acc.id);
+    nextBtn.title = 'Next code';
+    nextBtn.type = 'button';
+    nextBtn.textContent = '↻';
+    acts.appendChild(nextBtn);
+  }
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'act-btn del';
+  delBtn.dataset.a = 'del';
+  delBtn.dataset.id = String(acc.id);
+  delBtn.title = 'Delete';
+  delBtn.type = 'button';
+  delBtn.textContent = '✕';
+  acts.appendChild(delBtn);
+
+  top.appendChild(info);
+  top.appendChild(acts);
+
+  const otp = document.createElement('div');
+  otp.className = 'card-otp';
+
+  const left = document.createElement('div');
+
+  const codeEl = document.createElement('div');
+  codeEl.className = level ? `otp-code ${level}` : 'otp-code';
+  codeEl.id = `code-${id}`;
+  codeEl.textContent = fmt(code, acc.digits || 6);
+
+  const hint = document.createElement('div');
+  hint.className = 'otp-hint';
+  hint.textContent = 'click to copy';
+
+  left.appendChild(codeEl);
+  left.appendChild(hint);
+  otp.appendChild(left);
+
+  if (acc.type !== 'hotp') {
+    const wrap = document.createElement('div');
+    wrap.className = 'ring-wrap';
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'ring-svg');
+    svg.setAttribute('width', '34');
+    svg.setAttribute('height', '34');
+    svg.setAttribute('viewBox', '0 0 34 34');
+
+    const bg = document.createElementNS(svgNS, 'circle');
+    bg.setAttribute('class', 'ring-bg');
+    bg.setAttribute('cx', '17');
+    bg.setAttribute('cy', '17');
+    bg.setAttribute('r', '13');
+    bg.setAttribute('fill', 'none');
+    bg.setAttribute('stroke-width', '2.5');
+
+    const fg = document.createElementNS(svgNS, 'circle');
+    fg.setAttribute('class', level ? `ring-fg ${level}` : 'ring-fg');
+    fg.setAttribute('cx', '17');
+    fg.setAttribute('cy', '17');
+    fg.setAttribute('r', '13');
+    fg.setAttribute('fill', 'none');
+    fg.setAttribute('stroke-width', '2.5');
+    fg.setAttribute('stroke-dasharray', da.toFixed(2));
+    fg.setAttribute('stroke-dashoffset', doff);
+    fg.id = `rfg-${id}`;
+
+    svg.appendChild(bg);
+    svg.appendChild(fg);
+
+    const num = document.createElement('div');
+    num.className = 'ring-num';
+    num.id = `rtxt-${id}`;
+    num.textContent = String(remaining);
+
+    wrap.appendChild(svg);
+    wrap.appendChild(num);
+    otp.appendChild(wrap);
+  }
+
+  card.appendChild(top);
+  card.appendChild(otp);
+
   return card;
 }
 
