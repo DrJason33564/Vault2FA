@@ -1,47 +1,35 @@
 {
   "manifest_version": 2,
-  "name": "Vault 2FA",
+  "name": "Vault2FA",
   "version": "1.0.0",
-  "description": "Local-first TOTP/HOTP authenticator with optional Firefox Sync session upload.",
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "vault2fa@addon.local",
-      "strict_min_version": "91.0"
-    }
-  },
-  "permissions": [
-    "storage",
-    "clipboardWrite",
-    "tabs"
-  ],
-  "browser_action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    },
-    "default_title": "Vault 2FA"
-  },
+  "description": "Secure local-first TOTP authenticator with optional sync.",
   "icons": {
-    "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "permissions": [
+    "storage",
+    "clipboardWrite"
+  ],
   "background": {
-    "scripts": [
-      "background.js"
-    ]
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_title": "Vault2FA",
+    "default_popup": "popup.html"
   },
   "web_accessible_resources": [
-    "qr.html",
-    "qr.js",
-    "qr.css",
-    "otpauth.min.js",
-    "qr-scanner.umd.min.js",
-    "qr-scanner-worker.min.js",
-    "icons/icon48.png"
-  ]
+    "qr-scanner-worker.min.js"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "vault2fa@example.com",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": ["authenticationInfo"]
+      }
+    }
+  }
 }
