@@ -64,7 +64,12 @@ browser.storage.local.get('uiLanguage').then((result) => {
 });
 applyTheme();
 if(window.matchMedia){
-  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+  const qrThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  if(qrThemeMedia.addEventListener){
+    qrThemeMedia.addEventListener('change', applyTheme);
+  } else if(qrThemeMedia.addListener){
+    qrThemeMedia.addListener(applyTheme);
+  }
 }
 
 if(window.QrScanner){

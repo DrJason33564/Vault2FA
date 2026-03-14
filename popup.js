@@ -189,6 +189,17 @@ function setLanguage(next){
   render();
 }
 
+
+applyTheme();
+if(window.matchMedia){
+  const popupThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  if(popupThemeMedia.addEventListener){
+    popupThemeMedia.addEventListener('change', applyTheme);
+  } else if(popupThemeMedia.addListener){
+    popupThemeMedia.addListener(applyTheme);
+  }
+}
+
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
 
@@ -605,10 +616,7 @@ async function boot(){
   const lang = await browser.storage.local.get('uiLanguage');
   setLanguage(lang.uiLanguage || 'en');
   applyTheme();
-  if(window.matchMedia){
-    const media = window.matchMedia('(prefers-color-scheme: light)');
-    media.addEventListener('change', applyTheme);
-  }
+  
   await refreshVaultStatus();
   await loadSyncSettings();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
