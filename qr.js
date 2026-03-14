@@ -23,6 +23,7 @@ const QR_I18N = {
     addedSuffix: ' added!',
     unknownAccount: 'Account',
     scanFail: 'Could not scan QR image: ',
+    addFail: 'Could not add account: ',
   },
   zh: {
     title: 'Vault <em>2FA</em> — 二维码扫描',
@@ -39,6 +40,7 @@ const QR_I18N = {
     addedSuffix: ' 已添加！',
     unknownAccount: '账号',
     scanFail: '无法扫描二维码图片：',
+    addFail: '无法添加账号：',
   },
 };
 
@@ -148,7 +150,10 @@ async function process(file){
       counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
     };
 
-    await browser.storage.local.set({ pendingQrAccount: acc });
+    const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
+    if(!resp || resp.success === false){
+      throw new Error((resp && resp.error) || 'Failed to add account.');
+    }
 
     const name = [acc.issuer, acc.label].filter(Boolean).join(' — ') || qrt('unknownAccount');
     nameEl.textContent = name + qrt('addedSuffix');
@@ -157,7 +162,9 @@ async function process(file){
     hideErr();
     setTimeout(() => window.close(), 2500);
   } catch(e){
-    showErr(qrt('scanFail') + e.message);
+    const msg = e && e.message ? e.message : String(e);
+    const prefix = /add account|Vault is locked|Secret is required|Account label is required|Failed to add account/i.test(msg) ? qrt('addFail') : qrt('scanFail');
+    showErr(prefix + msg);
   }
 }
 

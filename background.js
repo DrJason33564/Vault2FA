@@ -299,6 +299,40 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, upload, settings: await getSyncSettings() });
         return;
       }
+
+      case 'addAccountFromQr': {
+        const incoming = message.account || {};
+        const account = {
+          id: String(incoming.id || ''),
+          type: incoming.type === 'hotp' ? 'hotp' : 'totp',
+          issuer: String(incoming.issuer || ''),
+          label: String(incoming.label || ''),
+          secret: String(incoming.secret || ''),
+          algorithm: String(incoming.algorithm || 'SHA1'),
+          digits: Number(incoming.digits || 6),
+          period: incoming.period != null ? Number(incoming.period) : undefined,
+          counter: incoming.counter != null ? Number(incoming.counter) : undefined,
+        };
+        if(!account.secret) throw new Error('Secret is required.');
+        if(!account.label) throw new Error('Account label is required.');
+
+        const accounts = await getLocalAccounts();
+        accounts.push(account);
+        await setLocalAccounts(accounts);
+
+        const settings = await getSyncSettings();
+        let sync = { skipped: true };
+        if(shouldAutoUpload(settings)){
+          try {
+            sync = await uploadToSync(accounts, settings);
+          } catch (err) {
+            sync = { success: false, error: err.message };
+          }
+        }
+        sendResponse({ success: true, account, sync, settings: await getSyncSettings() });
+        return;
+      }
+
       case 'downloadSyncToLocal': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
