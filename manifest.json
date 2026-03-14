@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Vault2FA",
   "version": "1.1.0",
-  "description": "Secure local-first TOTP authenticator with optional sync.",
+  "description": "A fine TOTP extension for Firefox with optional sync.",
   "icons": {
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
