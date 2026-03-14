@@ -6,6 +6,45 @@ const statusEl = document.getElementById('status');
 const resultEl = document.getElementById('result');
 const nameEl   = document.getElementById('resultName');
 const errEl    = document.getElementById('err');
+const QR_I18N = {
+  en: {
+    title: 'Vault <em>2FA</em> — QR Scanner',
+    dzTitle: 'Drop a QR image here',
+    dzSub: 'or click to choose a file',
+    waiting: 'Waiting for a QR code image…',
+    resultSub: 'Account added to Vault 2FA — you can close this tab.',
+    hint: 'Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.',
+    notImage: 'Please drop an image file.',
+    scanning: 'Scanning…',
+  },
+  zh: {
+    title: 'Vault <em>2FA</em> — 二维码扫描',
+    dzTitle: '将二维码图片拖到这里',
+    dzSub: '或点击选择文件',
+    waiting: '等待二维码图片…',
+    resultSub: '账号已添加到 Vault 2FA，可关闭此标签页。',
+    hint: '提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域。',
+    notImage: '请拖入图片文件。',
+    scanning: '扫描中…',
+  },
+};
+let qrLang = 'en';
+
+function qrt(key){ return (QR_I18N[qrLang] && QR_I18N[qrLang][key]) || QR_I18N.en[key] || key; }
+function applyQrI18n(){
+  document.documentElement.lang = qrLang === 'zh' ? 'zh-CN' : 'en';
+  document.getElementById('qrTitle').innerHTML = qrt('title');
+  document.getElementById('dzTitle').textContent = qrt('dzTitle');
+  document.getElementById('dzSub').textContent = qrt('dzSub');
+  document.getElementById('status').textContent = qrt('waiting');
+  document.getElementById('resultSub').textContent = qrt('resultSub');
+  document.getElementById('qrHint').textContent = qrt('hint');
+}
+
+browser.storage.local.get('uiLanguage').then((result) => {
+  qrLang = result.uiLanguage === 'zh' ? 'zh' : 'en';
+  applyQrI18n();
+});
 
 if(window.QrScanner){
   QrScanner.WORKER_PATH = browser.runtime.getURL('qr-scanner-worker.min.js');
@@ -17,7 +56,7 @@ dz.addEventListener('dragleave', e => { if(!dz.contains(e.relatedTarget)) dz.cla
 dz.addEventListener('drop', async e => {
   e.preventDefault(); dz.classList.remove('drag-over');
   const f = e.dataTransfer.files[0];
-  if(!f || !f.type.startsWith('image/')){ showErr('Please drop an image file.'); return; }
+  if(!f || !f.type.startsWith('image/')){ showErr(qrt('notImage')); return; }
   await process(f);
 });
 fileInput.addEventListener('change', async e => {
@@ -25,7 +64,7 @@ fileInput.addEventListener('change', async e => {
 });
 
 async function process(file){
-  showStatus('Scanning…'); hideErr();
+  showStatus(qrt('scanning')); hideErr();
   try{
     if(!window.QrScanner){
       throw new Error('QR scanner library failed to load.');

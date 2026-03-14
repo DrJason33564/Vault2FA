@@ -6,8 +6,38 @@ let accounts = [];
 let visibleAccounts = [];
 let activeTab = 'manual';
 let globalTick = null;
-let syncSettings = { enabled:false, sessionId:'', lastUploadedAt:null, lastDownloadedAt:null };
+let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploadedAt:null, lastDownloadedAt:null };
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
+let uiLanguage = 'en';
+
+const I18N = {
+  en: {
+    localOnly: 'Local only',
+    syncOn: 'Sync ON · ',
+    storageModeSync: 'Local + Firefox Sync upload',
+    storageModeLocal: 'Local only',
+    lastUpload: 'Last upload: ',
+    lastDownload: 'Last local overwrite from cloud: ',
+    uploadSuccess: 'Uploaded local data',
+    syncSaved: 'Sync settings saved',
+    syncDisabled: 'Auto upload disabled',
+    needSession: 'Please enter a sync session ID first.',
+    needSessionEnable: 'Please enter a sync session ID before enabling sync.',
+  },
+  zh: {
+    localOnly: '仅本地',
+    syncOn: '同步已开 · ',
+    storageModeSync: '本地 + Firefox 同步上传',
+    storageModeLocal: '仅本地',
+    lastUpload: '上次上传：',
+    lastDownload: '上次从云端覆盖本地：',
+    uploadSuccess: '已上传本地数据',
+    syncSaved: '同步设置已保存',
+    syncDisabled: '已关闭自动上传',
+    needSession: '请先输入同步会话 ID。',
+    needSessionEnable: '启用自动上传前请先输入同步会话 ID。',
+  },
+};
 
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
 function pal(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
@@ -15,6 +45,26 @@ function byId(id){ return document.getElementById(id); }
 function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.slice(0,3)+' '+code.slice(3); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
+function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function applyStaticTranslations(){
+  const zh = uiLanguage === 'zh';
+  byId('btnImport').title = zh ? '导入账号' : 'Import accounts';
+  byId('btnExport').title = zh ? '导出账号' : 'Export accounts';
+  byId('btnSync').title = zh ? '同步与安全' : 'Sync and security';
+  byId('btnLang').title = zh ? '切换语言' : 'Switch language';
+  byId('search').placeholder = zh ? '搜索账号…' : 'Search accounts...';
+  byId('syncEnabledHint').textContent = zh
+    ? '默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID。'
+    : 'Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.';
+}
+function setLanguage(next){
+  uiLanguage = next === 'zh' ? 'zh' : 'en';
+  document.documentElement.lang = uiLanguage === 'zh' ? 'zh-CN' : 'en';
+  byId('btnLang').textContent = uiLanguage === 'zh' ? '中/EN' : 'EN/中';
+  browser.storage.local.set({ uiLanguage });
+  applyStaticTranslations();
+  updateSyncUi();
+}
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
 
@@ -359,10 +409,11 @@ function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : 'Never'; }
 function updateSyncUi(){
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
+  byId('syncInterval').value = syncSettings.intervalMinutes || 5;
   const meta = [
-    'Storage mode: ' + (syncSettings.enabled && syncSettings.sessionId ? 'Local + Firefox Sync upload' : 'Local only'),
-    'Last upload: ' + fmtTs(syncSettings.lastUploadedAt),
-    'Last local overwrite from cloud: ' + fmtTs(syncSettings.lastDownloadedAt),
+    'Storage mode: ' + (syncSettings.enabled && syncSettings.sessionId ? t('storageModeSync') : t('storageModeLocal')),
+    t('lastUpload') + fmtTs(syncSettings.lastUploadedAt),
+    t('lastDownload') + fmtTs(syncSettings.lastDownloadedAt),
   ];
   byId('syncMeta').textContent = meta.join('\n');
 
@@ -371,10 +422,10 @@ function updateSyncUi(){
   badge.classList.remove('offline', 'syncing');
   if(syncSettings.enabled && syncSettings.sessionId){
     badge.classList.add('syncing');
-    text.textContent = 'Sync ON · ' + syncSettings.sessionId;
+    text.textContent = t('syncOn') + syncSettings.sessionId;
   } else {
     badge.classList.add('offline');
-    text.textContent = 'Local only';
+    text.textContent = t('localOnly');
   }
 }
 
@@ -425,6 +476,8 @@ async function unlockWithInput(inputId, errId){
 }
 
 async function boot(){
+  const lang = await browser.storage.local.get('uiLanguage');
+  setLanguage(lang.uiLanguage || 'en');
   await refreshVaultStatus();
   await loadSyncSettings();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
@@ -437,6 +490,7 @@ async function boot(){
 }
 
 byId('btnAdd').addEventListener('click', () => openD('drawAdd'));
+byId('btnLang').addEventListener('click', () => setLanguage(uiLanguage === 'zh' ? 'en' : 'zh'));
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
 byId('btnSync').addEventListener('click', () => openD('drawSync'));
@@ -579,29 +633,32 @@ byId('btnSaveSync').addEventListener('click', async () => {
   errEl.style.display = 'none';
   const enabled = byId('syncEnabled').checked;
   const sessionId = byId('syncSessionId').value.trim();
-  if(enabled && !sessionId){ errEl.textContent = 'Please enter a sync session ID before enabling sync.'; errEl.style.display = 'block'; return; }
+  const intervalMinutes = Math.max(1, parseInt(byId('syncInterval').value, 10) || 5);
+  if(enabled && !sessionId){ errEl.textContent = t('needSessionEnable'); errEl.style.display = 'block'; return; }
   try {
-    const resp = await sendMessage({ action:'saveSyncSettings', settings:{ enabled, sessionId } });
+    const resp = await sendMessage({ action:'saveSyncSettings', settings:{ enabled, sessionId, intervalMinutes } });
     syncSettings = resp.settings || syncSettings;
     updateSyncUi();
     updateSyncBadgeFromResponse(resp);
-    toast(enabled ? 'Sync settings saved' : 'Sync disabled');
+    toast(enabled ? t('syncSaved') : t('syncDisabled'));
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
 });
 
 byId('btnUploadSync').addEventListener('click', async () => {
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   try {
-    const resp = await sendMessage({ action:'uploadSyncNow' });
+    const sessionId = byId('syncSessionId').value.trim();
+    if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
+    const resp = await sendMessage({ action:'uploadSyncNow', sessionId });
     syncSettings.lastUploadedAt = resp.upload && resp.upload.updatedAt ? resp.upload.updatedAt : Date.now();
-    updateSyncUi(); updateSyncBadgeFromResponse(resp); toast('Uploaded local data');
+    updateSyncUi(); updateSyncBadgeFromResponse(resp); toast(t('uploadSuccess'));
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
 });
 
 byId('btnDownloadSync').addEventListener('click', async () => {
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   const sessionId = byId('syncSessionId').value.trim();
-  if(!sessionId){ errEl.textContent = 'Please enter a sync session ID first.'; errEl.style.display = 'block'; return; }
+  if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
   if(!window.confirm('Cloud data will overwrite your current local accounts. Continue?')) return;
   try {
     const resp = await sendMessage({ action:'downloadSyncToLocal', sessionId });

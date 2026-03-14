@@ -30,23 +30,23 @@
 </head>
 <body>
 <div class="page">
-  <div class="logo"><img class="logo-img" src="icons/icon48.png" alt="Vault 2FA"/><span>Vault <em>2FA</em> &mdash; QR Scanner</span></div>
+  <div class="logo"><img class="logo-img" src="icons/icon48.png" alt="Vault 2FA"/><span id="qrTitle">Vault <em>2FA</em> &mdash; QR Scanner</span></div>
   <div class="card">
     <div class="drop-zone" id="dz">
       <div class="dz-icon">&#x1F4F7;</div>
-      <div class="dz-title">Drop a QR image here</div>
-      <div class="dz-sub">or click to choose a file</div>
+      <div class="dz-title" id="dzTitle">Drop a QR image here</div>
+      <div class="dz-sub" id="dzSub">or click to choose a file</div>
       <input type="file" id="fileInput" accept="image/*"/>
     </div>
     <div class="status" id="status">Waiting for a QR code image&hellip;</div>
     <div class="result" id="result">
       <div class="result-icon">&#x2705;</div>
       <div class="result-name" id="resultName"></div>
-      <div class="result-sub">Account added to Vault 2FA &mdash; you can close this tab.</div>
+      <div class="result-sub" id="resultSub">Account added to Vault 2FA &mdash; you can close this tab.</div>
     </div>
     <div class="err" id="err"></div>
   </div>
-  <div class="hint">Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.</div>
+  <div class="hint" id="qrHint">Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.</div>
 </div>
 <script src="otpauth.min.js"></script>
 <script src="qr-scanner.umd.min.js"></script>

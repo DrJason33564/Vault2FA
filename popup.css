@@ -15,6 +15,20 @@
   --rs:     6px;
   --mono:   'Courier New', Courier, monospace;
 }
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:     #f5f7fb;
+    --surf:   #ffffff;
+    --surf2:  #f0f4fa;
+    --border: rgba(15, 23, 42, 0.12);
+    --bhr:    rgba(15, 23, 42, 0.22);
+    --text:   #0f172a;
+    --muted:  #475569;
+    --dim:    #64748b;
+    --accent: #2563eb;
+  }
+}
 *{ box-sizing:border-box; margin:0; padding:0; }
 
 html, body {
@@ -48,6 +62,7 @@ html, body {
   color:var(--muted); cursor:pointer; font-size:14px;
   display:flex; align-items:center; justify-content:center; transition:all .15s;
 }
+#btnLang { width:auto; padding:0 7px; font-size:11px; font-weight:700; }
 .ibtn:hover { background:var(--surf2); border-color:var(--bhr); color:var(--text); }
 
 /* Search */

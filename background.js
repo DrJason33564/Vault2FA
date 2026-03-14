@@ -9,6 +9,7 @@ const SYNC_PREFIX = 'session:';
 const defaultSyncSettings = {
   enabled: false,
   sessionId: '',
+  intervalMinutes: 5,
   lastUploadedAt: null,
   lastDownloadedAt: null,
 };
@@ -154,7 +155,7 @@ async function setLocalAccounts(accounts){
 }
 
 async function uploadToSync(accounts, settings){
-  if(!settings.enabled || !settings.sessionId) return { skipped: true };
+  if(!settings.sessionId) return { skipped: true };
   const key = getSyncKey(settings.sessionId);
   const payload = {
     version: 1,
@@ -165,6 +166,13 @@ async function uploadToSync(accounts, settings){
   await browser.storage.sync.set({ [key]: payload });
   await setSyncSettings({ lastUploadedAt: payload.updatedAt });
   return { success: true, updatedAt: payload.updatedAt, count: payload.accounts.length };
+}
+
+function shouldAutoUpload(settings){
+  if(!settings.enabled || !settings.sessionId) return false;
+  const interval = Math.max(1, parseInt(settings.intervalMinutes, 10) || 1);
+  if(!settings.lastUploadedAt) return true;
+  return (Date.now() - settings.lastUploadedAt) >= interval * 60 * 1000;
 }
 
 async function downloadFromSync(sessionId){
@@ -258,14 +266,14 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setLocalAccounts(accounts);
         const settings = await getSyncSettings();
         let sync = { skipped: true };
-        if(settings.enabled && settings.sessionId){
+        if(shouldAutoUpload(settings)){
           try {
             sync = await uploadToSync(accounts, settings);
           } catch (err) {
             sync = { success: false, error: err.message };
           }
         }
-        sendResponse({ success: true, sync });
+        sendResponse({ success: true, sync, settings: await getSyncSettings() });
         return;
       }
       case 'getSyncSettings': {
@@ -277,25 +285,18 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await setSyncSettings({
           enabled: !!incoming.enabled,
           sessionId: String(incoming.sessionId || '').trim(),
+          intervalMinutes: Math.max(1, parseInt(incoming.intervalMinutes, 10) || 5),
         });
-        let upload = { skipped: true };
-        if(settings.enabled && settings.sessionId){
-          const accounts = await getLocalAccounts();
-          try {
-            upload = await uploadToSync(accounts, settings);
-          } catch (err) {
-            upload = { success: false, error: err.message };
-          }
-        }
-        sendResponse({ success: true, settings, upload });
+        sendResponse({ success: true, settings, upload: { skipped: true } });
         return;
       }
       case 'uploadSyncNow': {
         const settings = await getSyncSettings();
-        if(!settings.enabled || !settings.sessionId) throw new Error('Enable sync and set a session ID first.');
+        const sessionId = String(message.sessionId || settings.sessionId || '').trim();
+        if(!sessionId) throw new Error('Set a sync session ID first.');
         const accounts = await getLocalAccounts();
-        const upload = await uploadToSync(accounts, settings);
-        sendResponse({ success: true, upload });
+        const upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }));
+        sendResponse({ success: true, upload, settings: await getSyncSettings() });
         return;
       }
       case 'downloadSyncToLocal': {
