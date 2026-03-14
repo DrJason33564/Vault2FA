@@ -21,6 +21,8 @@ const defaultVaultSettings = {
 };
 
 let unlockedCrypto = null; // { passphrase, salt, key }
+let autoUploadTimer = null;
+const AUTO_UPLOAD_TICK_MS = 60 * 1000;
 
 function enc(str){ return new TextEncoder().encode(str); }
 function dec(buf){ return new TextDecoder().decode(buf); }
@@ -175,13 +177,36 @@ function shouldAutoUpload(settings){
   return (Date.now() - settings.lastUploadedAt) >= interval * 60 * 1000;
 }
 
+
+async function runAutoUploadTick(force){
+  const settings = await getSyncSettings();
+  if(!settings.enabled || !settings.sessionId) return { skipped: true, reason: 'disabled' };
+  if(!force && !shouldAutoUpload(settings)) return { skipped: true, reason: 'interval' };
+  let accounts;
+  try {
+    accounts = await getLocalAccounts();
+  } catch (err) {
+    if(err && err.code === 'NEED_UNLOCK') return { skipped: true, reason: 'vault_locked' };
+    throw err;
+  }
+  return uploadToSync(accounts, settings);
+}
+
+function startAutoUploadScheduler(){
+  if(autoUploadTimer !== null) return;
+  runAutoUploadTick(true).catch(() => {});
+  autoUploadTimer = setInterval(() => {
+    runAutoUploadTick(false).catch(() => {});
+  }, AUTO_UPLOAD_TICK_MS);
+}
+
 async function downloadFromSync(sessionId){
   const sid = String(sessionId || '').trim();
   if(!sid) throw new Error('Sync session ID is required.');
   const key = getSyncKey(sid);
   const result = await browser.storage.sync.get(key);
   const payload = result[key];
-  if(!payload || !Array.isArray(payload.accounts)) {
+  if(!payload || !Array.isArray(payload.accounts) || payload.accounts.length === 0) {
     throw new Error('No synced data was found for this session ID.');
   }
   await setLocalAccounts(payload.accounts);
@@ -264,15 +289,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'saveAccounts': {
         const accounts = Array.isArray(message.accounts) ? message.accounts : [];
         await setLocalAccounts(accounts);
-        const settings = await getSyncSettings();
-        let sync = { skipped: true };
-        if(shouldAutoUpload(settings)){
-          try {
-            sync = await uploadToSync(accounts, settings);
-          } catch (err) {
-            sync = { success: false, error: err.message };
-          }
-        }
+        const sync = { skipped: true, reason: 'timer_only' };
         sendResponse({ success: true, sync, settings: await getSyncSettings() });
         return;
       }
@@ -320,15 +337,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         accounts.push(account);
         await setLocalAccounts(accounts);
 
-        const settings = await getSyncSettings();
-        let sync = { skipped: true };
-        if(shouldAutoUpload(settings)){
-          try {
-            sync = await uploadToSync(accounts, settings);
-          } catch (err) {
-            sync = { success: false, error: err.message };
-          }
-        }
+        const sync = { skipped: true, reason: 'timer_only' };
         sendResponse({ success: true, account, sync, settings: await getSyncSettings() });
         return;
       }
@@ -368,3 +377,5 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
   return true;
 });
+
+startAutoUploadScheduler();

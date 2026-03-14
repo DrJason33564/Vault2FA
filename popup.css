@@ -270,6 +270,17 @@ html, body {
 .btn-secondary { background:var(--surf2); color:var(--text); }
 .btn-danger { background:rgba(248,81,73,.12); color:#ffb4af; border-color:rgba(248,81,73,.35); }
 .btn-secondary:hover, .btn-danger:hover { opacity:.88; }
+
+:root[data-theme='light'] .btn-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #f87171;
+}
+:root[data-theme='light'] .btn-danger:hover {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
 .warn-box {
   margin-top:10px; font-size:11px; line-height:1.6; color:var(--orange);
   background:rgba(210,153,34,.08); border:1px solid rgba(210,153,34,.22);
