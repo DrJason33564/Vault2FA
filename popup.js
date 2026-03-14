@@ -15,6 +15,7 @@ const I18N = {
   en: {
     localOnly: 'Local only',
     syncOn: 'Sync ON · ',
+    storageModeLabel: 'Storage mode: ',
     storageModeSync: 'Local + Firefox Sync upload',
     storageModeLocal: 'Local only',
     lastUpload: 'Last upload: ',
@@ -79,6 +80,7 @@ const I18N = {
   zh: {
     localOnly: '仅本地',
     syncOn: '同步已开 · ',
+    storageModeLabel: '存储模式：',
     storageModeSync: '本地 + Firefox 同步上传',
     storageModeLocal: '仅本地',
     lastUpload: '上次上传：',
@@ -149,7 +151,7 @@ const STATIC_TEXT_MAP = {
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
-  syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
+  syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
   vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase', btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
@@ -576,7 +578,7 @@ function updateSyncUi(){
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
   const meta = [
-    'Storage mode: ' + (syncSettings.enabled && syncSettings.sessionId ? t('storageModeSync') : t('storageModeLocal')),
+    t('storageModeLabel') + (syncSettings.enabled && syncSettings.sessionId ? t('storageModeSync') : t('storageModeLocal')),
     t('lastUpload') + fmtTs(syncSettings.lastUploadedAt),
     t('lastDownload') + fmtTs(syncSettings.lastDownloadedAt),
   ];
