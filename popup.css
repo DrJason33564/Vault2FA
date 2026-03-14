@@ -14,20 +14,20 @@
   --r:      10px;
   --rs:     6px;
   --mono:   'Courier New', Courier, monospace;
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg:     #f5f7fb;
-    --surf:   #ffffff;
-    --surf2:  #f0f4fa;
-    --border: rgba(15, 23, 42, 0.12);
-    --bhr:    rgba(15, 23, 42, 0.22);
-    --text:   #0f172a;
-    --muted:  #475569;
-    --dim:    #64748b;
-    --accent: #2563eb;
-  }
+:root[data-theme='light'] {
+  --bg:     #f5f7fb;
+  --surf:   #ffffff;
+  --surf2:  #f0f4fa;
+  --border: rgba(15, 23, 42, 0.12);
+  --bhr:    rgba(15, 23, 42, 0.22);
+  --text:   #0f172a;
+  --muted:  #475569;
+  --dim:    #64748b;
+  --accent: #2563eb;
+  color-scheme: light;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 

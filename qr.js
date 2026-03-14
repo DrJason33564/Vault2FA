@@ -16,6 +16,12 @@ const QR_I18N = {
     hint: 'Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.',
     notImage: 'Please drop an image file.',
     scanning: 'Scanning…',
+    qrLibFail: 'QR scanner library failed to load.',
+    qrEmpty: 'No QR code data was found.',
+    invalidOtp: 'QR found but not a valid otpauth:// URI: ',
+    addedSuffix: ' added!',
+    unknownAccount: 'Account',
+    scanFail: 'Could not scan QR image: ',
   },
   zh: {
     title: 'Vault <em>2FA</em> — 二维码扫描',
@@ -26,9 +32,20 @@ const QR_I18N = {
     hint: '提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域。',
     notImage: '请拖入图片文件。',
     scanning: '扫描中…',
+    qrLibFail: '二维码扫描库加载失败。',
+    qrEmpty: '未检测到二维码数据。',
+    invalidOtp: '已识别二维码，但不是有效的 otpauth:// URI：',
+    addedSuffix: ' 已添加！',
+    unknownAccount: '账号',
+    scanFail: '无法扫描二维码图片：',
   },
 };
 let qrLang = 'en';
+
+function applyTheme(){
+  const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+}
 
 function qrt(key){ return (QR_I18N[qrLang] && QR_I18N[qrLang][key]) || QR_I18N.en[key] || key; }
 function applyQrI18n(){
@@ -45,6 +62,10 @@ browser.storage.local.get('uiLanguage').then((result) => {
   qrLang = result.uiLanguage === 'zh' ? 'zh' : 'en';
   applyQrI18n();
 });
+applyTheme();
+if(window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+}
 
 if(window.QrScanner){
   QrScanner.WORKER_PATH = browser.runtime.getURL('qr-scanner-worker.min.js');
@@ -67,7 +88,7 @@ async function process(file){
   showStatus(qrt('scanning')); hideErr();
   try{
     if(!window.QrScanner){
-      throw new Error('QR scanner library failed to load.');
+      throw new Error(qrt('qrLibFail'));
     }
     const scan = await QrScanner.scanImage(file, {
       returnDetailedScanResult: true,
@@ -75,11 +96,11 @@ async function process(file){
     });
     const rawValue = typeof scan === 'string' ? scan : scan.data;
     if(!rawValue){
-      throw new Error('No QR code data was found.');
+      throw new Error(qrt('qrEmpty'));
     }
     let parsed;
     try{ parsed = OTPAuth.URI.parse(rawValue); }
-    catch(e){ showErr('QR found but not a valid otpauth:// URI: ' + e.message); return; }
+    catch(e){ showErr(qrt('invalidOtp') + e.message); return; }
 
     const acc = {
       id:        generateId(),
@@ -95,14 +116,14 @@ async function process(file){
 
     await browser.storage.local.set({pendingQrAccount: acc});
 
-    const name = [acc.issuer, acc.label].filter(Boolean).join(' — ') || 'Account';
-    nameEl.textContent = name + ' added!';
+    const name = [acc.issuer, acc.label].filter(Boolean).join(' — ') || qrt('unknownAccount');
+    nameEl.textContent = name + qrt('addedSuffix');
     resultEl.classList.add('show');
     showStatus('');
     hideErr();
     setTimeout(() => window.close(), 2500);
   } catch(e){
-    showErr('Could not scan QR image: ' + e.message);
+    showErr(qrt('scanFail') + e.message);
   }
 }
 

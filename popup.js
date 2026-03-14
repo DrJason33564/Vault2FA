@@ -23,6 +23,54 @@ const I18N = {
     syncDisabled: 'Auto upload disabled',
     needSession: 'Please enter a sync session ID first.',
     needSessionEnable: 'Please enter a sync session ID before enabling sync.',
+    noAccountsToExport: 'No accounts to export',
+    copied: 'Copied!',
+    addAccount: 'Add Account',
+    noAccountsYet: 'No accounts yet',
+    emptySub: 'Add your first account using the<br/>+ button below.',
+    vaultLocked: 'Vault Locked',
+    vaultLockSub: 'This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.',
+    unlockVault: 'Unlock Vault',
+    searchPlaceholder: 'Search accounts...',
+    syncEnabledHint: 'Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.',
+    syncEnableText: 'Enable Firefox Sync upload',
+    syncSessionLabel: 'Sync Session ID',
+    syncSessionHint: 'Each session ID is isolated. Use a different ID for each sync group.',
+    syncIntervalLabel: 'Auto Upload Interval (minutes)',
+    syncIntervalHint: 'When auto upload is enabled, local changes upload no more often than this interval.',
+    syncSaveBtn: 'Save Sync Settings',
+    syncUploadBtn: 'Upload Local Data Now',
+    syncDownloadBtn: 'Download Cloud Data to Local',
+    syncWarnOverwrite: 'Downloading from the cloud will overwrite your current local accounts. A confirmation dialog will appear first.',
+    addDrawerTitle: 'Add Account',
+    tabManual: 'Manual',
+    tabQr: 'Scan QR',
+    tabUri: 'URI',
+    labelIssuer: 'Issuer / Service',
+    labelAccount: 'Account / Email',
+    labelSecret: 'Secret Key (Base32)',
+    hintManualEntry: 'Found under "Manual entry" in the service\'s 2FA setup.',
+    labelType: 'Type',
+    labelDigits: 'Digits',
+    labelPeriod: 'Period',
+    qrTabTitle: 'Scan a QR Code',
+    qrTabSub: 'A new tab will open where you can drop or pick your QR image. The account will be added automatically when scanned.',
+    openQrTab: 'Open QR Scanner Tab',
+    labelUri: 'otpauth:// URI',
+    hintUri: 'Paste from your QR reader or another authenticator\'s export.',
+    saveAccountBtn: 'Add Account',
+    exportDrawerTitle: 'Export Accounts',
+    exportHint: 'Keep these safe — they contain your secrets.',
+    copyExportBtn: 'Copy to Clipboard',
+    importDrawerTitle: 'Import Accounts',
+    importBtn: 'Import',
+    syncDrawerTitle: 'Sync & Security',
+    vaultEnableText: 'Enable local encryption',
+    vaultEnableHint: 'When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.',
+    labelVaultPassphrase: 'Vault Passphrase',
+    applyVaultBtn: 'Apply Security Setting',
+    lockVaultBtn: 'Lock Vault Now',
+    vaultLockedPill: 'Locked',
   },
   zh: {
     localOnly: '仅本地',
@@ -36,7 +84,69 @@ const I18N = {
     syncDisabled: '已关闭自动上传',
     needSession: '请先输入同步会话 ID。',
     needSessionEnable: '启用自动上传前请先输入同步会话 ID。',
+    noAccountsToExport: '没有可导出的账号',
+    copied: '已复制！',
+    addAccount: '添加账号',
+    noAccountsYet: '还没有账号',
+    emptySub: '点击下方 + 按钮\n添加第一个账号。',
+    vaultLocked: '保险库已锁定',
+    vaultLockSub: '此弹窗使用本地加密存储。请输入口令以解锁当前浏览器会话。',
+    unlockVault: '解锁保险库',
+    searchPlaceholder: '搜索账号...',
+    syncEnabledHint: '默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID。',
+    syncEnableText: '启用 Firefox 同步上传',
+    syncSessionLabel: '同步会话 ID',
+    syncSessionHint: '每个会话 ID 相互隔离。不同同步组请使用不同 ID。',
+    syncIntervalLabel: '自动上传间隔（分钟）',
+    syncIntervalHint: '开启自动上传后，本地更改最短按该间隔上传一次。',
+    syncSaveBtn: '保存同步设置',
+    syncUploadBtn: '立即上传本地数据',
+    syncDownloadBtn: '下载云端数据到本地',
+    syncWarnOverwrite: '从云端下载会覆盖当前本地账号，操作前会弹出确认。',
+    addDrawerTitle: '添加账号',
+    tabManual: '手动录入',
+    tabQr: '扫描二维码',
+    tabUri: 'URI',
+    labelIssuer: '发行方 / 服务',
+    labelAccount: '账号 / 邮箱',
+    labelSecret: '密钥（Base32）',
+    hintManualEntry: '可在服务 2FA 设置中的“手动输入”处找到。',
+    labelType: '类型',
+    labelDigits: '位数',
+    labelPeriod: '周期',
+    qrTabTitle: '扫描二维码',
+    qrTabSub: '将打开新标签页，你可以拖放或选择二维码图片。扫描成功后账号会自动添加。',
+    openQrTab: '打开二维码扫描页',
+    labelUri: 'otpauth:// URI',
+    hintUri: '从二维码识别工具或其他验证器导出中粘贴。',
+    saveAccountBtn: '添加账号',
+    exportDrawerTitle: '导出账号',
+    exportHint: '请妥善保存——其中包含你的密钥。',
+    copyExportBtn: '复制到剪贴板',
+    importDrawerTitle: '导入账号',
+    importBtn: '导入',
+    syncDrawerTitle: '同步与安全',
+    vaultEnableText: '启用本地加密',
+    vaultEnableHint: '启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次。',
+    labelVaultPassphrase: '保险库口令',
+    applyVaultBtn: '应用安全设置',
+    lockVaultBtn: '立即锁定保险库',
+    vaultLockedPill: '已锁定',
   },
+};
+
+const STATIC_TEXT_MAP = {
+  lockTitle: 'vaultLocked', lockSub: 'vaultLockSub', btnUnlock: 'unlockVault',
+  emptyTitle: 'noAccountsYet', addDrawerTitle: 'addDrawerTitle', tabManualBtn: 'tabManual', tabQrBtn: 'tabQr', tabUriBtn: 'tabUri',
+  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', hintManualEntry: 'hintManualEntry',
+  labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
+  btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
+  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
+  syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
+  labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
+  btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
+  vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase', btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
+  vaultLockedPill: 'vaultLockedPill', btnAdd: 'addAccount'
 };
 
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
@@ -46,16 +156,28 @@ function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.s
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function applyTheme(){
+  const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+}
 function applyStaticTranslations(){
-  const zh = uiLanguage === 'zh';
-  byId('btnImport').title = zh ? '导入账号' : 'Import accounts';
-  byId('btnExport').title = zh ? '导出账号' : 'Export accounts';
-  byId('btnSync').title = zh ? '同步与安全' : 'Sync and security';
-  byId('btnLang').title = zh ? '切换语言' : 'Switch language';
-  byId('search').placeholder = zh ? '搜索账号…' : 'Search accounts...';
-  byId('syncEnabledHint').textContent = zh
-    ? '默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID。'
-    : 'Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.';
+  for(const [id, key] of Object.entries(STATIC_TEXT_MAP)){
+    const el = byId(id);
+    if(!el) continue;
+    if(id === 'btnAdd'){
+      el.innerHTML = '&#xff0b; ' + t(key);
+      continue;
+    }
+    el.textContent = t(key);
+  }
+  byId('btnImport').title = uiLanguage === 'zh' ? '导入账号' : 'Import accounts';
+  byId('btnExport').title = uiLanguage === 'zh' ? '导出账号' : 'Export accounts';
+  byId('btnSync').title = uiLanguage === 'zh' ? '同步与安全' : 'Sync and security';
+  byId('btnLang').title = uiLanguage === 'zh' ? '切换语言' : 'Switch language';
+  byId('search').placeholder = t('searchPlaceholder');
+  byId('unlockPassphrase').placeholder = uiLanguage === 'zh' ? '口令' : 'Passphrase';
+  byId('vaultPassphrase').placeholder = uiLanguage === 'zh' ? '至少 6 个字符' : 'At least 6 characters';
+  byId('emptySub').innerHTML = t('emptySub').replace('\n', '<br/>');
 }
 function setLanguage(next){
   uiLanguage = next === 'zh' ? 'zh' : 'en';
@@ -64,7 +186,9 @@ function setLanguage(next){
   browser.storage.local.set({ uiLanguage });
   applyStaticTranslations();
   updateSyncUi();
+  render();
 }
+
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
 
@@ -222,7 +346,7 @@ function buildCard(acc){
 
   const hint = document.createElement('div');
   hint.className = 'otp-hint';
-  hint.textContent = 'click to copy';
+  hint.textContent = uiLanguage === 'zh' ? '点击复制' : 'click to copy';
 
   left.appendChild(codeEl);
   left.appendChild(hint);
@@ -395,7 +519,9 @@ function updateDuplicateHint(){
     hint.style.display = 'none';
     return;
   }
-  hint.textContent = `Warning: found ${matches.length} similar account name${matches.length > 1 ? 's' : ''}. You will be asked to confirm before adding.`;
+  hint.textContent = uiLanguage === 'zh'
+    ? `警告：发现 ${matches.length} 个相似账号名称。添加前会要求确认。`
+    : `Warning: found ${matches.length} similar account name${matches.length > 1 ? 's' : ''}. You will be asked to confirm before adding.`;
   hint.style.display = 'block';
 }
 
@@ -404,7 +530,7 @@ async function loadAccounts(){
   return resp.accounts || [];
 }
 
-function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : 'Never'; }
+function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : (uiLanguage === 'zh' ? '从未' : 'Never'); }
 
 function updateSyncUi(){
   byId('syncEnabled').checked = !!syncSettings.enabled;
@@ -446,9 +572,9 @@ function updateVaultUi(){
   byId('vaultPassphrase').value = '';
   byId('vaultEncryptionEnabled').checked = !!vaultStatus.encryptionEnabled;
   byId('vaultMeta').textContent = [
-    'Local encryption: ' + (vaultStatus.encryptionEnabled ? 'Enabled' : 'Disabled'),
-    'Vault state: ' + (vaultStatus.encryptionEnabled ? (vaultStatus.unlocked ? 'Unlocked' : 'Locked') : 'Not required'),
-    'Last unlock: ' + fmtTs(vaultStatus.lastUnlockedAt),
+    (uiLanguage === 'zh' ? '本地加密：' : 'Local encryption: ') + (vaultStatus.encryptionEnabled ? (uiLanguage === 'zh' ? '已启用' : 'Enabled') : (uiLanguage === 'zh' ? '已禁用' : 'Disabled')),
+    (uiLanguage === 'zh' ? '保险库状态：' : 'Vault state: ') + (vaultStatus.encryptionEnabled ? (vaultStatus.unlocked ? (uiLanguage === 'zh' ? '已解锁' : 'Unlocked') : (uiLanguage === 'zh' ? '已锁定' : 'Locked')) : (uiLanguage === 'zh' ? '无需解锁' : 'Not required')),
+    (uiLanguage === 'zh' ? '上次解锁：' : 'Last unlock: ') + fmtTs(vaultStatus.lastUnlockedAt),
   ].join('\n');
   byId('vaultLockedPill').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'inline-flex' : 'none';
   byId('lockScreen').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'flex' : 'none';
@@ -468,7 +594,7 @@ async function unlockWithInput(inputId, errId){
     await refreshVaultStatus();
     accounts = await loadAccounts();
     render();
-    toast('Vault unlocked');
+    toast(uiLanguage === 'zh' ? '保险库已解锁' : 'Vault unlocked');
   } catch(err){
     errEl.textContent = err.message;
     errEl.style.display = 'block';
@@ -478,6 +604,11 @@ async function unlockWithInput(inputId, errId){
 async function boot(){
   const lang = await browser.storage.local.get('uiLanguage');
   setLanguage(lang.uiLanguage || 'en');
+  applyTheme();
+  if(window.matchMedia){
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    media.addEventListener('change', applyTheme);
+  }
   await refreshVaultStatus();
   await loadSyncSettings();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
@@ -516,7 +647,7 @@ for(const btn of document.querySelectorAll('.tab')){
 byId('btnOpenQrTab').addEventListener('click', () => {
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
-  setQrStatus('QR scanner tab opened — scan your code there. This popup will update automatically.', false);
+  setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');
@@ -525,7 +656,7 @@ byId('btnOpenQrTab').addEventListener('click', () => {
     resetForm.qrPollInterval = null;
     await browser.storage.local.remove('pendingQrAccount');
     const added = await pushAccount(result.pendingQrAccount);
-    if(added){ closeD('drawAdd'); resetForm(); toast('QR account added!'); }
+    if(added){ closeD('drawAdd'); resetForm(); toast(uiLanguage === 'zh' ? '已添加二维码账号！' : 'QR account added!'); }
   }, 800);
 });
 
@@ -536,15 +667,15 @@ byId('btnSave').addEventListener('click', async () => {
     let acc;
     if(activeTab === 'uri'){
       const uri = byId('fUri').value.trim();
-      if(!uri) throw new Error('Please enter an otpauth:// URI.');
+      if(!uri) throw new Error(uiLanguage === 'zh' ? '请输入 otpauth:// URI。' : 'Please enter an otpauth:// URI.');
       acc = fromParsed(OTPAuth.URI.parse(uri));
     } else if(activeTab === 'qr'){
-      throw new Error('Use the "Open QR Scanner Tab" button above.');
+      throw new Error(uiLanguage === 'zh' ? '请使用上方“打开二维码扫描页”按钮。' : 'Use the "Open QR Scanner Tab" button above.');
     } else {
       const secret = byId('fSecret').value.trim();
       const label = byId('fLabel').value.trim();
-      if(!secret) throw new Error('Secret key is required.');
-      if(!label) throw new Error('Account name is required.');
+      if(!secret) throw new Error(uiLanguage === 'zh' ? '密钥不能为空。' : 'Secret key is required.');
+      if(!label) throw new Error(uiLanguage === 'zh' ? '账号名称不能为空。' : 'Account name is required.');
       OTPAuth.Secret.fromBase32(secret.toUpperCase().replace(/\s+/g,''));
       acc = {
         id: nextAccountId(),
@@ -559,12 +690,12 @@ byId('btnSave').addEventListener('click', async () => {
       };
     }
     const added = await pushAccount(acc);
-    if(added){ closeD('drawAdd'); resetForm(); toast('Account added!'); }
+    if(added){ closeD('drawAdd'); resetForm(); toast(uiLanguage === 'zh' ? '账号已添加！' : 'Account added!'); }
   } catch(e){ errEl.textContent = e.message; errEl.style.display = 'block'; }
 });
 
 byId('btnExport').addEventListener('click', () => {
-  if(!accounts.length){ toast('No accounts to export'); return; }
+  if(!accounts.length){ toast(t('noAccountsToExport')); return; }
   const lines = accounts.map(acc => {
     try {
       const s = OTPAuth.Secret.fromBase32(acc.secret);
@@ -577,7 +708,7 @@ byId('btnExport').addEventListener('click', () => {
   byId('exportData').value = lines.join('\n');
   openD('drawExport');
 });
-byId('btnCopyExport').addEventListener('click', () => navigator.clipboard.writeText(byId('exportData').value).then(() => toast('Copied!')));
+byId('btnCopyExport').addEventListener('click', () => navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied'))));
 
 byId('btnDoImport').addEventListener('click', async () => {
   const errEl = byId('importErr');
@@ -624,7 +755,7 @@ byId('list').addEventListener('click', async e => {
   if(codeEl){
     const card = codeEl.closest('.card');
     const acc = accounts.find(a => String(a.id) === card.dataset.id);
-    if(acc) navigator.clipboard.writeText(getToken(acc).code).then(() => toast('Copied!'));
+    if(acc) navigator.clipboard.writeText(getToken(acc).code).then(() => toast(t('copied')));
   }
 });
 
@@ -659,12 +790,12 @@ byId('btnDownloadSync').addEventListener('click', async () => {
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   const sessionId = byId('syncSessionId').value.trim();
   if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
-  if(!window.confirm('Cloud data will overwrite your current local accounts. Continue?')) return;
+  if(!window.confirm(uiLanguage === 'zh' ? '云端数据将覆盖当前本地账号，是否继续？' : 'Cloud data will overwrite your current local accounts. Continue?')) return;
   try {
     const resp = await sendMessage({ action:'downloadSyncToLocal', sessionId });
     accounts = Array.isArray(resp.accounts) ? resp.accounts : [];
     syncSettings.lastDownloadedAt = Date.now();
-    render(); updateSyncUi(); toast('Downloaded cloud data');
+    render(); updateSyncUi(); toast(uiLanguage === 'zh' ? '已下载云端数据' : 'Downloaded cloud data');
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
 });
 
@@ -675,16 +806,16 @@ byId('btnApplyVault').addEventListener('click', async () => {
   try {
     if(wantEncrypt && !vaultStatus.encryptionEnabled){
       await sendMessage({ action:'enableEncryption', passphrase });
-      toast('Local encryption enabled');
+      toast(uiLanguage === 'zh' ? '已启用本地加密' : 'Local encryption enabled');
     } else if(!wantEncrypt && vaultStatus.encryptionEnabled){
-      if(!window.confirm('Disable local encryption and store data locally without encryption?')) return;
+      if(!window.confirm(uiLanguage === 'zh' ? '确认关闭本地加密并以明文存储本地数据？' : 'Disable local encryption and store data locally without encryption?')) return;
       await sendMessage({ action:'disableEncryption', passphrase });
-      toast('Local encryption disabled');
+      toast(uiLanguage === 'zh' ? '已关闭本地加密' : 'Local encryption disabled');
     } else if(wantEncrypt && vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
       await sendMessage({ action:'unlockVault', passphrase });
-      toast('Vault unlocked');
+      toast(uiLanguage === 'zh' ? '保险库已解锁' : 'Vault unlocked');
     } else {
-      toast('No security change needed');
+      toast(uiLanguage === 'zh' ? '无需安全设置变更' : 'No security change needed');
     }
     await refreshVaultStatus();
     accounts = await loadAccounts();
@@ -699,7 +830,7 @@ byId('btnLockVault').addEventListener('click', async () => {
     await refreshVaultStatus();
     accounts = [];
     render();
-    toast('Vault locked');
+    toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
 });
 
@@ -708,5 +839,5 @@ byId('unlockPassphrase').addEventListener('keydown', e => { if(e.key === 'Enter'
 
 boot().catch(err => {
   console.error(err);
-  toast('Failed to load popup');
+  toast(uiLanguage === 'zh' ? '弹窗加载失败' : 'Failed to load popup');
 });

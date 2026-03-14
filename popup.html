@@ -23,8 +23,8 @@
 <div class="lock-screen" id="lockScreen" style="display:none">
   <div class="lock-card">
     <img class="logo-icon logo-img" src="icons/icon48.png" alt="Vault 2FA" />
-    <div class="lock-title">Vault Locked</div>
-    <div class="lock-sub">This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.</div>
+    <div class="lock-title" id="lockTitle">Vault Locked</div>
+    <div class="lock-sub" id="lockSub">This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.</div>
     <input class="fi" id="unlockPassphrase" type="password" placeholder="Passphrase" autocomplete="current-password" />
     <div class="err" id="unlockErr"></div>
     <button class="btn-ok" id="btnUnlock">Unlock Vault</button>
@@ -38,8 +38,8 @@
 <div class="list" id="list">
   <div class="empty" id="empty">
     <div class="empty-icon">&#x1F511;</div>
-    <div class="empty-title">No accounts yet</div>
-    <div class="empty-sub">Add your first account using the<br/>+ button below.</div>
+    <div class="empty-title" id="emptyTitle">No accounts yet</div>
+    <div class="empty-sub" id="emptySub">Add your first account using the<br/>+ button below.</div>
   </div>
 </div>
 
@@ -54,47 +54,47 @@
 <div class="drawer-bg" id="drawAdd">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title">Add Account</div>
+      <div class="drw-title" id="addDrawerTitle">Add Account</div>
       <button class="ibtn" id="closeAdd">&#x2715;</button>
     </div>
     <div class="tabs">
-      <button class="tab on" data-tab="manual">Manual</button>
-      <button class="tab"    data-tab="qr">Scan QR</button>
-      <button class="tab"    data-tab="uri">URI</button>
+      <button class="tab on" data-tab="manual" id="tabManualBtn">Manual</button>
+      <button class="tab"    data-tab="qr" id="tabQrBtn">Scan QR</button>
+      <button class="tab"    data-tab="uri" id="tabUriBtn">URI</button>
     </div>
 
     <!-- Manual -->
     <div id="tabManual">
       <div class="fg">
-        <label class="fl">Issuer / Service</label>
+        <label class="fl" id="labelIssuer">Issuer / Service</label>
         <input class="fi" id="fIssuer" type="text" placeholder="Google, GitHub..." autocomplete="off" />
       </div>
       <div class="fg">
-        <label class="fl">Account / Email</label>
+        <label class="fl" id="labelAccount">Account / Email</label>
         <input class="fi" id="fLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
       </div>
       <div class="fg">
-        <label class="fl">Secret Key (Base32)</label>
+        <label class="fl" id="labelSecret">Secret Key (Base32)</label>
         <input class="fi mono" id="fSecret" type="text" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" />
-        <div class="fhint">Found under "Manual entry" in the service's 2FA setup.</div>
+        <div class="fhint" id="hintManualEntry">Found under "Manual entry" in the service's 2FA setup.</div>
       </div>
       <div class="frow">
         <div class="fg">
-          <label class="fl">Type</label>
+          <label class="fl" id="labelType">Type</label>
           <select class="fs" id="fType">
             <option value="totp">TOTP (time)</option>
             <option value="hotp">HOTP (counter)</option>
           </select>
         </div>
         <div class="fg">
-          <label class="fl">Digits</label>
+          <label class="fl" id="labelDigits">Digits</label>
           <select class="fs" id="fDigits">
             <option value="6">6 digits</option>
             <option value="8">8 digits</option>
           </select>
         </div>
         <div class="fg">
-          <label class="fl">Period</label>
+          <label class="fl" id="labelPeriod">Period</label>
           <select class="fs" id="fPeriod">
             <option value="30">30 s</option>
             <option value="60">60 s</option>
@@ -107,8 +107,8 @@
     <div id="tabQr" style="display:none">
       <div class="qr-tab-body">
         <div class="qr-tab-icon">&#x1F4F7;</div>
-        <div class="qr-tab-title">Scan a QR Code</div>
-        <div class="qr-tab-sub">A new tab will open where you can drop or pick your QR image. The account will be added automatically when scanned.</div>
+        <div class="qr-tab-title" id="qrTabTitle">Scan a QR Code</div>
+        <div class="qr-tab-sub" id="qrTabSub">A new tab will open where you can drop or pick your QR image. The account will be added automatically when scanned.</div>
         <button class="btn-ok" id="btnOpenQrTab">Open QR Scanner Tab</button>
         <div class="qr-status" id="qrStatus"></div>
       </div>
@@ -117,9 +117,9 @@
     <!-- URI -->
     <div id="tabUri" style="display:none">
       <div class="fg">
-        <label class="fl">otpauth:// URI</label>
+        <label class="fl" id="labelUri">otpauth:// URI</label>
         <textarea class="fta" id="fUri" placeholder="otpauth://totp/ACME:alice@example.com?secret=BASE32SECRET&amp;issuer=ACME"></textarea>
-        <div class="fhint">Paste from your QR reader or another authenticator's export.</div>
+        <div class="fhint" id="hintUri">Paste from your QR reader or another authenticator's export.</div>
       </div>
     </div>
 
@@ -133,13 +133,13 @@
 <div class="drawer-bg" id="drawExport">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title">Export Accounts</div>
+      <div class="drw-title" id="exportDrawerTitle">Export Accounts</div>
       <button class="ibtn" id="closeExport">&#x2715;</button>
     </div>
     <div class="fg">
       <label class="fl">otpauth:// URIs</label>
       <textarea class="fta" id="exportData" readonly style="min-height:110px"></textarea>
-      <div class="fhint">Keep these safe &#x2014; they contain your secrets.</div>
+      <div class="fhint" id="exportHint">Keep these safe &#x2014; they contain your secrets.</div>
     </div>
     <button class="btn-ok" id="btnCopyExport">Copy to Clipboard</button>
   </div>
@@ -149,7 +149,7 @@
 <div class="drawer-bg" id="drawImport">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title">Import Accounts</div>
+      <div class="drw-title" id="importDrawerTitle">Import Accounts</div>
       <button class="ibtn" id="closeImport">&#x2715;</button>
     </div>
     <div class="fg">
@@ -166,44 +166,44 @@
 <div class="drawer-bg" id="drawSync">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title">Sync & Security</div>
+      <div class="drw-title" id="syncDrawerTitle">Sync & Security</div>
       <button class="ibtn" id="closeSync">&#x2715;</button>
     </div>
     <div class="fg sync-toggle-row">
       <label class="toggle-wrap">
         <input type="checkbox" id="syncEnabled" />
-        <span>Enable Firefox Sync upload</span>
+        <span id="syncEnableText">Enable Firefox Sync upload</span>
       </label>
       <div class="fhint" id="syncEnabledHint">Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.</div>
     </div>
     <div class="fg">
-      <label class="fl">Sync Session ID</label>
+      <label class="fl" id="labelSyncSession">Sync Session ID</label>
       <input class="fi mono" id="syncSessionId" type="text" placeholder="my-team-phone-1" autocomplete="off" />
-      <div class="fhint">Each session ID is isolated. Use a different ID for each sync group.</div>
+      <div class="fhint" id="syncSessionHint">Each session ID is isolated. Use a different ID for each sync group.</div>
     </div>
     <div class="fg">
-      <label class="fl">Auto Upload Interval (minutes)</label>
+      <label class="fl" id="labelSyncInterval">Auto Upload Interval (minutes)</label>
       <input class="fi" id="syncInterval" type="number" min="1" step="1" value="5" />
-      <div class="fhint">When auto upload is enabled, local changes upload no more often than this interval.</div>
+      <div class="fhint" id="syncIntervalHint">When auto upload is enabled, local changes upload no more often than this interval.</div>
     </div>
     <div class="sync-actions">
       <button class="btn-secondary" id="btnSaveSync">Save Sync Settings</button>
       <button class="btn-secondary" id="btnUploadSync">Upload Local Data Now</button>
       <button class="btn-danger" id="btnDownloadSync">Download Cloud Data to Local</button>
     </div>
-    <div class="warn-box">Downloading from the cloud will overwrite your current local accounts. A confirmation dialog will appear first.</div>
+    <div class="warn-box" id="syncWarnOverwrite">Downloading from the cloud will overwrite your current local accounts. A confirmation dialog will appear first.</div>
     <div class="sync-meta" id="syncMeta"></div>
     <div class="err" id="syncErr"></div>
     <hr class="sep" />
     <div class="fg sync-toggle-row">
       <label class="toggle-wrap">
         <input type="checkbox" id="vaultEncryptionEnabled" />
-        <span>Enable local encryption</span>
+        <span id="vaultEnableText">Enable local encryption</span>
       </label>
-      <div class="fhint">When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.</div>
+      <div class="fhint" id="vaultEnableHint">When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.</div>
     </div>
     <div class="fg">
-      <label class="fl">Vault Passphrase</label>
+      <label class="fl" id="labelVaultPassphrase">Vault Passphrase</label>
       <input class="fi" id="vaultPassphrase" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
     </div>
     <div class="sync-actions">
