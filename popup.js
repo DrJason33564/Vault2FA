@@ -156,9 +156,51 @@ function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.s
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
-function applyTheme(){
-  const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+function parseThemeColor(color){
+  if(!color || typeof color !== 'string') return null;
+  const c = color.trim();
+  if(/^#[0-9a-fA-F]{3}$/.test(c)){
+    const r = parseInt(c[1] + c[1], 16);
+    const g = parseInt(c[2] + c[2], 16);
+    const b = parseInt(c[3] + c[3], 16);
+    return { r, g, b };
+  }
+  if(/^#[0-9a-fA-F]{6}$/.test(c)){
+    return { r: parseInt(c.slice(1,3),16), g: parseInt(c.slice(3,5),16), b: parseInt(c.slice(5,7),16) };
+  }
+  const m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if(m) return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
+  return null;
+}
+
+function luminance(rgb){
+  const toLin = (v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * toLin(rgb.r) + 0.7152 * toLin(rgb.g) + 0.0722 * toLin(rgb.b);
+}
+
+async function applyTheme(){
+  let mode = null;
+  try {
+    if(typeof browser !== 'undefined' && browser.theme && browser.theme.getCurrent){
+      const theme = await browser.theme.getCurrent();
+      const colors = theme && theme.colors ? theme.colors : {};
+      const seed = colors.popup || colors.toolbar || colors.frame || colors.sidebar;
+      const rgb = parseThemeColor(seed);
+      if(rgb) mode = luminance(rgb) < 0.45 ? 'dark' : 'light';
+    }
+  } catch (e) {
+    mode = null;
+  }
+
+  if(!mode){
+    const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    mode = light ? 'light' : 'dark';
+  }
+
+  document.documentElement.setAttribute('data-theme', mode);
 }
 function applyStaticTranslations(){
   for(const [id, key] of Object.entries(STATIC_TEXT_MAP)){
@@ -193,11 +235,15 @@ function setLanguage(next){
 applyTheme();
 if(window.matchMedia){
   const popupThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  const onThemeChange = () => { applyTheme(); };
   if(popupThemeMedia.addEventListener){
-    popupThemeMedia.addEventListener('change', applyTheme);
+    popupThemeMedia.addEventListener('change', onThemeChange);
   } else if(popupThemeMedia.addListener){
-    popupThemeMedia.addListener(applyTheme);
+    popupThemeMedia.addListener(onThemeChange);
   }
+}
+if(typeof browser !== 'undefined' && browser.theme && browser.theme.onUpdated){
+  browser.theme.onUpdated.addListener(() => { applyTheme(); });
 }
 
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }

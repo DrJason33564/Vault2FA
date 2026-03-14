@@ -3,6 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <title>Vault 2FA</title>
+<script>
+(function(){
+  try {
+    var isLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
 <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
