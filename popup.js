@@ -29,7 +29,7 @@ const I18N = {
     copied: 'Copied!',
     addAccount: 'Add Account',
     noAccountsYet: 'No accounts yet',
-    emptySub: 'Add your first account using the<br/>+ button below.',
+    emptySub: 'Add your first account using the\n+ button below.',
     vaultLocked: 'Vault Locked',
     vaultLockSub: 'This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.',
     unlockVault: 'Unlock Vault',
@@ -165,6 +165,17 @@ function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.s
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function setMultilineText(el, text){
+  if(!el) return;
+  el.replaceChildren();
+  const parts = String(text || '').split('\n');
+  parts.forEach((part, idx) => {
+    const span = document.createElement('span');
+    span.textContent = part;
+    el.appendChild(span);
+    if(idx < parts.length - 1) el.appendChild(document.createElement('br'));
+  });
+}
 function systemTheme(){
   const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
   return light ? 'light' : 'dark';
@@ -192,7 +203,7 @@ function applyStaticTranslations(){
     const el = byId(id);
     if(!el) continue;
     if(id === 'btnAdd'){
-      el.innerHTML = '&#xff0b; ' + t(key);
+      el.textContent = '＋ ' + t(key);
       continue;
     }
     el.textContent = t(key);
@@ -205,7 +216,7 @@ function applyStaticTranslations(){
   byId('search').placeholder = t('searchPlaceholder');
   byId('unlockPassphrase').placeholder = uiLanguage === 'zh' ? '口令' : 'Passphrase';
   byId('vaultPassphrase').placeholder = uiLanguage === 'zh' ? '至少 6 个字符' : 'At least 6 characters';
-  byId('emptySub').innerHTML = t('emptySub').replace('\n', '<br/>');
+  setMultilineText(byId('emptySub'), t('emptySub'));
 }
 function setLanguage(next){
   uiLanguage = next === 'zh' ? 'zh' : 'en';
@@ -447,7 +458,7 @@ function render(){
   const empty = byId('empty');
   const q = byId('search').value.toLowerCase().trim();
   visibleAccounts = accounts.filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q));
-  empty.style.display = visibleAccounts.length ? 'none' : 'flex';
+empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   const frag = document.createDocumentFragment();
   for(const acc of visibleAccounts) frag.appendChild(buildCard(acc));
   list.replaceChildren(empty, frag);
@@ -687,7 +698,7 @@ for(const btn of document.querySelectorAll('.tab')){
 byId('btnOpenQrTab').addEventListener('click', () => {
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
-  setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
+setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');
