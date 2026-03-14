@@ -6,6 +6,7 @@ const statusEl = document.getElementById('status');
 const resultEl = document.getElementById('result');
 const nameEl   = document.getElementById('resultName');
 const errEl    = document.getElementById('err');
+
 const QR_I18N = {
   en: {
     title: 'Vault <em>2FA</em> — QR Scanner',
@@ -16,7 +17,7 @@ const QR_I18N = {
     hint: 'Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.',
     notImage: 'Please drop an image file.',
     scanning: 'Scanning…',
-    qrLibFail: 'QR scanner library failed to load.',
+    qrLibFail: 'QR decoder failed to load.',
     qrEmpty: 'No QR code data was found.',
     invalidOtp: 'QR found but not a valid otpauth:// URI: ',
     addedSuffix: ' added!',
@@ -32,7 +33,7 @@ const QR_I18N = {
     hint: '提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域。',
     notImage: '请拖入图片文件。',
     scanning: '扫描中…',
-    qrLibFail: '二维码扫描库加载失败。',
+    qrLibFail: '二维码解码库加载失败。',
     qrEmpty: '未检测到二维码数据。',
     invalidOtp: '已识别二维码，但不是有效的 otpauth:// URI：',
     addedSuffix: ' 已添加！',
@@ -40,6 +41,7 @@ const QR_I18N = {
     scanFail: '无法扫描二维码图片：',
   },
 };
+
 let qrLang = 'en';
 
 function applyTheme(){
@@ -62,6 +64,7 @@ browser.storage.local.get('uiLanguage').then((result) => {
   qrLang = result.uiLanguage === 'zh' ? 'zh' : 'en';
   applyQrI18n();
 });
+
 applyTheme();
 if(window.matchMedia){
   const qrThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
@@ -70,10 +73,6 @@ if(window.matchMedia){
   } else if(qrThemeMedia.addListener){
     qrThemeMedia.addListener(applyTheme);
   }
-}
-
-if(window.QrScanner){
-  QrScanner.WORKER_PATH = browser.runtime.getURL('qr-scanner-worker.min.js');
 }
 
 dz.addEventListener('dragenter', e => { e.preventDefault(); dz.classList.add('drag-over'); });
@@ -85,26 +84,56 @@ dz.addEventListener('drop', async e => {
   if(!f || !f.type.startsWith('image/')){ showErr(qrt('notImage')); return; }
   await process(f);
 });
+
 fileInput.addEventListener('change', async e => {
   if(e.target.files[0]) await process(e.target.files[0]);
 });
 
+async function imageDataFromFile(file){
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  if(window.createImageBitmap){
+    const bitmap = await createImageBitmap(file);
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    ctx.drawImage(bitmap, 0, 0);
+    if(bitmap.close) bitmap.close();
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Image load failed.'));
+      el.src = url;
+    });
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function decodeQrText(file){
+  if(typeof window.jsQR !== 'function') throw new Error(qrt('qrLibFail'));
+  const imageData = await imageDataFromFile(file);
+  const result = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+  return result && result.data ? result.data : '';
+}
+
 async function process(file){
   showStatus(qrt('scanning')); hideErr();
   try{
-    if(!window.QrScanner){
-      throw new Error(qrt('qrLibFail'));
-    }
-    const scan = await QrScanner.scanImage(file, {
-      returnDetailedScanResult: true,
-      alsoTryWithoutScanRegion: true,
-    });
-    const rawValue = typeof scan === 'string' ? scan : scan.data;
-    if(!rawValue){
-      throw new Error(qrt('qrEmpty'));
-    }
+    const rawValue = await decodeQrText(file);
+    if(!rawValue) throw new Error(qrt('qrEmpty'));
+
     let parsed;
-    try{ parsed = OTPAuth.URI.parse(rawValue); }
+    try { parsed = OTPAuth.URI.parse(rawValue); }
     catch(e){ showErr(qrt('invalidOtp') + e.message); return; }
 
     const acc = {
@@ -119,7 +148,7 @@ async function process(file){
       counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
     };
 
-    await browser.storage.local.set({pendingQrAccount: acc});
+    await browser.storage.local.set({ pendingQrAccount: acc });
 
     const name = [acc.issuer, acc.label].filter(Boolean).join(' — ') || qrt('unknownAccount');
     nameEl.textContent = name + qrt('addedSuffix');

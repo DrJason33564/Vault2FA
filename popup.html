@@ -1,18 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <title>Vault 2FA</title>
-<script>
-(function(){
-  try {
-    var isLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-})();
-</script>
 <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
@@ -23,6 +13,7 @@
     <div class="logo-text">Vault <em>2FA</em></div>
   </div>
   <div class="hdr-btns">
+    <button class="ibtn" id="btnTheme" title="Toggle theme">☾</button>
     <button class="ibtn" id="btnLang" title="Switch language">EN/中</button>
     <button class="ibtn" id="btnImport" title="Import accounts">&#x1F4E5;</button>
     <button class="ibtn" id="btnExport" title="Export accounts">&#x1F4E4;</button>
