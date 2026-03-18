@@ -257,6 +257,19 @@ if(window.matchMedia){
 
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
+function compareAccountOrder(a, b){
+  const issuerA = String(a.issuer || '').trim();
+  const issuerB = String(b.issuer || '').trim();
+  const issuerCmp = issuerA.localeCompare(issuerB, 'en', { numeric: true, sensitivity: 'base' });
+  if(issuerCmp !== 0) return issuerCmp;
+
+  const labelA = String(a.label || '').trim();
+  const labelB = String(b.label || '').trim();
+  const labelCmp = labelA.localeCompare(labelB, 'en', { numeric: true, sensitivity: 'base' });
+  if(labelCmp !== 0) return labelCmp;
+
+  return String(a.id || '').localeCompare(String(b.id || ''), 'en', { numeric: true, sensitivity: 'base' });
+}
 
 async function sendMessage(payload){
   const resp = await browser.runtime.sendMessage(payload);
@@ -480,7 +493,10 @@ function render(){
   const list = byId('list');
   const empty = byId('empty');
   const q = byId('search').value.toLowerCase().trim();
-  visibleAccounts = accounts.filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q));
+  visibleAccounts = accounts
+    .filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q))
+    .slice()
+    .sort(compareAccountOrder);
 empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   const frag = document.createDocumentFragment();
   for(const acc of visibleAccounts) frag.appendChild(buildCard(acc));
