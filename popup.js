@@ -338,7 +338,7 @@ function updateVisibleCodes(){
 
 function buildCard(acc){
   const { code, remaining, period } = getToken(acc);
-  const color = pal((acc.issuer || '') + (acc.label || ''));
+  const color = pal(acc.issuer || '');
   const level =
     remaining !== null && remaining <= 5 ? 'urgent' :
     remaining !== null && remaining <= 10 ? 'warn' : '';
