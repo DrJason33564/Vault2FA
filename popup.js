@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 'use strict';
 
 const OTPAuth = window.OTPAuth;
@@ -10,6 +11,7 @@ let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploade
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let uiLanguage = 'en';
 let uiTheme = 'auto';
+let editingAccountId = null;
 
 const I18N = {
   en: {
@@ -28,6 +30,7 @@ const I18N = {
     noAccountsToExport: 'No accounts to export',
     copied: 'Copied!',
     addAccount: 'Add Account',
+    editAccount: 'Edit Account',
     noAccountsYet: 'No accounts yet',
     emptySub: 'Add your first account using the\n+ button below.',
     vaultLocked: 'Vault Locked',
@@ -66,6 +69,11 @@ const I18N = {
     copyExportBtn: 'Copy to Clipboard',
     importDrawerTitle: 'Import Accounts',
     importBtn: 'Import',
+    editDrawerTitle: 'Edit Account',
+    editSaveBtn: 'Save Changes',
+    deleteConfirm: 'Delete this account?',
+    editBtnTitle: 'Edit',
+    saveEditSuccess: 'Account updated',
     syncDrawerTitle: 'Sync & Security',
     vaultEnableText: 'Enable local encryption',
     vaultEnableHint: 'When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.',
@@ -76,6 +84,7 @@ const I18N = {
     themeToggleTitle: 'Toggle light/dark theme',
     themeLight: 'Light mode',
     themeDark: 'Dark mode',
+    vaultLockedActionBlocked: 'Unlock Vault to use this feature.',
   },
   zh: {
     localOnly: '仅本地',
@@ -93,6 +102,7 @@ const I18N = {
     noAccountsToExport: '没有可导出的账号',
     copied: '已复制！',
     addAccount: '添加账号',
+    editAccount: '编辑账号',
     noAccountsYet: '还没有账号',
     emptySub: '点击下方 + 按钮\n添加第一个账号。',
     vaultLocked: '保险库已锁定',
@@ -131,6 +141,11 @@ const I18N = {
     copyExportBtn: '复制到剪贴板',
     importDrawerTitle: '导入账号',
     importBtn: '导入',
+    editDrawerTitle: '编辑账号',
+    editSaveBtn: '保存修改',
+    deleteConfirm: '确认删除该账号吗？',
+    editBtnTitle: '修改',
+    saveEditSuccess: '账号信息已更新',
     syncDrawerTitle: '同步与安全',
     vaultEnableText: '启用本地加密',
     vaultEnableHint: '启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次。',
@@ -141,6 +156,7 @@ const I18N = {
     themeToggleTitle: '切换深浅色主题',
     themeLight: '浅色模式',
     themeDark: '深色模式',
+    vaultLockedActionBlocked: '请先解锁保险库再使用该功能。',
   },
 };
 
@@ -151,6 +167,7 @@ const STATIC_TEXT_MAP = {
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
+  editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
@@ -243,6 +260,19 @@ if(window.matchMedia){
 
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
+function compareAccountOrder(a, b){
+  const issuerA = String(a.issuer || '').trim();
+  const issuerB = String(b.issuer || '').trim();
+  const issuerCmp = issuerA.localeCompare(issuerB, 'en', { numeric: true, sensitivity: 'base' });
+  if(issuerCmp !== 0) return issuerCmp;
+
+  const labelA = String(a.label || '').trim();
+  const labelB = String(b.label || '').trim();
+  const labelCmp = labelA.localeCompare(labelB, 'en', { numeric: true, sensitivity: 'base' });
+  if(labelCmp !== 0) return labelCmp;
+
+  return String(a.id || '').localeCompare(String(b.id || ''), 'en', { numeric: true, sensitivity: 'base' });
+}
 
 async function sendMessage(payload){
   const resp = await browser.runtime.sendMessage(payload);
@@ -297,6 +327,16 @@ function startTicker(){
   if(globalTick !== null) return;
   globalTick = setInterval(updateVisibleCodes, 1000);
 }
+
+function isVaultLocked(){
+  return !!(vaultStatus.encryptionEnabled && !vaultStatus.unlocked);
+}
+
+function guardVaultUnlocked(){
+  if(!isVaultLocked()) return true;
+  toast(t('vaultLockedActionBlocked'));
+  return false;
+}
 function stopTicker(){
   if(globalTick !== null){ clearInterval(globalTick); globalTick = null; }
 }
@@ -324,7 +364,7 @@ function updateVisibleCodes(){
 
 function buildCard(acc){
   const { code, remaining, period } = getToken(acc);
-  const color = pal((acc.issuer || '') + (acc.label || ''));
+  const color = pal(acc.issuer || '');
   const level =
     remaining !== null && remaining <= 5 ? 'urgent' :
     remaining !== null && remaining <= 10 ? 'warn' : '';
@@ -373,6 +413,15 @@ function buildCard(acc){
     nextBtn.textContent = '↻';
     acts.appendChild(nextBtn);
   }
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'act-btn edit';
+  editBtn.dataset.a = 'edit';
+  editBtn.dataset.id = String(acc.id);
+  editBtn.title = t('editBtnTitle');
+  editBtn.type = 'button';
+  editBtn.textContent = '✎';
+  acts.appendChild(editBtn);
 
   const delBtn = document.createElement('button');
   delBtn.className = 'act-btn del';
@@ -457,7 +506,10 @@ function render(){
   const list = byId('list');
   const empty = byId('empty');
   const q = byId('search').value.toLowerCase().trim();
-  visibleAccounts = accounts.filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q));
+  visibleAccounts = accounts
+    .filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q))
+    .slice()
+    .sort(compareAccountOrder);
 empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   const frag = document.createDocumentFragment();
   for(const acc of visibleAccounts) frag.appendChild(buildCard(acc));
@@ -550,6 +602,21 @@ function resetForm(){
   if(resetForm.qrPollInterval){ clearInterval(resetForm.qrPollInterval); resetForm.qrPollInterval = null; }
 }
 
+function resetEditForm(){
+  editingAccountId = null;
+  byId('editIssuer').value = '';
+  byId('editLabel').value = '';
+  byId('editErr').style.display = 'none';
+}
+
+function openEditDrawer(acc){
+  editingAccountId = acc.id;
+  byId('editIssuer').value = acc.issuer || '';
+  byId('editLabel').value = acc.label || '';
+  byId('editErr').style.display = 'none';
+  openD('drawEdit');
+}
+
 function setQrStatus(msg, isErr){
   const el = byId('qrStatus');
   el.textContent = msg;
@@ -630,6 +697,16 @@ function updateVaultUi(){
   ].join('\n');
   byId('vaultLockedPill').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'inline-flex' : 'none';
   byId('lockScreen').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'flex' : 'none';
+
+  const locked = isVaultLocked();
+  const gatedIds = ['btnAdd','btnImport','btnExport','btnSync'];
+  for(const id of gatedIds){
+    const el = byId(id);
+    if(!el) continue;
+    el.disabled = locked;
+    el.classList.toggle('is-disabled', locked);
+    el.setAttribute('aria-disabled', locked ? 'true' : 'false');
+  }
 }
 
 async function refreshVaultStatus(){
@@ -670,19 +747,30 @@ async function boot(){
   render();
 }
 
-byId('btnAdd').addEventListener('click', () => openD('drawAdd'));
+byId('btnAdd').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawAdd');
+});
 byId('btnTheme').addEventListener('click', () => setTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'));
 byId('btnLang').addEventListener('click', () => setLanguage(uiLanguage === 'zh' ? 'en' : 'zh'));
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
-byId('btnSync').addEventListener('click', () => openD('drawSync'));
+byId('btnSync').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawSync');
+});
 byId('closeSync').addEventListener('click', () => closeD('drawSync'));
 byId('drawSync').addEventListener('click', function(e){ if(e.target===this) closeD('drawSync'); });
 byId('closeExport').addEventListener('click', () => closeD('drawExport'));
 byId('drawExport').addEventListener('click', function(e){ if(e.target===this) closeD('drawExport'); });
-byId('btnImport').addEventListener('click', () => openD('drawImport'));
+byId('btnImport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawImport');
+});
 byId('closeImport').addEventListener('click', () => closeD('drawImport'));
 byId('drawImport').addEventListener('click', function(e){ if(e.target===this) closeD('drawImport'); });
+byId('closeEdit').addEventListener('click', () => { closeD('drawEdit'); resetEditForm(); });
+byId('drawEdit').addEventListener('click', function(e){ if(e.target===this){ closeD('drawEdit'); resetEditForm(); } });
 
 for(const btn of document.querySelectorAll('.tab')){
   btn.addEventListener('click', () => {
@@ -696,6 +784,7 @@ for(const btn of document.querySelectorAll('.tab')){
 }
 
 byId('btnOpenQrTab').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
 setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
@@ -712,6 +801,7 @@ setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫
 });
 
 byId('btnSave').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('addErr');
   errEl.style.display = 'none';
   try {
@@ -746,6 +836,7 @@ byId('btnSave').addEventListener('click', async () => {
 });
 
 byId('btnExport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('noAccountsToExport')); return; }
   const lines = accounts.map(acc => {
     try {
@@ -759,9 +850,13 @@ byId('btnExport').addEventListener('click', () => {
   byId('exportData').value = lines.join('\n');
   openD('drawExport');
 });
-byId('btnCopyExport').addEventListener('click', () => navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied'))));
+byId('btnCopyExport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied')));
+});
 
 byId('btnDoImport').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('importErr');
   errEl.style.display = 'none';
   const lines = byId('importData').value.split('\n').map(s => s.trim()).filter(Boolean);
@@ -788,17 +883,22 @@ byId('fIssuer').addEventListener('input', updateDuplicateHint);
 byId('fLabel').addEventListener('input', updateDuplicateHint);
 
 byId('list').addEventListener('click', async e => {
+  if(!guardVaultUnlocked()) return;
   const actionBtn = e.target.closest('[data-a]');
   if(actionBtn){
     const index = accounts.findIndex(a => String(a.id) === String(actionBtn.dataset.id));
     if(index < 0) return;
     if(actionBtn.dataset.a === 'del'){
+      if(!window.confirm(t('deleteConfirm'))) return;
       accounts.splice(index, 1);
       await persistAndRender();
     }
     if(actionBtn.dataset.a === 'next'){
       accounts[index].counter = (accounts[index].counter || 0) + 1;
       await persistAndRender();
+    }
+    if(actionBtn.dataset.a === 'edit'){
+      openEditDrawer(accounts[index]);
     }
     return;
   }
@@ -810,7 +910,31 @@ byId('list').addEventListener('click', async e => {
   }
 });
 
+byId('btnSaveEdit').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
+  const errEl = byId('editErr');
+  errEl.style.display = 'none';
+  try {
+    if(!editingAccountId) throw new Error(uiLanguage === 'zh' ? '未找到要编辑的账号。' : 'No account selected for editing.');
+    const label = byId('editLabel').value.trim();
+    const issuer = byId('editIssuer').value.trim() || label;
+    if(!label) throw new Error(uiLanguage === 'zh' ? '账号名称不能为空。' : 'Account name is required.');
+    const idx = accounts.findIndex(a => String(a.id) === String(editingAccountId));
+    if(idx < 0) throw new Error(uiLanguage === 'zh' ? '账号不存在或已被删除。' : 'Account no longer exists.');
+    accounts[idx].issuer = issuer;
+    accounts[idx].label = label;
+    await persistAndRender();
+    closeD('drawEdit');
+    resetEditForm();
+    toast(t('saveEditSuccess'));
+  } catch(err){
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+});
+
 byId('btnSaveSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr');
   errEl.style.display = 'none';
   const enabled = byId('syncEnabled').checked;
@@ -827,6 +951,7 @@ byId('btnSaveSync').addEventListener('click', async () => {
 });
 
 byId('btnUploadSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   try {
     const sessionId = byId('syncSessionId').value.trim();
@@ -838,6 +963,7 @@ byId('btnUploadSync').addEventListener('click', async () => {
 });
 
 byId('btnDownloadSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   const sessionId = byId('syncSessionId').value.trim();
   if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
@@ -879,6 +1005,7 @@ byId('btnLockVault').addEventListener('click', async () => {
   try {
     await sendMessage({ action:'lockVault' });
     await refreshVaultStatus();
+    ['drawAdd','drawImport','drawExport','drawSync','drawEdit'].forEach(closeD);
     accounts = [];
     render();
     toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');
