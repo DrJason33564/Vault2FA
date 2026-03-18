@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 # Vault 2FA (Firefox Add-on)
 
 一个 **Firefox 用的本地优先 TOTP/HOTP 认证器插件**，支持扫码导入、加密存储与可选云端同步。  
@@ -51,4 +52,3 @@ A **local-first TOTP/HOTP authenticator add-on for Firefox** with QR import, enc
 - `popup.html`, `popup.js`, `popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
 - `qr.html`, `qr.js`, `qr.css`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
-

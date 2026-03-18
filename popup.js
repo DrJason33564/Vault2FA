@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 'use strict';
 
 const OTPAuth = window.OTPAuth;
@@ -83,6 +84,7 @@ const I18N = {
     themeToggleTitle: 'Toggle light/dark theme',
     themeLight: 'Light mode',
     themeDark: 'Dark mode',
+    vaultLockedActionBlocked: 'Unlock Vault to use this feature.',
   },
   zh: {
     localOnly: '仅本地',
@@ -154,6 +156,7 @@ const I18N = {
     themeToggleTitle: '切换深浅色主题',
     themeLight: '浅色模式',
     themeDark: '深色模式',
+    vaultLockedActionBlocked: '请先解锁保险库再使用该功能。',
   },
 };
 
@@ -323,6 +326,16 @@ function setNodeState(el, baseClass, stateClass){
 function startTicker(){
   if(globalTick !== null) return;
   globalTick = setInterval(updateVisibleCodes, 1000);
+}
+
+function isVaultLocked(){
+  return !!(vaultStatus.encryptionEnabled && !vaultStatus.unlocked);
+}
+
+function guardVaultUnlocked(){
+  if(!isVaultLocked()) return true;
+  toast(t('vaultLockedActionBlocked'));
+  return false;
 }
 function stopTicker(){
   if(globalTick !== null){ clearInterval(globalTick); globalTick = null; }
@@ -684,6 +697,16 @@ function updateVaultUi(){
   ].join('\n');
   byId('vaultLockedPill').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'inline-flex' : 'none';
   byId('lockScreen').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'flex' : 'none';
+
+  const locked = isVaultLocked();
+  const gatedIds = ['btnAdd','btnImport','btnExport','btnSync'];
+  for(const id of gatedIds){
+    const el = byId(id);
+    if(!el) continue;
+    el.disabled = locked;
+    el.classList.toggle('is-disabled', locked);
+    el.setAttribute('aria-disabled', locked ? 'true' : 'false');
+  }
 }
 
 async function refreshVaultStatus(){
@@ -724,17 +747,26 @@ async function boot(){
   render();
 }
 
-byId('btnAdd').addEventListener('click', () => openD('drawAdd'));
+byId('btnAdd').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawAdd');
+});
 byId('btnTheme').addEventListener('click', () => setTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'));
 byId('btnLang').addEventListener('click', () => setLanguage(uiLanguage === 'zh' ? 'en' : 'zh'));
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
-byId('btnSync').addEventListener('click', () => openD('drawSync'));
+byId('btnSync').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawSync');
+});
 byId('closeSync').addEventListener('click', () => closeD('drawSync'));
 byId('drawSync').addEventListener('click', function(e){ if(e.target===this) closeD('drawSync'); });
 byId('closeExport').addEventListener('click', () => closeD('drawExport'));
 byId('drawExport').addEventListener('click', function(e){ if(e.target===this) closeD('drawExport'); });
-byId('btnImport').addEventListener('click', () => openD('drawImport'));
+byId('btnImport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  openD('drawImport');
+});
 byId('closeImport').addEventListener('click', () => closeD('drawImport'));
 byId('drawImport').addEventListener('click', function(e){ if(e.target===this) closeD('drawImport'); });
 byId('closeEdit').addEventListener('click', () => { closeD('drawEdit'); resetEditForm(); });
@@ -752,6 +784,7 @@ for(const btn of document.querySelectorAll('.tab')){
 }
 
 byId('btnOpenQrTab').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
 setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
@@ -768,6 +801,7 @@ setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫
 });
 
 byId('btnSave').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('addErr');
   errEl.style.display = 'none';
   try {
@@ -802,6 +836,7 @@ byId('btnSave').addEventListener('click', async () => {
 });
 
 byId('btnExport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('noAccountsToExport')); return; }
   const lines = accounts.map(acc => {
     try {
@@ -815,9 +850,13 @@ byId('btnExport').addEventListener('click', () => {
   byId('exportData').value = lines.join('\n');
   openD('drawExport');
 });
-byId('btnCopyExport').addEventListener('click', () => navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied'))));
+byId('btnCopyExport').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied')));
+});
 
 byId('btnDoImport').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('importErr');
   errEl.style.display = 'none';
   const lines = byId('importData').value.split('\n').map(s => s.trim()).filter(Boolean);
@@ -844,6 +883,7 @@ byId('fIssuer').addEventListener('input', updateDuplicateHint);
 byId('fLabel').addEventListener('input', updateDuplicateHint);
 
 byId('list').addEventListener('click', async e => {
+  if(!guardVaultUnlocked()) return;
   const actionBtn = e.target.closest('[data-a]');
   if(actionBtn){
     const index = accounts.findIndex(a => String(a.id) === String(actionBtn.dataset.id));
@@ -871,6 +911,7 @@ byId('list').addEventListener('click', async e => {
 });
 
 byId('btnSaveEdit').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('editErr');
   errEl.style.display = 'none';
   try {
@@ -893,6 +934,7 @@ byId('btnSaveEdit').addEventListener('click', async () => {
 });
 
 byId('btnSaveSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr');
   errEl.style.display = 'none';
   const enabled = byId('syncEnabled').checked;
@@ -909,6 +951,7 @@ byId('btnSaveSync').addEventListener('click', async () => {
 });
 
 byId('btnUploadSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   try {
     const sessionId = byId('syncSessionId').value.trim();
@@ -920,6 +963,7 @@ byId('btnUploadSync').addEventListener('click', async () => {
 });
 
 byId('btnDownloadSync').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
   const errEl = byId('syncErr'); errEl.style.display = 'none';
   const sessionId = byId('syncSessionId').value.trim();
   if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
@@ -961,6 +1005,7 @@ byId('btnLockVault').addEventListener('click', async () => {
   try {
     await sendMessage({ action:'lockVault' });
     await refreshVaultStatus();
+    ['drawAdd','drawImport','drawExport','drawSync','drawEdit'].forEach(closeD);
     accounts = [];
     render();
     toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 :root {
   --bg:     #0d1117;
   --surf:   #161b22;
@@ -65,6 +66,12 @@ html, body {
 #btnTheme { width:30px; font-size:15px; line-height:1; }
 #btnLang { width:auto; padding:0 7px; font-size:11px; font-weight:700; }
 .ibtn:hover { background:var(--surf2); border-color:var(--bhr); color:var(--text); }
+.ibtn:disabled,
+.ibtn.is-disabled {
+  opacity:.45;
+  cursor:not-allowed;
+  pointer-events:none;
+}
 
 /* Search */
 .search-wrap { padding:8px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -166,6 +173,12 @@ html, body {
   font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .15s;
 }
 .add-btn:hover { opacity:.85; }
+.add-btn:disabled,
+.add-btn.is-disabled {
+  opacity:.45;
+  cursor:not-allowed;
+  pointer-events:none;
+}
 
 /* Drawer (absolute, not fixed — works in Firefox extension popup) */
 .drawer-bg {

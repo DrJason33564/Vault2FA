@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 "use strict";
 const OTPAuth = window.OTPAuth;
 const dz       = document.getElementById('dz');
