@@ -10,6 +10,7 @@ let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploade
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let uiLanguage = 'en';
 let uiTheme = 'auto';
+let editingAccountId = null;
 
 const I18N = {
   en: {
@@ -28,6 +29,7 @@ const I18N = {
     noAccountsToExport: 'No accounts to export',
     copied: 'Copied!',
     addAccount: 'Add Account',
+    editAccount: 'Edit Account',
     noAccountsYet: 'No accounts yet',
     emptySub: 'Add your first account using the\n+ button below.',
     vaultLocked: 'Vault Locked',
@@ -66,6 +68,11 @@ const I18N = {
     copyExportBtn: 'Copy to Clipboard',
     importDrawerTitle: 'Import Accounts',
     importBtn: 'Import',
+    editDrawerTitle: 'Edit Account',
+    editSaveBtn: 'Save Changes',
+    deleteConfirm: 'Delete this account?',
+    editBtnTitle: 'Edit',
+    saveEditSuccess: 'Account updated',
     syncDrawerTitle: 'Sync & Security',
     vaultEnableText: 'Enable local encryption',
     vaultEnableHint: 'When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.',
@@ -93,6 +100,7 @@ const I18N = {
     noAccountsToExport: '没有可导出的账号',
     copied: '已复制！',
     addAccount: '添加账号',
+    editAccount: '编辑账号',
     noAccountsYet: '还没有账号',
     emptySub: '点击下方 + 按钮\n添加第一个账号。',
     vaultLocked: '保险库已锁定',
@@ -131,6 +139,11 @@ const I18N = {
     copyExportBtn: '复制到剪贴板',
     importDrawerTitle: '导入账号',
     importBtn: '导入',
+    editDrawerTitle: '编辑账号',
+    editSaveBtn: '保存修改',
+    deleteConfirm: '确认删除该账号吗？',
+    editBtnTitle: '修改',
+    saveEditSuccess: '账号信息已更新',
     syncDrawerTitle: '同步与安全',
     vaultEnableText: '启用本地加密',
     vaultEnableHint: '启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次。',
@@ -151,6 +164,7 @@ const STATIC_TEXT_MAP = {
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
+  editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
@@ -374,6 +388,15 @@ function buildCard(acc){
     acts.appendChild(nextBtn);
   }
 
+  const editBtn = document.createElement('button');
+  editBtn.className = 'act-btn edit';
+  editBtn.dataset.a = 'edit';
+  editBtn.dataset.id = String(acc.id);
+  editBtn.title = t('editBtnTitle');
+  editBtn.type = 'button';
+  editBtn.textContent = '✎';
+  acts.appendChild(editBtn);
+
   const delBtn = document.createElement('button');
   delBtn.className = 'act-btn del';
   delBtn.dataset.a = 'del';
@@ -550,6 +573,21 @@ function resetForm(){
   if(resetForm.qrPollInterval){ clearInterval(resetForm.qrPollInterval); resetForm.qrPollInterval = null; }
 }
 
+function resetEditForm(){
+  editingAccountId = null;
+  byId('editIssuer').value = '';
+  byId('editLabel').value = '';
+  byId('editErr').style.display = 'none';
+}
+
+function openEditDrawer(acc){
+  editingAccountId = acc.id;
+  byId('editIssuer').value = acc.issuer || '';
+  byId('editLabel').value = acc.label || '';
+  byId('editErr').style.display = 'none';
+  openD('drawEdit');
+}
+
 function setQrStatus(msg, isErr){
   const el = byId('qrStatus');
   el.textContent = msg;
@@ -683,6 +721,8 @@ byId('drawExport').addEventListener('click', function(e){ if(e.target===this) cl
 byId('btnImport').addEventListener('click', () => openD('drawImport'));
 byId('closeImport').addEventListener('click', () => closeD('drawImport'));
 byId('drawImport').addEventListener('click', function(e){ if(e.target===this) closeD('drawImport'); });
+byId('closeEdit').addEventListener('click', () => { closeD('drawEdit'); resetEditForm(); });
+byId('drawEdit').addEventListener('click', function(e){ if(e.target===this){ closeD('drawEdit'); resetEditForm(); } });
 
 for(const btn of document.querySelectorAll('.tab')){
   btn.addEventListener('click', () => {
@@ -793,12 +833,16 @@ byId('list').addEventListener('click', async e => {
     const index = accounts.findIndex(a => String(a.id) === String(actionBtn.dataset.id));
     if(index < 0) return;
     if(actionBtn.dataset.a === 'del'){
+      if(!window.confirm(t('deleteConfirm'))) return;
       accounts.splice(index, 1);
       await persistAndRender();
     }
     if(actionBtn.dataset.a === 'next'){
       accounts[index].counter = (accounts[index].counter || 0) + 1;
       await persistAndRender();
+    }
+    if(actionBtn.dataset.a === 'edit'){
+      openEditDrawer(accounts[index]);
     }
     return;
   }
@@ -807,6 +851,28 @@ byId('list').addEventListener('click', async e => {
     const card = codeEl.closest('.card');
     const acc = accounts.find(a => String(a.id) === card.dataset.id);
     if(acc) navigator.clipboard.writeText(getToken(acc).code).then(() => toast(t('copied')));
+  }
+});
+
+byId('btnSaveEdit').addEventListener('click', async () => {
+  const errEl = byId('editErr');
+  errEl.style.display = 'none';
+  try {
+    if(!editingAccountId) throw new Error(uiLanguage === 'zh' ? '未找到要编辑的账号。' : 'No account selected for editing.');
+    const label = byId('editLabel').value.trim();
+    const issuer = byId('editIssuer').value.trim() || label;
+    if(!label) throw new Error(uiLanguage === 'zh' ? '账号名称不能为空。' : 'Account name is required.');
+    const idx = accounts.findIndex(a => String(a.id) === String(editingAccountId));
+    if(idx < 0) throw new Error(uiLanguage === 'zh' ? '账号不存在或已被删除。' : 'Account no longer exists.');
+    accounts[idx].issuer = issuer;
+    accounts[idx].label = label;
+    await persistAndRender();
+    closeD('drawEdit');
+    resetEditForm();
+    toast(t('saveEditSuccess'));
+  } catch(err){
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
   }
 });
 
