@@ -119,6 +119,7 @@ html, body {
   display:flex; align-items:center; justify-content:center; transition:all .15s;
 }
 .act-btn:hover { color:var(--text); border-color:var(--bhr); }
+.act-btn.edit:hover { color:var(--accent); border-color:var(--accent); }
 .act-btn.del:hover { color:var(--red); border-color:var(--red); }
 .card-otp { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .otp-code {

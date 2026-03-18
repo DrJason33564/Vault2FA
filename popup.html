@@ -162,6 +162,26 @@
   </div>
 </div>
 
+<!-- EDIT DRAWER -->
+<div class="drawer-bg" id="drawEdit">
+  <div class="drawer">
+    <div class="drw-hdr">
+      <div class="drw-title" id="editDrawerTitle">Edit Account</div>
+      <button class="ibtn" id="closeEdit">&#x2715;</button>
+    </div>
+    <div class="fg">
+      <label class="fl" id="editLabelIssuer">Issuer / Service</label>
+      <input class="fi" id="editIssuer" type="text" placeholder="Google, GitHub..." autocomplete="off" />
+    </div>
+    <div class="fg">
+      <label class="fl" id="editLabelAccount">Account / Email</label>
+      <input class="fi" id="editLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
+    </div>
+    <div class="err" id="editErr"></div>
+    <button class="btn-ok" id="btnSaveEdit">Save Changes</button>
+  </div>
+</div>
+
 
 <!-- SYNC DRAWER -->
 <div class="drawer-bg" id="drawSync">
