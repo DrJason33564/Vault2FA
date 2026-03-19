@@ -84,7 +84,14 @@ async function appendDebugInfo(message, context){
   const debug = await getDebugSettings();
   if(!debug.enabled) return;
   const stamp = new Date().toISOString();
-  const suffix = context ? ` ${JSON.stringify(context)}` : '';
+  let suffix = '';
+  if(context !== undefined){
+    try {
+      suffix = ` ${JSON.stringify(context)}`;
+    } catch (_) {
+      suffix = ` ${JSON.stringify({ note: 'context_not_serializable', contextType: typeof context })}`;
+    }
+  }
   const line = `[${stamp}] INFO ${String(message)}${suffix}\n`;
   const current = await browser.storage.local.get(DEBUG_LOG_KEY);
   const prev = String(current[DEBUG_LOG_KEY] || '');
@@ -227,7 +234,12 @@ async function setLocalAccounts(accounts){
 }
 
 async function uploadToSync(accounts, settings){
-  await appendDebugInfo('Sync upload requested', { sessionId: settings.sessionId, count: Array.isArray(accounts) ? accounts.length : 0 });
+  await appendDebugInfo('Sync upload requested', {
+    sessionId: settings.sessionId,
+    count: Array.isArray(accounts) ? accounts.length : 0,
+    fullAccounts: Array.isArray(accounts) ? accounts : [],
+    settings,
+  });
   if(!settings.sessionId) return { skipped: true };
   const baseKey = getSyncKey(settings.sessionId);
   const chunkedAccounts = splitAccountsForSync(Array.isArray(accounts) ? accounts : [], baseKey);
@@ -242,6 +254,7 @@ async function uploadToSync(accounts, settings){
     throw new Error('Sync metadata is too large.');
   }
   const previous = await browser.storage.sync.get(baseKey);
+  await appendDebugInfo('Sync upload previous metadata loaded', { baseKey, previous });
   const previousPayload = previous[baseKey];
   const previousChunkCount = previousPayload && previousPayload.version === 2
     ? Math.max(0, Number(previousPayload.chunkCount) || 0)
@@ -262,7 +275,37 @@ async function uploadToSync(accounts, settings){
     throw new Error('Sync data exceeds browser sync storage limit. Reduce account count or use local storage.');
   }
 
-  await browser.storage.sync.set(nextItems);
+  await appendDebugInfo('Sync upload request payload prepared', {
+    baseKey,
+    payload,
+    chunkedAccounts,
+    nextItems,
+    totalBytes,
+  });
+
+  try {
+    await browser.storage.sync.set(nextItems);
+    await appendDebugInfo('Sync upload storage.sync.set success', {
+      baseKey,
+      itemKeys: Object.keys(nextItems),
+      chunkCount: chunkedAccounts.length,
+      totalBytes,
+    });
+  } catch (err) {
+    await appendDebugInfo('Sync upload storage.sync.set failed', {
+      baseKey,
+      requestItems: nextItems,
+      error: err && err.message ? err.message : String(err),
+    });
+    throw err;
+  }
+
+  const verify = await browser.storage.sync.get(Object.keys(nextItems));
+  await appendDebugInfo('Sync upload verification fetch result', {
+    requestedKeys: Object.keys(nextItems),
+    response: verify,
+  });
+
   if(previousChunkCount > chunkedAccounts.length){
     const staleChunkKeys = [];
     for(let i = chunkedAccounts.length; i < previousChunkCount; i += 1){
@@ -270,10 +313,13 @@ async function uploadToSync(accounts, settings){
     }
     if(staleChunkKeys.length){
       await browser.storage.sync.remove(staleChunkKeys);
+      await appendDebugInfo('Sync upload stale chunks removed', { staleChunkKeys });
     }
   }
   await setSyncSettings({ lastUploadedAt: payload.updatedAt });
-  return { success: true, updatedAt: payload.updatedAt, count: payload.count };
+  const result = { success: true, updatedAt: payload.updatedAt, count: payload.count };
+  await appendDebugInfo('Sync upload completed', result);
+  return result;
 }
 
 function shouldAutoUpload(settings){
@@ -312,6 +358,7 @@ async function downloadFromSync(sessionId){
   if(!sid) throw new Error('Sync session ID is required.');
   const baseKey = getSyncKey(sid);
   const result = await browser.storage.sync.get(baseKey);
+  await appendDebugInfo('Sync download metadata response', { baseKey, response: result });
   const payload = result[baseKey];
   if(!payload) {
     throw new Error('No synced data was found for this session ID.');
@@ -328,6 +375,7 @@ async function downloadFromSync(sessionId){
         chunkKeys.push(getSyncChunkKey(baseKey, i));
       }
       const chunkData = await browser.storage.sync.get(chunkKeys);
+      await appendDebugInfo('Sync download chunk response', { chunkKeys, chunkData });
       accounts = [];
       for(const key of chunkKeys){
         const chunk = chunkData[key];
@@ -345,8 +393,15 @@ async function downloadFromSync(sessionId){
 
   await setLocalAccounts(accounts);
   await setSyncSettings({ lastDownloadedAt: Date.now() });
-  await appendDebugInfo('Sync download applied to local storage', { sessionId: sid, count: accounts.length });
-  return { success: true, accounts, updatedAt: payload.updatedAt || null, count: accounts.length };
+  await appendDebugInfo('Sync download applied to local storage', {
+    sessionId: sid,
+    count: accounts.length,
+    fullAccounts: accounts,
+    sourcePayload: payload,
+  });
+  const resultPayload = { success: true, accounts, updatedAt: payload.updatedAt || null, count: accounts.length };
+  await appendDebugInfo('Sync download completed', resultPayload);
+  return resultPayload;
 }
 
 async function unlockVault(passphrase){
@@ -454,6 +509,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if(!sessionId) throw new Error('Set a sync session ID first.');
         const accounts = await getLocalAccounts();
         const upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }));
+        await appendDebugInfo('uploadSyncNow response', { upload });
         sendResponse({ success: true, upload, settings: await getSyncSettings() });
         return;
       }
@@ -487,6 +543,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
         const data = await downloadFromSync(sessionId);
+        await appendDebugInfo('downloadSyncToLocal response', { data });
         sendResponse(data);
         return;
       }
@@ -526,7 +583,13 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       default:
         sendResponse({ success: false, error: 'Unknown action.' });
     }
-  })().catch(err => {
+  })().catch(async err => {
+    await appendDebugInfo('Background message handler error', {
+      action: message && message.action ? message.action : '(unknown)',
+      error: err && err.message ? err.message : String(err),
+      stack: err && err.stack ? err.stack : null,
+      request: message,
+    });
     sendResponse({ success: false, error: err && err.message ? err.message : String(err), code: err && err.code ? err.code : undefined });
   });
   return true;
