@@ -9,9 +9,13 @@ let activeTab = 'manual';
 let globalTick = null;
 let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploadedAt:null, lastDownloadedAt:null };
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
+let debugState = { enabled:false };
+let debugUiUnlocked = false;
 let uiLanguage = 'en';
 let uiTheme = 'auto';
 let editingAccountId = null;
+const debugTapTimes = [];
+const DEBUG_TAP_WINDOW_MS = 1600;
 
 const I18N = {
   en: {
@@ -85,6 +89,13 @@ const I18N = {
     themeLight: 'Light mode',
     themeDark: 'Dark mode',
     vaultLockedActionBlocked: 'Unlock Vault to use this feature.',
+    debugEnableText: 'Enable debug mode',
+    debugHint: 'When enabled, info logs are stored locally and can be downloaded as a .txt file.',
+    debugDownloadBtn: 'Download Debug Log',
+    debugUnlockedToast: 'Debug switch unlocked',
+    debugModeOn: 'Debug mode enabled',
+    debugModeOff: 'Debug mode disabled',
+    debugLogEmpty: 'No debug log available.',
   },
   zh: {
     localOnly: '仅本地',
@@ -157,6 +168,13 @@ const I18N = {
     themeLight: '浅色模式',
     themeDark: '深色模式',
     vaultLockedActionBlocked: '请先解锁保险库再使用该功能。',
+    debugEnableText: '启用调试模式',
+    debugHint: '启用后会在本地记录 info 日志，并可下载为 .txt 文件。',
+    debugDownloadBtn: '下载调试日志',
+    debugUnlockedToast: '已解锁调试开关',
+    debugModeOn: '已启用调试模式',
+    debugModeOff: '已关闭调试模式',
+    debugLogEmpty: '暂无可下载的调试日志。',
   },
 };
 
@@ -172,7 +190,8 @@ const STATIC_TEXT_MAP = {
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
   vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase', btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
-  vaultLockedPill: 'vaultLockedPill', btnAdd: 'addAccount'
+  vaultLockedPill: 'vaultLockedPill', btnAdd: 'addAccount', debugEnableText: 'debugEnableText',
+  debugHint: 'debugHint', btnDownloadDebug: 'debugDownloadBtn'
 };
 
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
@@ -681,10 +700,29 @@ function updateSyncBadgeFromResponse(resp){
   updateSyncUi();
 }
 
+function updateDebugUi(){
+  const shouldShow = debugState.enabled || debugUiUnlocked;
+  byId('debugPanel').style.display = shouldShow ? 'block' : 'none';
+  byId('debugSep').style.display = shouldShow ? 'block' : 'none';
+  byId('debugEnabled').checked = !!debugState.enabled;
+  byId('btnDownloadDebug').disabled = !debugState.enabled;
+  const errEl = byId('debugErr');
+  if(!shouldShow){
+    errEl.style.display = 'none';
+    errEl.textContent = '';
+  }
+}
+
 async function loadSyncSettings(){
   const resp = await sendMessage({ action:'getSyncSettings' });
   if(resp.settings) syncSettings = Object.assign({}, syncSettings, resp.settings);
   updateSyncUi();
+}
+async function loadDebugState(){
+  const resp = await sendMessage({ action:'getDebugState' });
+  if(resp.debug) debugState = Object.assign({}, debugState, resp.debug);
+  if(debugState.enabled) debugUiUnlocked = true;
+  updateDebugUi();
 }
 
 function updateVaultUi(){
@@ -738,6 +776,7 @@ async function boot(){
   
   await refreshVaultStatus();
   await loadSyncSettings();
+  await loadDebugState();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
     accounts = [];
     render();
@@ -747,10 +786,25 @@ async function boot(){
   render();
 }
 
+function handleDebugLogoTap(){
+  const now = Date.now();
+  debugTapTimes.push(now);
+  while(debugTapTimes.length && now - debugTapTimes[0] > DEBUG_TAP_WINDOW_MS){
+    debugTapTimes.shift();
+  }
+  if(debugTapTimes.length >= 5){
+    debugTapTimes.length = 0;
+    debugUiUnlocked = true;
+    updateDebugUi();
+    toast(t('debugUnlockedToast'));
+  }
+}
+
 byId('btnAdd').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   openD('drawAdd');
 });
+byId('hdrLogo').addEventListener('click', handleDebugLogoTap);
 byId('btnTheme').addEventListener('click', () => setTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'));
 byId('btnLang').addEventListener('click', () => setLanguage(uiLanguage === 'zh' ? 'en' : 'zh'));
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
@@ -1010,6 +1064,50 @@ byId('btnLockVault').addEventListener('click', async () => {
     render();
     toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
+});
+
+byId('debugEnabled').addEventListener('change', async () => {
+  const errEl = byId('debugErr');
+  errEl.style.display = 'none';
+  try {
+    const enabled = byId('debugEnabled').checked;
+    const resp = await sendMessage({ action:'setDebugEnabled', enabled });
+    debugState = Object.assign({}, debugState, (resp && resp.debug) || {});
+    if(!debugState.enabled){
+      debugUiUnlocked = false;
+    }
+    updateDebugUi();
+    toast(debugState.enabled ? t('debugModeOn') : t('debugModeOff'));
+  } catch(err){
+    byId('debugEnabled').checked = !!debugState.enabled;
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+});
+
+byId('btnDownloadDebug').addEventListener('click', async () => {
+  const errEl = byId('debugErr');
+  errEl.style.display = 'none';
+  try {
+    const resp = await sendMessage({ action:'getDebugLogText' });
+    const text = String((resp && resp.text) || '');
+    if(!text){
+      toast(t('debugLogEmpty'));
+      return;
+    }
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vault2fa-debug-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch(err){
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('btnUnlock').addEventListener('click', () => unlockWithInput('unlockPassphrase', 'unlockErr'));
