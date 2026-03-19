@@ -9,7 +9,7 @@
 <body>
 
 <div class="hdr">
-  <div class="logo">
+  <div class="logo" id="hdrLogo">
     <img class="logo-icon logo-img" src="icons/icon32.png" alt="Vault 2FA" />
     <div class="logo-text">Vault <em>2FA</em></div>
   </div>
@@ -234,6 +234,18 @@
     </div>
     <div class="sync-meta" id="vaultMeta"></div>
     <div class="err" id="vaultErr"></div>
+    <hr class="sep" id="debugSep" style="display:none" />
+    <div class="fg sync-toggle-row" id="debugPanel" style="display:none">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="debugEnabled" />
+        <span id="debugEnableText">Enable debug mode</span>
+      </label>
+      <div class="fhint" id="debugHint">When enabled, info logs are stored locally and can be downloaded as a .txt file.</div>
+      <div class="sync-actions">
+        <button class="btn-secondary" id="btnDownloadDebug">Download Debug Log</button>
+      </div>
+      <div class="err" id="debugErr"></div>
+    </div>
 
   </div>
 </div>
