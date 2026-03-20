@@ -1,10 +1,15 @@
 <!-- SPDX-License-Identifier: MIT -->
-# Vault 2FA (Firefox Add-on)
+<br />
+<p align="center">
+    <img src="icons/icon128.png" alt="Logo" width="128" height="128">
+  <h2 align="center" style="font-weight: 800">Vault2FA</h2>
 
-一个 **Firefox 用的本地优先 TOTP/HOTP 认证器插件**，支持扫码导入、加密存储与可选云端同步。  
-A **local-first TOTP/HOTP authenticator add-on for Firefox** with QR import, encrypted local storage, and optional cloud sync.
+  <p align="center">
+    一个为Firefox开发的、简洁安全的TOTP/HOTP认证器插件
+    <br />
+    A secure and simple TOTP/HOTP authenticator add-on for Firefox.
 
-## 功能特性 / Features
+### 功能特性 / Features
 
 - 手动添加验证码账户（TOTP/HOTP）  
   Add accounts manually (TOTP/HOTP)
@@ -19,12 +24,12 @@ A **local-first TOTP/HOTP authenticator add-on for Firefox** with QR import, enc
 - 支持导入/导出 `otpauth://` URI  
   Import/export `otpauth://` URIs
 
-## 安装与使用 / Install & Use
+### 安装与使用 / Install & Use
 
-### 从AMO安装（发行版） / Install from AMO (release)
+#### 从AMO安装（发行版） / Install from AMO (release)
 [![Download button](firefox-addon.png)](https://addons.mozilla.org/en-US/firefox/addon/vault2fa)
 
-### 从仓库安装（开发版） / User install (development)
+#### 从仓库安装（开发版） / User install (development)
 1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`  
    Open Firefox and go to `about:debugging#/runtime/this-firefox`
 2. 点击 **Load Temporary Add-on...**  
@@ -32,7 +37,7 @@ A **local-first TOTP/HOTP authenticator add-on for Firefox** with QR import, enc
 3. 选择本仓库中的 `manifest.json`  
    Select `manifest.json` from this repository
 
-### 快速上手 / Quick start
+#### 快速上手 / Quick start
 1. 点击插件图标，选择 **Add Account**  
    Click the add-on icon and choose **Add Account**
 2. 通过 **Manual** 或 **Scan QR** 添加账户  
@@ -42,14 +47,23 @@ A **local-first TOTP/HOTP authenticator add-on for Firefox** with QR import, enc
    - Firefox Sync 上传 / Firefox Sync upload
    - 本地加密与锁定 / Local encryption and vault lock
 
-## 安全提示 / Security Notes
+### 安全提示 / Security Notes
 
 - 请妥善保管导出的 URI、同步会话 ID 和加密口令。  
   Keep exported URIs, sync session IDs, and vault passphrases secure.
 - 丢失口令可能导致无法解密本地数据。  
   Losing your passphrase may make local data unrecoverable.
+- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题。  
+  It is strongly recommended to keep a local backup of your vault since Firefox Sync is not designed for syncing secrets. Cloud sync
+  therefore may have potential bugs.
 
-## 项目结构 / Project Structure
+### 截图 / Screenshots
+![IMG_20260318_215605.jpg](images/IMG_20260318_215605.jpg)
+![IMG_20260318_221245.jpg](images/IMG_20260318_221245.jpg)
+![IMG_20260318_221444.jpg](images/IMG_20260318_221444.jpg)
+![IMG_20260318_221847.jpg](images/IMG_20260318_221847.jpg)
+
+### 项目结构 / Project Structure
 
 - `manifest.json`: 扩展配置 / Extension manifest
 - `popup.html`, `popup.js`, `popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
