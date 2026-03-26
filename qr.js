@@ -125,19 +125,41 @@ async function imageDataFromFile(file){
 async function decodeQrText(file){
   if(typeof window.jsQR !== 'function') throw new Error(qrt('qrLibFail'));
   const imageData = await imageDataFromFile(file);
+  await debugInfo('QR image payload prepared for decoder', {
+    width: imageData.width,
+    height: imageData.height,
+    pixelBytes: imageData.data ? imageData.data.length : 0,
+    pixelSha256: await sha256Hex(imageData.data),
+  });
   const result = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
   return result && result.data ? result.data : '';
 }
 
 async function process(file){
   showStatus(qrt('scanning')); hideErr();
+  await debugInfo('QR scan started', {
+    fileName: file && file.name ? file.name : '',
+    fileType: file && file.type ? file.type : '',
+    fileSize: file && typeof file.size === 'number' ? file.size : null,
+  });
   try{
     const rawValue = await decodeQrText(file);
+    await debugInfo('QR decode result', {
+      hasValue: !!rawValue,
+      rawLength: rawValue ? String(rawValue).length : 0,
+      rawPreview: rawValue ? String(rawValue).slice(0, 120) : '',
+      isOtpAuth: !!(rawValue && String(rawValue).startsWith('otpauth://')),
+    });
     if(!rawValue) throw new Error(qrt('qrEmpty'));
 
     let parsed;
-    try { parsed = OTPAuth.URI.parse(rawValue); }
-    catch(e){ showErr(qrt('invalidOtp') + e.message); return; }
+    try {
+      parsed = OTPAuth.URI.parse(rawValue);
+    } catch(e){
+      await debugInfo('QR parse failed', { error: e && e.message ? e.message : String(e) });
+      showErr(qrt('invalidOtp') + e.message);
+      return;
+    }
 
     const acc = {
       id:        generateId(),
@@ -151,7 +173,16 @@ async function process(file){
       counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
     };
 
+    await debugInfo('QR parsed account', summarizeAccount(acc));
+    const requestPayload = { action: 'addAccountFromQr', account: summarizeAccount(acc) };
+    await debugInfo('QR -> background request', requestPayload);
     const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
+    await debugInfo('QR <- background response', {
+      success: !!(resp && resp.success),
+      error: resp && resp.error ? String(resp.error) : undefined,
+      account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
+      sync: resp && resp.sync ? resp.sync : undefined,
+    });
     if(!resp || resp.success === false){
       throw new Error((resp && resp.error) || 'Failed to add account.');
     }
@@ -163,6 +194,10 @@ async function process(file){
     hideErr();
     setTimeout(() => window.close(), 2500);
   } catch(e){
+    await debugInfo('QR processing failed', {
+      error: e && e.message ? e.message : String(e),
+      stack: e && e.stack ? e.stack : null,
+    });
     const msg = e && e.message ? e.message : String(e);
     const prefix = /add account|Vault is locked|Secret is required|Account label is required|Failed to add account/i.test(msg) ? qrt('addFail') : qrt('scanFail');
     showErr(prefix + msg);
@@ -172,6 +207,43 @@ async function process(file){
 function generateId(){
   const rand = (crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   return 'acc_' + rand;
+}
+function maskSecret(secret){
+  const value = String(secret || '');
+  if(!value) return '';
+  if(value.length <= 6) return `${value.slice(0, 1)}***`;
+  return `${value.slice(0, 4)}***${value.slice(-2)}`;
+}
+function summarizeAccount(account){
+  const acc = account || {};
+  return {
+    id: String(acc.id || ''),
+    type: acc.type === 'hotp' ? 'hotp' : 'totp',
+    issuer: String(acc.issuer || ''),
+    label: String(acc.label || ''),
+    algorithm: String(acc.algorithm || 'SHA1'),
+    digits: Number(acc.digits || 6),
+    period: acc.period != null ? Number(acc.period) : undefined,
+    counter: acc.counter != null ? Number(acc.counter) : undefined,
+    secretLength: String(acc.secret || '').length,
+    secretMasked: maskSecret(acc.secret),
+  };
+}
+async function debugInfo(message, context){
+  try {
+    await browser.runtime.sendMessage({ action: 'appendDebugInfo', message, context });
+  } catch (_) {
+    // Ignore debug logging errors to keep QR flow unaffected.
+  }
+}
+async function sha256Hex(bytes){
+  try {
+    if(!bytes || !bytes.buffer) return '';
+    const hash = await crypto.subtle.digest('SHA-256', bytes.buffer);
+    return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) {
+    return '';
+  }
 }
 function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent=''; errEl.classList.remove('show'); }
