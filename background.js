@@ -53,6 +53,40 @@ function randomBytes(n){
   return out;
 }
 
+function normalizeAutofillPattern(pattern){
+  return String(pattern || '').trim().toLowerCase();
+}
+function escapeRegex(text){
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function wildcardToRegex(pattern){
+  const normalized = normalizeAutofillPattern(pattern);
+  if(!normalized) return null;
+  const escaped = normalized.split('*').map(escapeRegex).join('.*');
+  return new RegExp(`^${escaped}$`, 'i');
+}
+function getAccountPatterns(account){
+  if(Array.isArray(account && account.autofillPatterns)){
+    return account.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean);
+  }
+  if(account && typeof account.domain === 'string'){
+    const legacy = normalizeAutofillPattern(account.domain);
+    return legacy ? [legacy] : [];
+  }
+  return [];
+}
+function matchHostname(hostname, pattern){
+  const normalizedHost = normalizeAutofillPattern(hostname);
+  const normalizedPattern = normalizeAutofillPattern(pattern);
+  if(!normalizedHost || !normalizedPattern) return false;
+  const direct = wildcardToRegex(normalizedPattern);
+  if(direct && direct.test(normalizedHost)) return true;
+  if(!normalizedPattern.includes('*')){
+    return normalizedHost === normalizedPattern || normalizedHost.endsWith('.' + normalizedPattern);
+  }
+  return false;
+}
+
 async function getSyncSettings(){
   const result = await browser.storage.local.get(SYNC_SETTINGS_KEY);
   return Object.assign({}, defaultSyncSettings, result[SYNC_SETTINGS_KEY] || {});
@@ -556,6 +590,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             digits: Number(incoming.digits || 6),
             period: incoming.period != null ? Number(incoming.period) : undefined,
             counter: incoming.counter != null ? Number(incoming.counter) : undefined,
+            autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns : [],
             secretLength: String(incoming.secret || '').length,
           },
         });
@@ -569,6 +604,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           digits: Number(incoming.digits || 6),
           period: incoming.period != null ? Number(incoming.period) : undefined,
           counter: incoming.counter != null ? Number(incoming.counter) : undefined,
+          autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean) : [],
         };
         if(!account.secret) throw new Error('Secret is required.');
         if(!account.label) throw new Error('Account label is required.');
@@ -588,6 +624,51 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+
+      case 'getAccountsForAutofill': {
+        const hostname = String(message.hostname || '').trim().toLowerCase();
+        const accounts = await getLocalAccounts();
+        const matches = accounts.filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern))).map(account => ({
+          id: account.id,
+          issuer: account.issuer || '',
+          label: account.label || '',
+          type: account.type === 'hotp' ? 'hotp' : 'totp',
+          digits: Number(account.digits || 6),
+          period: account.period != null ? Number(account.period) : undefined,
+          counter: account.counter != null ? Number(account.counter) : undefined,
+          secret: String(account.secret || ''),
+          autofillPatterns: getAccountPatterns(account),
+        }));
+        sendResponse({ success: true, accounts: matches });
+        return;
+      }
+      case 'generateCodeForAutofill': {
+        const secret = String(message.secret || '').trim();
+        const type = message.type === 'hotp' ? 'hotp' : 'totp';
+        const digits = Math.max(6, Number(message.digits || 6));
+        if(!secret) throw new Error('Secret is required.');
+        const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
+        const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
+        if(type === 'hotp'){
+          const counter = Math.max(0, Number(message.counter || 0));
+          const code = OTPAuth.HOTP.generate({
+            secret: otpSecret,
+            algorithm: String(message.algorithm || 'SHA1'),
+            digits,
+            counter,
+          });
+          sendResponse({ success: true, code });
+          return;
+        }
+        const otp = new OTPAuth.TOTP({
+          secret: otpSecret,
+          algorithm: String(message.algorithm || 'SHA1'),
+          digits,
+          period: Math.max(1, Number(message.period || 30)),
+        });
+        sendResponse({ success: true, code: otp.generate() });
+        return;
+      }
       case 'downloadSyncToLocal': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();

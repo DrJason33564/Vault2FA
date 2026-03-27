@@ -314,3 +314,11 @@ html, body {
 .vault-pill { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); margin-right:8px; }
 .sep { border:0; border-top:1px solid var(--border); margin:12px 0; }
 .sync-meta { white-space:pre-line; }
+
+.card-meta { margin-top: 6px; display:flex; flex-wrap:wrap; gap:6px; }
+.meta-chip {
+  display:inline-flex; align-items:center; min-height:18px; padding:0 7px;
+  border-radius:999px; border:1px solid var(--border); background:var(--bg);
+  color:var(--muted); font-size:10px; line-height:1.4;
+}
+.meta-chip.match { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 35%, var(--border)); }

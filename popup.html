@@ -92,6 +92,13 @@
         <input class="fi mono" id="fSecret" type="text" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" />
         <div class="fhint" id="hintManualEntry">Found under "Manual entry" in the service's 2FA setup.</div>
       </div>
+
+      <div class="fg">
+        <label class="fl" id="labelAutofillPatterns">Autofill Domain Rules</label>
+        <input class="fi mono" id="fAutofillPatterns" type="text" placeholder="github.com, *.github.com, login.*.example.com" autocomplete="off" />
+        <div class="fhint" id="hintAutofillPatterns">Comma-separated. Supports * wildcard matching for autofill on matching sites.</div>
+      </div>
+
       <div class="frow">
         <div class="fg">
           <label class="fl" id="labelType">Type</label>
@@ -190,6 +197,13 @@
       <label class="fl" id="editLabelAccount">Account / Email</label>
       <input class="fi" id="editLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
     </div>
+    
+    <div class="fg">
+      <label class="fl" id="editLabelAutofillPatterns">Autofill Domain Rules</label>
+      <input class="fi mono" id="editAutofillPatterns" type="text" placeholder="github.com, *.github.com" autocomplete="off" />
+      <div class="fhint" id="editHintAutofillPatterns">Comma-separated. Supports * wildcard matching.</div>
+    </div>
+
     <div class="err" id="editErr"></div>
     <button class="btn-ok" id="btnSaveEdit">Save Changes</button>
   </div>

@@ -137,6 +137,11 @@ const I18N = {
     labelIssuer: '发行方 / 服务',
     labelAccount: '账号 / 邮箱',
     labelSecret: '密钥（Base32）',
+    labelAutofillPatterns: '自动填充域名规则',
+    hintAutofillPatterns: '使用英文逗号分隔，支持 * 通配符模糊匹配。',
+    hintAutofillExample: '示例：github.com, *.github.com',
+    autofillMatchLabel: '自动填充',
+    noAutofillRules: '未设置自动填充规则',
     hintManualEntry: '可在服务 2FA 设置中的“手动输入”处找到。',
     labelType: '类型',
     labelDigits: '位数',
@@ -181,7 +186,8 @@ const I18N = {
 const STATIC_TEXT_MAP = {
   lockTitle: 'vaultLocked', lockSub: 'vaultLockSub', btnUnlock: 'unlockVault',
   emptyTitle: 'noAccountsYet', addDrawerTitle: 'addDrawerTitle', tabManualBtn: 'tabManual', tabQrBtn: 'tabQr', tabUriBtn: 'tabUri',
-  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', hintManualEntry: 'hintManualEntry',
+  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', labelAutofillPatterns: 'labelAutofillPatterns', editLabelAutofillPatterns: 'labelAutofillPatterns', hintManualEntry: 'hintManualEntry',
+  hintAutofillPatterns: 'hintAutofillPatterns', editHintAutofillPatterns: 'hintAutofillPatterns',
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
@@ -279,6 +285,28 @@ if(window.matchMedia){
 
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
+
+function normalizeAutofillPattern(pattern){
+  return String(pattern || '').trim().toLowerCase();
+}
+function parseAutofillPatterns(raw){
+  return String(raw || '').split(',').map(normalizeAutofillPattern).filter(Boolean).filter((item, idx, arr) => arr.indexOf(item) === idx);
+}
+function formatAutofillPatterns(patterns){
+  return (Array.isArray(patterns) ? patterns : []).map(normalizeAutofillPattern).filter(Boolean).join(', ');
+}
+
+function normalizeAccountRecord(acc){
+  const next = Object.assign({}, acc || {});
+  next.autofillPatterns = Array.isArray(next.autofillPatterns)
+    ? next.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean).filter((item, idx, arr) => arr.indexOf(item) === idx)
+    : [];
+  if(!next.autofillPatterns.length && typeof next.domain === 'string' && next.domain.trim()){
+    next.autofillPatterns = [normalizeAutofillPattern(next.domain)];
+  }
+  return next;
+}
+
 function compareAccountOrder(a, b){
   const issuerA = String(a.issuer || '').trim();
   const issuerB = String(b.issuer || '').trim();
@@ -418,6 +446,18 @@ function buildCard(acc){
 
   info.appendChild(issuer);
   info.appendChild(label);
+
+  const meta = document.createElement('div');
+  meta.className = 'card-meta';
+  const patterns = Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns.filter(Boolean) : [];
+  if(patterns.length){
+    const chip = document.createElement('span');
+    chip.className = 'meta-chip match';
+    chip.textContent = `${t('autofillMatchLabel')}: ${patterns.slice(0, 2).join(', ')}${patterns.length > 2 ? ` +${patterns.length - 2}` : ''}`;
+    chip.title = patterns.join(', ');
+    meta.appendChild(chip);
+  }
+  if(meta.childNodes.length) info.appendChild(meta);
 
   const acts = document.createElement('div');
   acts.className = 'card-acts';
@@ -595,11 +635,12 @@ function fromParsed(p){
     digits: p.digits,
     period: p instanceof OTPAuth.TOTP ? p.period : undefined,
     counter: p instanceof OTPAuth.HOTP ? p.counter : undefined,
+    autofillPatterns: [],
   };
 }
 
 async function pushAccount(acc, opts = {}){
-  const item = Object.assign({}, acc, { id: acc.id || nextAccountId() });
+  const item = normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }));
   const matches = findPotentialDuplicates(item);
   if(matches.length && !opts.skipDuplicateConfirm){
     const ok = window.confirm(duplicateWarningText(item, matches));
@@ -611,7 +652,7 @@ async function pushAccount(acc, opts = {}){
 }
 
 function resetForm(){
-  ['fIssuer','fLabel','fSecret','fUri'].forEach(id => { const el = byId(id); if(el) el.value = ''; });
+  ['fIssuer','fLabel','fSecret','fUri','fAutofillPatterns'].forEach(id => { const el = byId(id); if(el) el.value = ''; });
   byId('addErr').style.display = 'none';
   byId('dupHint').style.display = 'none';
   byId('fType').value = 'totp';
@@ -625,6 +666,7 @@ function resetEditForm(){
   editingAccountId = null;
   byId('editIssuer').value = '';
   byId('editLabel').value = '';
+  byId('editAutofillPatterns').value = '';
   byId('editErr').style.display = 'none';
 }
 
@@ -632,6 +674,7 @@ function openEditDrawer(acc){
   editingAccountId = acc.id;
   byId('editIssuer').value = acc.issuer || '';
   byId('editLabel').value = acc.label || '';
+  byId('editAutofillPatterns').value = formatAutofillPatterns(acc.autofillPatterns);
   byId('editErr').style.display = 'none';
   openD('drawEdit');
 }
@@ -665,7 +708,7 @@ function updateDuplicateHint(){
 
 async function loadAccounts(){
   const resp = await sendMessage({ action:'getAccounts' });
-  return resp.accounts || [];
+  return (resp.accounts || []).map(normalizeAccountRecord);
 }
 
 function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : (uiLanguage === 'zh' ? '从未' : 'Never'); }
@@ -882,6 +925,7 @@ byId('btnSave').addEventListener('click', async () => {
         digits: parseInt(byId('fDigits').value, 10),
         period: parseInt(byId('fPeriod').value, 10),
         counter: 0,
+        autofillPatterns: parseAutofillPatterns(byId('fAutofillPatterns').value),
       };
     }
     const added = await pushAccount(acc);
@@ -925,7 +969,7 @@ byId('btnDoImport').addEventListener('click', async () => {
     const ok = window.confirm(`Detected ${duplicateCount} imported item(s) with similar names. Import all parsed accounts anyway?`);
     if(!ok) return;
   }
-  accounts = accounts.concat(parsed.map(acc => Object.assign({}, acc, { id: acc.id || nextAccountId() })));
+  accounts = accounts.concat(parsed.map(acc => normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }))));
   await persistAndRender();
   closeD('drawImport');
   byId('importData').value = '';
@@ -977,6 +1021,7 @@ byId('btnSaveEdit').addEventListener('click', async () => {
     if(idx < 0) throw new Error(uiLanguage === 'zh' ? '账号不存在或已被删除。' : 'Account no longer exists.');
     accounts[idx].issuer = issuer;
     accounts[idx].label = label;
+    accounts[idx].autofillPatterns = parseAutofillPatterns(byId('editAutofillPatterns').value);
     await persistAndRender();
     closeD('drawEdit');
     resetEditForm();
