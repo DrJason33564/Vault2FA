@@ -107,6 +107,24 @@ function toComparableUrl(value){
     return normalizeAutofillPattern(raw).replace(/\/+$/g, '');
   }
 }
+function isBoundaryChar(ch){
+  return !ch || !/[a-z0-9-]/i.test(ch);
+}
+function fuzzyContains(text, keyword){
+  const source = String(text || '').toLowerCase();
+  const needle = String(keyword || '').toLowerCase();
+  if(!source || !needle) return false;
+  let start = 0;
+  while(start <= source.length){
+    const idx = source.indexOf(needle, start);
+    if(idx === -1) return false;
+    const before = idx > 0 ? source[idx - 1] : '';
+    const after = idx + needle.length < source.length ? source[idx + needle.length] : '';
+    if(isBoundaryChar(before) && isBoundaryChar(after)) return true;
+    start = idx + 1;
+  }
+  return false;
+}
 function matchAutofillPattern({ hostname, url }, pattern){
   const normalizedPattern = normalizeAutofillPattern(pattern);
   if(!normalizedPattern) return false;
@@ -117,11 +135,9 @@ function matchAutofillPattern({ hostname, url }, pattern){
   if(hasWildcard && regex){
     return regex.test(normalizedHostname) || (!!normalizedUrl && regex.test(normalizedUrl));
   }
-  if(normalizedPattern.includes('://') || normalizedPattern.includes('/')){
-    const comparablePattern = toComparableUrl(normalizedPattern);
-    return !!comparablePattern && !!normalizedUrl && normalizedUrl === comparablePattern;
-  }
-  return normalizedHostname === normalizedPattern;
+  const comparablePattern = toComparableUrl(normalizedPattern);
+  if(comparablePattern && normalizedUrl && fuzzyContains(normalizedUrl, comparablePattern)) return true;
+  return fuzzyContains(normalizedHostname, normalizedPattern);
 }
 
 async function getSyncSettings(){
