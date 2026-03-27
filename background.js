@@ -66,8 +66,12 @@ function wildcardToRegex(pattern){
   return new RegExp(`^${escaped}$`, 'i');
 }
 function getAccountPatterns(account){
-  if(Array.isArray(account && account.autofillPatterns)){
-    return account.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean);
+  const source = account && account.autofillPatterns;
+  if(Array.isArray(source)){
+    return source.map(normalizeAutofillPattern).filter(Boolean);
+  }
+  if(typeof source === 'string'){
+    return source.split(',').map(normalizeAutofillPattern).filter(Boolean);
   }
   if(account && typeof account.domain === 'string'){
     const legacy = normalizeAutofillPattern(account.domain);
@@ -92,16 +96,32 @@ function normalizeAccountRecord(account){
     autofillPatterns: getAccountPatterns(raw),
   });
 }
-function matchHostname(hostname, pattern){
-  const normalizedHost = normalizeAutofillPattern(hostname);
-  const normalizedPattern = normalizeAutofillPattern(pattern);
-  if(!normalizedHost || !normalizedPattern) return false;
-  const direct = wildcardToRegex(normalizedPattern);
-  if(direct && direct.test(normalizedHost)) return true;
-  if(!normalizedPattern.includes('*')){
-    return normalizedHost === normalizedPattern || normalizedHost.endsWith('.' + normalizedPattern);
+function toComparableUrl(value){
+  const raw = String(value || '').trim();
+  if(!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    const base = `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+    return base.toLowerCase().replace(/\/+$/g, '');
+  } catch (_) {
+    return normalizeAutofillPattern(raw).replace(/\/+$/g, '');
   }
-  return false;
+}
+function matchAutofillPattern({ hostname, url }, pattern){
+  const normalizedPattern = normalizeAutofillPattern(pattern);
+  if(!normalizedPattern) return false;
+  const normalizedHostname = normalizeAutofillPattern(hostname);
+  const normalizedUrl = toComparableUrl(url);
+  const hasWildcard = normalizedPattern.includes('*');
+  const regex = wildcardToRegex(normalizedPattern);
+  if(hasWildcard && regex){
+    return regex.test(normalizedHostname) || (!!normalizedUrl && regex.test(normalizedUrl));
+  }
+  if(normalizedPattern.includes('://') || normalizedPattern.includes('/')){
+    const comparablePattern = toComparableUrl(normalizedPattern);
+    return !!comparablePattern && !!normalizedUrl && normalizedUrl === comparablePattern;
+  }
+  return normalizedHostname === normalizedPattern;
 }
 
 async function getSyncSettings(){
@@ -645,6 +665,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'getAccountsForAutofill': {
         const hostname = String(message.hostname || '').trim().toLowerCase();
+        const url = String(message.url || '').trim().toLowerCase();
         const vault = await getVaultSettings();
         const vaultLocked = !!(vault.encryptionEnabled && (!unlockedCrypto || unlockedCrypto.salt !== vault.salt));
         if(vaultLocked){
@@ -652,7 +673,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
         const accounts = await getLocalAccounts();
-        const matches = accounts.filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern))).map(account => ({
+        const matches = accounts.filter(account => getAccountPatterns(account).some(pattern => matchAutofillPattern({ hostname, url }, pattern))).map(account => ({
           id: account.id,
           issuer: account.issuer || '',
           label: account.label || '',

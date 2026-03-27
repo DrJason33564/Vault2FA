@@ -242,11 +242,16 @@
     if(dd.children.length <= 1) return hideDropdown();
     positionDropdown(state.activeInput);
     dd.style.display = 'block';
-    startTimer();
+    if(dd.querySelector('.vault2fa-autofill__item[data-period]')) startTimer();
+    else stopTimer();
   }
 
-  async function lookupAutofill(hostname){
-    const response = await browserApi.runtime.sendMessage({ action: 'getAccountsForAutofill', hostname });
+  async function lookupAutofill(pageInfo){
+    const response = await browserApi.runtime.sendMessage({
+      action: 'getAccountsForAutofill',
+      hostname: pageInfo && pageInfo.hostname ? pageInfo.hostname : '',
+      url: pageInfo && pageInfo.url ? pageInfo.url : '',
+    });
     return {
       accounts: response && Array.isArray(response.accounts) ? response.accounts : [],
       vaultLocked: !!(response && response.vaultLocked),
@@ -257,7 +262,10 @@
     const input = event.target;
     if(!isOtpInput(input)) return;
     try {
-      const result = await lookupAutofill(window.location.hostname || '');
+      const result = await lookupAutofill({
+        hostname: window.location.hostname || '',
+        url: window.location.href || '',
+      });
       state.activeInput = input;
       state.accounts = result.accounts;
       state.vaultLocked = result.vaultLocked;
