@@ -75,6 +75,23 @@ function getAccountPatterns(account){
   }
   return [];
 }
+function normalizeAccountRecord(account){
+  const raw = account && typeof account === 'object' ? account : {};
+  const type = raw.type === 'hotp' ? 'hotp' : 'totp';
+  const periodValue = Number(raw.period);
+  const counterValue = Number(raw.counter);
+  return Object.assign({}, raw, {
+    type,
+    issuer: String(raw.issuer || ''),
+    label: String(raw.label || ''),
+    secret: String(raw.secret || ''),
+    algorithm: String(raw.algorithm || 'SHA1'),
+    digits: Math.max(6, Number(raw.digits || 6)),
+    period: type === 'totp' ? Math.max(1, Number.isFinite(periodValue) ? periodValue : 30) : undefined,
+    counter: type === 'hotp' ? Math.max(0, Number.isFinite(counterValue) ? counterValue : 0) : undefined,
+    autofillPatterns: getAccountPatterns(raw),
+  });
+}
 function matchHostname(hostname, pattern){
   const normalizedHost = normalizeAutofillPattern(hostname);
   const normalizedPattern = normalizeAutofillPattern(pattern);
@@ -287,7 +304,7 @@ async function getLocalAccounts(){
 
 async function setLocalAccounts(accounts){
   const vault = await getVaultSettings();
-  const list = Array.isArray(accounts) ? accounts : [];
+  const list = Array.isArray(accounts) ? accounts.map(normalizeAccountRecord) : [];
   if(!vault.encryptionEnabled){
     await setPlainAccounts(list);
     return;
@@ -455,15 +472,16 @@ async function downloadFromSync(sessionId){
     throw new Error('No synced data was found for this session ID.');
   }
 
-  await setLocalAccounts(accounts);
+  const normalizedAccounts = Array.isArray(accounts) ? accounts.map(normalizeAccountRecord) : [];
+  await setLocalAccounts(normalizedAccounts);
   await setSyncSettings({ lastDownloadedAt: Date.now() });
   await appendDebugInfo('Sync download applied to local storage', {
     sessionId: sid,
-    count: accounts.length,
-    fullAccounts: accounts,
+    count: normalizedAccounts.length,
+    fullAccounts: normalizedAccounts,
     sourcePayload: payload,
   });
-  const resultPayload = { success: true, accounts, updatedAt: payload.updatedAt || null, count: accounts.length };
+  const resultPayload = { success: true, accounts: normalizedAccounts, updatedAt: payload.updatedAt || null, count: normalizedAccounts.length };
   await appendDebugInfo('Sync download completed', resultPayload);
   return resultPayload;
 }
@@ -541,7 +559,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'saveAccounts': {
-        const accounts = Array.isArray(message.accounts) ? message.accounts : [];
+        const accounts = Array.isArray(message.accounts) ? message.accounts.map(normalizeAccountRecord) : [];
         await setLocalAccounts(accounts);
         await appendDebugInfo('Accounts saved locally', { count: accounts.length });
         const sync = { skipped: true, reason: 'timer_only' };
@@ -594,7 +612,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             secretLength: String(incoming.secret || '').length,
           },
         });
-        const account = {
+        const account = normalizeAccountRecord({
           id: String(incoming.id || ''),
           type: incoming.type === 'hotp' ? 'hotp' : 'totp',
           issuer: String(incoming.issuer || ''),
@@ -605,7 +623,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           period: incoming.period != null ? Number(incoming.period) : undefined,
           counter: incoming.counter != null ? Number(incoming.counter) : undefined,
           autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean) : [],
-        };
+        });
         if(!account.secret) throw new Error('Secret is required.');
         if(!account.label) throw new Error('Account label is required.');
 
@@ -627,6 +645,12 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'getAccountsForAutofill': {
         const hostname = String(message.hostname || '').trim().toLowerCase();
+        const vault = await getVaultSettings();
+        const vaultLocked = !!(vault.encryptionEnabled && (!unlockedCrypto || unlockedCrypto.salt !== vault.salt));
+        if(vaultLocked){
+          sendResponse({ success: true, vaultLocked: true, accounts: [] });
+          return;
+        }
         const accounts = await getLocalAccounts();
         const matches = accounts.filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern))).map(account => ({
           id: account.id,
@@ -639,10 +663,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           secret: String(account.secret || ''),
           autofillPatterns: getAccountPatterns(account),
         }));
-        sendResponse({ success: true, accounts: matches });
+        sendResponse({ success: true, vaultLocked: false, accounts: matches });
         return;
       }
       case 'generateCodeForAutofill': {
+        await requireUnlockedCrypto();
         const secret = String(message.secret || '').trim();
         const type = message.type === 'hotp' ? 'hotp' : 'totp';
         const digits = Math.max(6, Number(message.digits || 6));

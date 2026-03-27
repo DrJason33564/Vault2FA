@@ -32,25 +32,35 @@
 }
 #vault2fa-autofill .vault2fa-autofill__title { font-weight:700; letter-spacing:.01em; }
 #vault2fa-autofill .vault2fa-autofill__sub { font-size:11px; color:var(--v2fa-muted); margin-top:1px; }
-#vault2fa-autofill .vault2fa-autofill__timer { position:relative; width:28px; height:28px; flex:0 0 28px; }
-#vault2fa-autofill .vault2fa-autofill__timer svg { width:28px; height:28px; transform:rotate(-90deg); }
-#vault2fa-autofill .vault2fa-autofill__timer-bg,
-#vault2fa-autofill .vault2fa-autofill__timer-ring { fill:none; stroke-width:2.4; }
-#vault2fa-autofill .vault2fa-autofill__timer-bg { stroke: color-mix(in srgb, var(--v2fa-muted) 35%, transparent); }
-#vault2fa-autofill .vault2fa-autofill__timer-ring {
-  stroke: var(--v2fa-accent); stroke-linecap:round; stroke-dasharray:62.83; stroke-dashoffset:0; transition:stroke-dashoffset 1s linear;
-}
-#vault2fa-autofill .vault2fa-autofill__timer span {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--v2fa-muted);
-}
 #vault2fa-autofill .vault2fa-autofill__item {
   width:100%; border:0; background:transparent; color:inherit; text-align:left; cursor:pointer;
-  display:flex; flex-direction:column; gap:2px; padding:11px 14px; border-top:1px solid color-mix(in srgb, var(--v2fa-border) 72%, transparent);
+  display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto; gap:1px 8px; padding:11px 14px;
+  border-top:1px solid color-mix(in srgb, var(--v2fa-border) 72%, transparent); align-items:center;
 }
 #vault2fa-autofill .vault2fa-autofill__item:hover,
 #vault2fa-autofill .vault2fa-autofill__item:focus-visible { background: color-mix(in srgb, var(--v2fa-accent) 10%, var(--v2fa-bg)); outline:none; }
-#vault2fa-autofill .vault2fa-autofill__item-title { font-weight:600; color:var(--v2fa-text); }
-#vault2fa-autofill .vault2fa-autofill__item-sub { font-size:11px; color:var(--v2fa-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#vault2fa-autofill .vault2fa-autofill__item-title { grid-column:1; grid-row:1; font-weight:600; color:var(--v2fa-text); }
+#vault2fa-autofill .vault2fa-autofill__item-sub { grid-column:1; grid-row:2; font-size:11px; color:var(--v2fa-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#vault2fa-autofill .vault2fa-autofill__item-timer { grid-column:2; grid-row:1 / span 2; position:relative; width:28px; height:28px; }
+#vault2fa-autofill .vault2fa-autofill__item-timer svg { width:28px; height:28px; transform:rotate(-90deg); }
+#vault2fa-autofill .vault2fa-autofill__item-ring-bg,
+#vault2fa-autofill .vault2fa-autofill__item-ring { fill:none; stroke-width:2.4; }
+#vault2fa-autofill .vault2fa-autofill__item-ring-bg { stroke: color-mix(in srgb, var(--v2fa-muted) 35%, transparent); }
+#vault2fa-autofill .vault2fa-autofill__item-ring {
+  stroke: #3fb950; stroke-linecap:round; stroke-dasharray:62.83; stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear, stroke .35s ease;
+}
+#vault2fa-autofill .vault2fa-autofill__item-ring.warn { stroke:#d29922; }
+#vault2fa-autofill .vault2fa-autofill__item-ring.urgent { stroke:#f85149; }
+#vault2fa-autofill .vault2fa-autofill__item-timer-text {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--v2fa-muted);
+}
+#vault2fa-autofill .vault2fa-autofill__item-timer-text.warn { color:#d29922; }
+#vault2fa-autofill .vault2fa-autofill__item-timer-text.urgent { color:#f85149; }
+#vault2fa-autofill .vault2fa-autofill__locked {
+  padding:12px 14px; border-top:1px solid color-mix(in srgb, var(--v2fa-border) 72%, transparent);
+  font-size:12px; font-weight:600; color:#f85149;
+}
 @media (prefers-color-scheme: light) {
   #vault2fa-autofill:not([data-theme='dark']) { color-scheme: light; }
 }

@@ -140,7 +140,6 @@ const I18N = {
     labelAutofillPatterns: '自动填充域名规则',
     hintAutofillPatterns: '使用英文逗号分隔，支持 * 通配符模糊匹配。',
     hintAutofillExample: '示例：github.com, *.github.com',
-    autofillMatchLabel: '自动填充',
     noAutofillRules: '未设置自动填充规则',
     hintManualEntry: '可在服务 2FA 设置中的“手动输入”处找到。',
     labelType: '类型',
@@ -446,18 +445,6 @@ function buildCard(acc){
 
   info.appendChild(issuer);
   info.appendChild(label);
-
-  const meta = document.createElement('div');
-  meta.className = 'card-meta';
-  const patterns = Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns.filter(Boolean) : [];
-  if(patterns.length){
-    const chip = document.createElement('span');
-    chip.className = 'meta-chip match';
-    chip.textContent = `${t('autofillMatchLabel')}: ${patterns.slice(0, 2).join(', ')}${patterns.length > 2 ? ` +${patterns.length - 2}` : ''}`;
-    chip.title = patterns.join(', ');
-    meta.appendChild(chip);
-  }
-  if(meta.childNodes.length) info.appendChild(meta);
 
   const acts = document.createElement('div');
   acts.className = 'card-acts';
@@ -1069,7 +1056,7 @@ byId('btnDownloadSync').addEventListener('click', async () => {
   if(!window.confirm(uiLanguage === 'zh' ? '云端数据将覆盖当前本地账号，是否继续？' : 'Cloud data will overwrite your current local accounts. Continue?')) return;
   try {
     const resp = await sendMessage({ action:'downloadSyncToLocal', sessionId });
-    accounts = Array.isArray(resp.accounts) ? resp.accounts : [];
+    accounts = Array.isArray(resp.accounts) ? resp.accounts.map(normalizeAccountRecord) : [];
     syncSettings.lastDownloadedAt = Date.now();
     render(); updateSyncUi(); toast(uiLanguage === 'zh' ? '已下载云端数据' : 'Downloaded cloud data');
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
