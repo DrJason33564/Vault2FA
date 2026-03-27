@@ -97,7 +97,12 @@ async function imageDataFromFile(file){
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   if(window.createImageBitmap){
-    const bitmap = await createImageBitmap(file);
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch (_) {
+      bitmap = await createImageBitmap(file);
+    }
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
     ctx.drawImage(bitmap, 0, 0);
@@ -122,6 +127,55 @@ async function imageDataFromFile(file){
   }
 }
 
+function buildDecodeCandidates(imageData){
+  const maxDimension = Math.max(imageData.width, imageData.height);
+  // 对高像素相机图片进行自适应缩放，可显著提升移动端识别速度与稳定性。
+  const targetMaxDimensions = [1600, 1200, 900, 700, 500];
+  const ratios = Array.from(
+    new Set(
+      [1].concat(
+        targetMaxDimensions
+          .filter((value) => value > 0)
+          .map((value) => Math.min(1, value / maxDimension))
+      )
+    )
+  ).sort((a, b) => b - a);
+
+  const candidates = [];
+  ratios.forEach((ratio) => {
+    const width = Math.max(1, Math.round(imageData.width * ratio));
+    const height = Math.max(1, Math.round(imageData.height * ratio));
+    candidates.push({
+      name: ratio === 1 ? 'full' : `scaled-${width}x${height}`,
+      width,
+      height,
+      data: resizeImageData(imageData, width, height),
+    });
+  });
+  return candidates;
+}
+
+function resizeImageData(imageData, width, height){
+  if(width === imageData.width && height === imageData.height) return imageData.data;
+  const src = imageData.data;
+  const dst = new Uint8ClampedArray(width * height * 4);
+  const xRatio = imageData.width / width;
+  const yRatio = imageData.height / height;
+  for(let y = 0; y < height; y++){
+    const sy = Math.min(imageData.height - 1, Math.floor(y * yRatio));
+    for(let x = 0; x < width; x++){
+      const sx = Math.min(imageData.width - 1, Math.floor(x * xRatio));
+      const sIdx = (sy * imageData.width + sx) * 4;
+      const dIdx = (y * width + x) * 4;
+      dst[dIdx] = src[sIdx];
+      dst[dIdx + 1] = src[sIdx + 1];
+      dst[dIdx + 2] = src[sIdx + 2];
+      dst[dIdx + 3] = src[sIdx + 3];
+    }
+  }
+  return dst;
+}
+
 async function decodeQrText(file){
   if(typeof window.jsQR !== 'function') throw new Error(qrt('qrLibFail'));
   const imageData = await imageDataFromFile(file);
@@ -131,8 +185,20 @@ async function decodeQrText(file){
     pixelBytes: imageData.data ? imageData.data.length : 0,
     pixelSha256: await sha256Hex(imageData.data),
   });
-  const result = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-  return result && result.data ? result.data : '';
+  const candidates = buildDecodeCandidates(imageData);
+  for(const candidate of candidates){
+    const startedAt = Date.now();
+    const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: 'attemptBoth' });
+    await debugInfo('QR decode attempt', {
+      candidate: candidate.name,
+      width: candidate.width,
+      height: candidate.height,
+      elapsedMs: Date.now() - startedAt,
+      hasValue: !!(result && result.data),
+    });
+    if(result && result.data) return result.data;
+  }
+  return '';
 }
 
 async function process(file){
