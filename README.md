@@ -73,3 +73,11 @@
 - `background.js`: 后台逻辑 / Background logic
 - `autofill-content.js`, `autofill.css`: 自动填充弹窗 / Autofill pop-up
 - `json-import.js`, `json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+
+### 致谢 / Acknowledgements
+
+本项目使用了以下开源仓库的代码  
+This repository uses code from the following open-source repositories.
+
+- [hectorm/otpauth](https://github.com/hectorm/otpauth)
+- [nimiq/qr-scanner](https://github.com/nimiq/qr-scanner)
