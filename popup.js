@@ -1085,8 +1085,23 @@ byId('btnSave').addEventListener('click', async () => {
       try {
         parsedSecret = parseSecretByFormat(secret, secretFormat);
       } catch(e){
+        debugInfo('Popup manual secret parse failed', {
+          secretFormat,
+          secretLength: secret.length,
+          parseError: e && e.message ? e.message : String(e),
+          issuer: byId('fIssuer').value.trim() || label,
+          label,
+        });
         throw new Error(t('invalidSecretByFormat'));
       }
+      debugInfo('Popup manual secret parsed', {
+        secretFormat,
+        secretLength: secret.length,
+        normalizedBase32Length: parsedSecret.base32.length,
+        issuer: byId('fIssuer').value.trim() || label,
+        label,
+        type: byId('fType').value,
+      });
       acc = {
         id: nextAccountId(),
         type: byId('fType').value,
@@ -1101,8 +1116,22 @@ byId('btnSave').addEventListener('click', async () => {
       };
     }
     const added = await pushAccount(acc);
+    debugInfo('Popup add account submit result', {
+      activeTab,
+      added: !!added,
+      accountType: acc && acc.type,
+      issuer: acc && acc.issuer,
+      label: acc && acc.label,
+    });
     if(added){ closeD('drawAdd'); resetForm(); toast(uiLanguage === 'zh' ? '账号已添加！' : 'Account added!'); }
-  } catch(e){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  } catch(e){
+    debugInfo('Popup add account failed', {
+      activeTab,
+      error: e && e.message ? e.message : String(e),
+    });
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('btnExport').addEventListener('click', () => {
