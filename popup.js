@@ -38,7 +38,7 @@ const I18N = {
     noAccountsYet: 'No accounts yet',
     emptySub: 'Add your first account using the\n+ button below.',
     vaultLocked: 'Vault Locked',
-    vaultLockSub: 'This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.',
+    vaultLockSub: 'Local vault is locked. Enter your passphrase to unlock this browser session.',
     unlockVault: 'Unlock Vault',
     searchPlaceholder: 'Search accounts...',
     syncEnabledHint: 'Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.',
@@ -50,15 +50,20 @@ const I18N = {
     syncSaveBtn: 'Save Sync Settings',
     syncUploadBtn: 'Upload Local Data Now',
     syncDownloadBtn: 'Download Cloud Data to Local',
-    syncWarnOverwrite: 'Downloading from the cloud will overwrite your current local accounts. A confirmation dialog will appear first.',
+    syncWarnOverwrite: 'Downloading from the cloud will overwrite your current local accounts.',
     addDrawerTitle: 'Add Account',
     tabManual: 'Manual',
     tabQr: 'Scan QR',
     tabUri: 'URI',
     labelIssuer: 'Issuer / Service',
     labelAccount: 'Account / Email',
-    labelSecret: 'Secret Key (Base32)',
-    hintManualEntry: 'Found under "Manual entry" in the service\'s 2FA setup.',
+    labelSecret: 'Secret Key',
+    labelSecretFormat: 'Secret Format',
+    labelAutofillPatterns: 'Autofill Patterns',
+    hintAutofillPatterns: 'Comma-separated. Supports * wildcard matching.',
+    hintAutofillExample: 'Example: github.com, *.github.com',
+    autofillMatchLabel: 'Matching',
+    noAutofillRules: 'No autofill rules set',
     labelType: 'Type',
     labelDigits: 'Digits',
     labelPeriod: 'Period',
@@ -71,7 +76,12 @@ const I18N = {
     exportDrawerTitle: 'Export Accounts',
     exportHint: 'Keep these safe — they contain your secrets.',
     copyExportBtn: 'Copy to Clipboard',
+    exportJsonBtn: 'Download JSON File',
+    exportUriLabel: 'otpauth:// URIs',
     importDrawerTitle: 'Import Accounts',
+    importInputLabel: 'Paste otpauth:// URIs (one per line) or JSON',
+    importFileHint: 'JSON file import opens in a new tab.',
+    openJsonImportTabBtn: 'Open JSON Import Tab',
     importBtn: 'Import',
     editDrawerTitle: 'Edit Account',
     editSaveBtn: 'Save Changes',
@@ -96,10 +106,24 @@ const I18N = {
     debugModeOn: 'Debug mode enabled',
     debugModeOff: 'Debug mode disabled',
     debugLogEmpty: 'No debug log available.',
+    importNothing: 'Nothing to import.',
+    importDuplicateConfirm: 'Detected {count} imported item(s) with similar names. Import all parsed accounts anyway?',
+    importSummary: 'Imported {ok} account(s){failPart}{dupPart}',
+    importFailPart: ', failed {count}',
+    importDupPart: ', duplicates warned {count}',
+    openJsonImportTabStatus: 'JSON import tab opened — continue there.',
+    exportJsonEmpty: 'No accounts available to export.',
+    exportJsonFilename: 'vault2fa-accounts-{timestamp}.json',
+    nextCodeTitle: 'Next code',
+    deleteBtnTitle: 'Delete',
+    clickToCopy: 'click to copy',
+    unknown: 'Unknown',
+    noLabel: '(no label)',
+    invalidSecretByFormat: 'Invalid secret for selected format.',
   },
   zh: {
     localOnly: '仅本地',
-    syncOn: '同步已开 · ',
+    syncOn: '同步已开启 · ',
     storageModeLabel: '存储模式：',
     storageModeSync: '本地 + Firefox 同步上传',
     storageModeLocal: '仅本地',
@@ -108,49 +132,59 @@ const I18N = {
     uploadSuccess: '已上传本地数据',
     syncSaved: '同步设置已保存',
     syncDisabled: '已关闭自动上传',
-    needSession: '请先输入同步会话 ID。',
-    needSessionEnable: '启用自动上传前请先输入同步会话 ID。',
+    needSession: '请先输入同步会话 ID',
+    needSessionEnable: '启用自动上传前请先输入同步会话 ID',
     noAccountsToExport: '没有可导出的账号',
     copied: '已复制！',
     addAccount: '添加账号',
     editAccount: '编辑账号',
     noAccountsYet: '还没有账号',
-    emptySub: '点击下方 + 按钮\n添加第一个账号。',
+    emptySub: '点击下方 + 按钮\n添加第一个账号',
     vaultLocked: '保险库已锁定',
-    vaultLockSub: '此弹窗使用本地加密存储。请输入口令以解锁当前浏览器会话。',
+    vaultLockSub: '本地保险库已加密，请输入口令以解锁当前浏览器会话',
     unlockVault: '解锁保险库',
     searchPlaceholder: '搜索账号...',
-    syncEnabledHint: '默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID。',
+    syncEnabledHint: '默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID',
     syncEnableText: '启用 Firefox 同步上传',
     syncSessionLabel: '同步会话 ID',
-    syncSessionHint: '每个会话 ID 相互隔离。不同同步组请使用不同 ID。',
+    syncSessionHint: '每个会话 ID 相互隔离。不同同步组请使用不同 ID',
     syncIntervalLabel: '自动上传间隔（分钟）',
-    syncIntervalHint: '开启自动上传后，本地更改最短按该间隔上传一次。',
+    syncIntervalHint: '开启自动上传后，本地更改最短按该间隔上传一次',
     syncSaveBtn: '保存同步设置',
     syncUploadBtn: '立即上传本地数据',
     syncDownloadBtn: '下载云端数据到本地',
-    syncWarnOverwrite: '从云端下载会覆盖当前本地账号，操作前会弹出确认。',
+    syncWarnOverwrite: '从云端下载会覆盖当前本地账号',
     addDrawerTitle: '添加账号',
     tabManual: '手动录入',
     tabQr: '扫描二维码',
     tabUri: 'URI',
     labelIssuer: '发行方 / 服务',
     labelAccount: '账号 / 邮箱',
-    labelSecret: '密钥（Base32）',
-    hintManualEntry: '可在服务 2FA 设置中的“手动输入”处找到。',
+    labelSecret: '密钥',
+    labelSecretFormat: '密钥格式',
+    labelAutofillPatterns: '自动填充域名规则',
+    hintAutofillPatterns: '使用英文逗号分隔，支持 * 通配符模糊匹配',
+    hintAutofillExample: '示例：github.com, *.github.com',
+    autofillMatchLabel: '自动填充',
+    noAutofillRules: '未设置自动填充规则',
     labelType: '类型',
     labelDigits: '位数',
     labelPeriod: '周期',
     qrTabTitle: '扫描二维码',
-    qrTabSub: '将打开新标签页，你可以拖放或选择二维码图片。扫描成功后账号会自动添加。',
+    qrTabSub: '将打开新标签页，你可以拖放或选择二维码图片。扫描成功后账号会自动添加',
     openQrTab: '打开二维码扫描页',
     labelUri: 'otpauth:// URI',
-    hintUri: '从二维码识别工具或其他验证器导出中粘贴。',
+    hintUri: '从二维码识别工具或其他验证器导出中粘贴',
     saveAccountBtn: '添加账号',
     exportDrawerTitle: '导出账号',
-    exportHint: '请妥善保存——其中包含你的密钥。',
+    exportHint: '请妥善保存——其中包含你的密钥',
     copyExportBtn: '复制到剪贴板',
+    exportJsonBtn: '下载 JSON 文件',
+    exportUriLabel: 'otpauth:// URI',
     importDrawerTitle: '导入账号',
+    importInputLabel: '粘贴 otpauth:// URI（每行一个）或 JSON',
+    importFileHint: 'JSON 文件导入会在新标签页中进行',
+    openJsonImportTabBtn: '打开 JSON 导入页',
     importBtn: '导入',
     editDrawerTitle: '编辑账号',
     editSaveBtn: '保存修改',
@@ -159,7 +193,7 @@ const I18N = {
     saveEditSuccess: '账号信息已更新',
     syncDrawerTitle: '同步与安全',
     vaultEnableText: '启用本地加密',
-    vaultEnableHint: '启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次。',
+    vaultEnableHint: '启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次',
     labelVaultPassphrase: '保险库口令',
     applyVaultBtn: '应用安全设置',
     lockVaultBtn: '立即锁定保险库',
@@ -167,24 +201,39 @@ const I18N = {
     themeToggleTitle: '切换深浅色主题',
     themeLight: '浅色模式',
     themeDark: '深色模式',
-    vaultLockedActionBlocked: '请先解锁保险库再使用该功能。',
+    vaultLockedActionBlocked: '请先解锁保险库再使用该功能',
     debugEnableText: '启用调试模式',
-    debugHint: '启用后会在本地记录 info 日志，并可下载为 .txt 文件。',
+    debugHint: '启用后会在本地记录 info 日志，并可下载为 .txt 文件',
     debugDownloadBtn: '下载调试日志',
     debugUnlockedToast: '已解锁调试开关',
     debugModeOn: '已启用调试模式',
     debugModeOff: '已关闭调试模式',
-    debugLogEmpty: '暂无可下载的调试日志。',
+    debugLogEmpty: '暂无可下载的调试日志',
+    importNothing: '没有可导入的内容',
+    importDuplicateConfirm: '检测到 {count} 个导入项存在相似名称。仍要导入全部已解析账号吗？',
+    importSummary: '已导入 {ok} 个账号{failPart}{dupPart}',
+    importFailPart: '，失败 {count} 个',
+    importDupPart: '，重复提醒 {count} 个',
+    openJsonImportTabStatus: '已打开 JSON 导入页，请在新标签页继续',
+    exportJsonEmpty: '没有可导出的账号',
+    exportJsonFilename: 'vault2fa-账号-{timestamp}.json',
+    nextCodeTitle: '下一个验证码',
+    deleteBtnTitle: '删除',
+    clickToCopy: '点击复制',
+    unknown: '未知',
+    noLabel: '（无名称）',
+    invalidSecretByFormat: '所选格式的密钥无效',
   },
 };
 
 const STATIC_TEXT_MAP = {
   lockTitle: 'vaultLocked', lockSub: 'vaultLockSub', btnUnlock: 'unlockVault',
   emptyTitle: 'noAccountsYet', addDrawerTitle: 'addDrawerTitle', tabManualBtn: 'tabManual', tabQrBtn: 'tabQr', tabUriBtn: 'tabUri',
-  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', hintManualEntry: 'hintManualEntry',
+  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', labelSecretFormat: 'labelSecretFormat', labelAutofillPatterns: 'labelAutofillPatterns', editLabelAutofillPatterns: 'labelAutofillPatterns',
+  hintAutofillPatterns: 'hintAutofillPatterns', editHintAutofillPatterns: 'hintAutofillPatterns',
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
-  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
+  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
@@ -201,6 +250,33 @@ function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.s
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function tFmt(key, values = {}){
+  return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
+}
+
+function parseSecretByFormat(secretRaw, format){
+  const input = String(secretRaw || '').trim();
+  const normalized = input.replace(/\s+/g, '');
+  switch(String(format || 'base32').toLowerCase()){
+    case 'base32':
+      return OTPAuth.Secret.fromBase32(normalized.toUpperCase());
+    case 'base64': {
+      const b64 = normalized.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - (b64.length % 4 || 4)) % 4);
+      const bytes = Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
+      return new OTPAuth.Secret({ buffer: bytes.buffer });
+    }
+    case 'hex':
+      return OTPAuth.Secret.fromHex(normalized);
+    case 'utf8':
+      return OTPAuth.Secret.fromUTF8(input);
+    case 'latin1':
+      return OTPAuth.Secret.fromLatin1(input);
+    default:
+      throw new Error('Unsupported secret format.');
+  }
+}
+
 function setMultilineText(el, text){
   if(!el) return;
   el.replaceChildren();
@@ -252,6 +328,17 @@ function applyStaticTranslations(){
   byId('search').placeholder = t('searchPlaceholder');
   byId('unlockPassphrase').placeholder = uiLanguage === 'zh' ? '口令' : 'Passphrase';
   byId('vaultPassphrase').placeholder = uiLanguage === 'zh' ? '至少 6 个字符' : 'At least 6 characters';
+  const secretFormatLabels = {
+    base32: 'Base32',
+    base64: 'Base64',
+    hex: 'Hex',
+    utf8: uiLanguage === 'zh' ? '字符串（UTF-8）' : 'String (UTF-8)',
+    latin1: uiLanguage === 'zh' ? '字符串（Latin-1）' : 'String (Latin-1)',
+  };
+  for(const [value, label] of Object.entries(secretFormatLabels)){
+    const opt = document.querySelector(`#fSecretFormat option[value="${value}"]`);
+    if(opt) opt.textContent = label;
+  }
   setMultilineText(byId('emptySub'), t('emptySub'));
 }
 function setLanguage(next){
@@ -279,6 +366,28 @@ if(window.matchMedia){
 
 function normalizeName(s){ return String(s || '').toLowerCase().replace(/[@._\-\s]+/g, ' ').trim(); }
 function accountKey(acc){ return normalizeName((acc.issuer||'') + ' ' + (acc.label||'')); }
+
+function normalizeAutofillPattern(pattern){
+  return String(pattern || '').trim().toLowerCase();
+}
+function parseAutofillPatterns(raw){
+  return String(raw || '').split(',').map(normalizeAutofillPattern).filter(Boolean).filter((item, idx, arr) => arr.indexOf(item) === idx);
+}
+function formatAutofillPatterns(patterns){
+  return (Array.isArray(patterns) ? patterns : []).map(normalizeAutofillPattern).filter(Boolean).join(', ');
+}
+
+function normalizeAccountRecord(acc){
+  const next = Object.assign({}, acc || {});
+  next.autofillPatterns = Array.isArray(next.autofillPatterns)
+    ? next.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean).filter((item, idx, arr) => arr.indexOf(item) === idx)
+    : [];
+  if(!next.autofillPatterns.length && typeof next.domain === 'string' && next.domain.trim()){
+    next.autofillPatterns = [normalizeAutofillPattern(next.domain)];
+  }
+  return next;
+}
+
 function compareAccountOrder(a, b){
   const issuerA = String(a.issuer || '').trim();
   const issuerB = String(b.issuer || '').trim();
@@ -419,6 +528,18 @@ function buildCard(acc){
   info.appendChild(issuer);
   info.appendChild(label);
 
+  const meta = document.createElement('div');
+  meta.className = 'card-meta';
+  const patterns = Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns.filter(Boolean) : [];
+  if(patterns.length){
+    const chip = document.createElement('span');
+    chip.className = 'meta-chip match';
+    chip.textContent = `${t('autofillMatchLabel')}: ${patterns.slice(0, 2).join(', ')}${patterns.length > 2 ? ` +${patterns.length - 2}` : ''}`;
+    chip.title = patterns.join(', ');
+    meta.appendChild(chip);
+  }
+  if(meta.childNodes.length) info.appendChild(meta);
+
   const acts = document.createElement('div');
   acts.className = 'card-acts';
 
@@ -427,7 +548,7 @@ function buildCard(acc){
     nextBtn.className = 'act-btn';
     nextBtn.dataset.a = 'next';
     nextBtn.dataset.id = String(acc.id);
-    nextBtn.title = 'Next code';
+    nextBtn.title = t('nextCodeTitle');
     nextBtn.type = 'button';
     nextBtn.textContent = '↻';
     acts.appendChild(nextBtn);
@@ -446,7 +567,7 @@ function buildCard(acc){
   delBtn.className = 'act-btn del';
   delBtn.dataset.a = 'del';
   delBtn.dataset.id = String(acc.id);
-  delBtn.title = 'Delete';
+  delBtn.title = t('deleteBtnTitle');
   delBtn.type = 'button';
   delBtn.textContent = '✕';
   acts.appendChild(delBtn);
@@ -466,7 +587,7 @@ function buildCard(acc){
 
   const hint = document.createElement('div');
   hint.className = 'otp-hint';
-  hint.textContent = uiLanguage === 'zh' ? '点击复制' : 'click to copy';
+  hint.textContent = t('clickToCopy');
 
   left.appendChild(codeEl);
   left.appendChild(hint);
@@ -545,6 +666,14 @@ function toast(msg){
   toast._tmr = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+async function debugInfo(message, context){
+  try {
+    await browser.runtime.sendMessage({ action:'appendDebugInfo', message, context });
+  } catch (_) {
+    // Ignore debug logging errors to avoid affecting UX.
+  }
+}
+
 function openD(id){ byId(id).classList.add('open'); }
 function closeD(id){ byId(id).classList.remove('open'); }
 
@@ -570,8 +699,84 @@ function findPotentialDuplicates(acc, pool = accounts){
 }
 
 function duplicateWarningText(acc, matches){
-  const sample = matches.slice(0, 3).map(m => `${m.issuer || 'Unknown'} / ${m.label || '(no label)'}`).join('\n');
-  return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || 'Unknown'} / ${acc.label || '(no label)'}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
+  const sample = matches.slice(0, 3).map(m => `${m.issuer || t('unknown')} / ${m.label || t('noLabel')}`).join('\n');
+  return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || t('unknown')} / ${acc.label || t('noLabel')}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
+}
+
+function getExportRecords(){
+  return accounts.map(acc => normalizeAccountRecord({
+    id: acc.id,
+    type: acc.type === 'hotp' ? 'hotp' : 'totp',
+    issuer: acc.issuer || '',
+    label: acc.label || '',
+    secret: String(acc.secret || '').toUpperCase().replace(/\s+/g, ''),
+    algorithm: acc.algorithm || 'SHA1',
+    digits: acc.digits || 6,
+    period: acc.type === 'hotp' ? undefined : (acc.period || 30),
+    counter: acc.type === 'hotp' ? (acc.counter || 0) : undefined,
+    autofillPatterns: Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns : [],
+  }));
+}
+
+function buildJsonExportPayload(){
+  return {
+    format: 'vault2fa-accounts',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    accounts: getExportRecords(),
+  };
+}
+
+function buildImportSummaryText(parsedCount, failCount, duplicateCount){
+  const failPart = failCount ? tFmt('importFailPart', { count: failCount }) : '';
+  const dupPart = duplicateCount ? tFmt('importDupPart', { count: duplicateCount }) : '';
+  return tFmt('importSummary', { ok: parsedCount, failPart, dupPart });
+}
+
+function parseJsonImportData(raw){
+  const parsed = JSON.parse(raw);
+  const source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
+  if(!source) throw new Error(uiLanguage === 'zh' ? 'JSON 格式不正确，缺少 accounts 数组。' : 'Invalid JSON format: missing accounts array.');
+  const list = [];
+  for(const item of source){
+    const secret = String(item && item.secret || '').toUpperCase().replace(/\s+/g, '');
+    const label = String(item && item.label || '').trim();
+    if(!secret || !label) throw new Error(uiLanguage === 'zh' ? 'JSON 中存在缺少密钥或账号名称的条目。' : 'JSON contains item(s) without secret or account label.');
+    OTPAuth.Secret.fromBase32(secret);
+    const type = item && item.type === 'hotp' ? 'hotp' : 'totp';
+    list.push(normalizeAccountRecord({
+      id: nextAccountId(),
+      type,
+      issuer: String(item.issuer || label).trim() || label,
+      label,
+      secret,
+      algorithm: String(item.algorithm || 'SHA1').toUpperCase(),
+      digits: Math.max(6, Number(item.digits) || 6),
+      period: type === 'hotp' ? undefined : Math.max(1, Number(item.period) || 30),
+      counter: type === 'hotp' ? Math.max(0, Number(item.counter) || 0) : undefined,
+      autofillPatterns: Array.isArray(item.autofillPatterns) ? item.autofillPatterns : [],
+    }));
+  }
+  return list;
+}
+
+function parseUriImportData(raw){
+  const lines = String(raw || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const parsed = [];
+  let fail = 0;
+  for(const uri of lines){
+    try { parsed.push(fromParsed(OTPAuth.URI.parse(uri))); } catch(e){ fail++; }
+  }
+  return { parsed, fail };
+}
+
+function parseImportData(raw){
+  const input = String(raw || '').trim();
+  if(!input) return { parsed: [], fail: 0 };
+  if(input.startsWith('{') || input.startsWith('[')){
+    return { parsed: parseJsonImportData(input), fail: 0 };
+  }
+  return parseUriImportData(input);
 }
 
 async function saveAccounts(){
@@ -595,11 +800,12 @@ function fromParsed(p){
     digits: p.digits,
     period: p instanceof OTPAuth.TOTP ? p.period : undefined,
     counter: p instanceof OTPAuth.HOTP ? p.counter : undefined,
+    autofillPatterns: [],
   };
 }
 
 async function pushAccount(acc, opts = {}){
-  const item = Object.assign({}, acc, { id: acc.id || nextAccountId() });
+  const item = normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }));
   const matches = findPotentialDuplicates(item);
   if(matches.length && !opts.skipDuplicateConfirm){
     const ok = window.confirm(duplicateWarningText(item, matches));
@@ -611,10 +817,11 @@ async function pushAccount(acc, opts = {}){
 }
 
 function resetForm(){
-  ['fIssuer','fLabel','fSecret','fUri'].forEach(id => { const el = byId(id); if(el) el.value = ''; });
+  ['fIssuer','fLabel','fSecret','fUri','fAutofillPatterns'].forEach(id => { const el = byId(id); if(el) el.value = ''; });
   byId('addErr').style.display = 'none';
   byId('dupHint').style.display = 'none';
   byId('fType').value = 'totp';
+  byId('fSecretFormat').value = 'base32';
   byId('fDigits').value = '6';
   byId('fPeriod').value = '30';
   setQrStatus('', false);
@@ -625,6 +832,7 @@ function resetEditForm(){
   editingAccountId = null;
   byId('editIssuer').value = '';
   byId('editLabel').value = '';
+  byId('editAutofillPatterns').value = '';
   byId('editErr').style.display = 'none';
 }
 
@@ -632,6 +840,7 @@ function openEditDrawer(acc){
   editingAccountId = acc.id;
   byId('editIssuer').value = acc.issuer || '';
   byId('editLabel').value = acc.label || '';
+  byId('editAutofillPatterns').value = formatAutofillPatterns(acc.autofillPatterns);
   byId('editErr').style.display = 'none';
   openD('drawEdit');
 }
@@ -665,7 +874,7 @@ function updateDuplicateHint(){
 
 async function loadAccounts(){
   const resp = await sendMessage({ action:'getAccounts' });
-  return resp.accounts || [];
+  return (resp.accounts || []).map(normalizeAccountRecord);
 }
 
 function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : (uiLanguage === 'zh' ? '从未' : 'Never'); }
@@ -841,7 +1050,7 @@ byId('btnOpenQrTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
-setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
+setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');
@@ -869,24 +1078,60 @@ byId('btnSave').addEventListener('click', async () => {
     } else {
       const secret = byId('fSecret').value.trim();
       const label = byId('fLabel').value.trim();
+      const secretFormat = byId('fSecretFormat').value;
       if(!secret) throw new Error(uiLanguage === 'zh' ? '密钥不能为空。' : 'Secret key is required.');
       if(!label) throw new Error(uiLanguage === 'zh' ? '账号名称不能为空。' : 'Account name is required.');
-      OTPAuth.Secret.fromBase32(secret.toUpperCase().replace(/\s+/g,''));
+      let parsedSecret;
+      try {
+        parsedSecret = parseSecretByFormat(secret, secretFormat);
+      } catch(e){
+        debugInfo('Popup manual secret parse failed', {
+          secretFormat,
+          secretLength: secret.length,
+          parseError: e && e.message ? e.message : String(e),
+          issuer: byId('fIssuer').value.trim() || label,
+          label,
+        });
+        throw new Error(t('invalidSecretByFormat'));
+      }
+      debugInfo('Popup manual secret parsed', {
+        secretFormat,
+        secretLength: secret.length,
+        normalizedBase32Length: parsedSecret.base32.length,
+        issuer: byId('fIssuer').value.trim() || label,
+        label,
+        type: byId('fType').value,
+      });
       acc = {
         id: nextAccountId(),
         type: byId('fType').value,
         issuer: byId('fIssuer').value.trim() || label,
         label,
-        secret: secret.toUpperCase().replace(/\s+/g,''),
+        secret: parsedSecret.base32,
         algorithm: 'SHA1',
         digits: parseInt(byId('fDigits').value, 10),
         period: parseInt(byId('fPeriod').value, 10),
         counter: 0,
+        autofillPatterns: parseAutofillPatterns(byId('fAutofillPatterns').value),
       };
     }
     const added = await pushAccount(acc);
+    debugInfo('Popup add account submit result', {
+      activeTab,
+      added: !!added,
+      accountType: acc && acc.type,
+      issuer: acc && acc.issuer,
+      label: acc && acc.label,
+    });
     if(added){ closeD('drawAdd'); resetForm(); toast(uiLanguage === 'zh' ? '账号已添加！' : 'Account added!'); }
-  } catch(e){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  } catch(e){
+    debugInfo('Popup add account failed', {
+      activeTab,
+      error: e && e.message ? e.message : String(e),
+    });
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('btnExport').addEventListener('click', () => {
@@ -908,28 +1153,77 @@ byId('btnCopyExport').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied')));
 });
+byId('btnDownloadExportJson').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
+  const payload = buildJsonExportPayload();
+  debugInfo('Popup JSON export requested', {
+    accountCount: payload.accounts.length,
+    fields: ['id','type','issuer','label','secret','algorithm','digits','period','counter','autofillPatterns'],
+  });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  a.href = url;
+  a.download = tFmt('exportJsonFilename', { timestamp: stamp });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  debugInfo('Popup JSON export download triggered', {
+    accountCount: payload.accounts.length,
+    filename: a.download,
+  });
+});
+
+async function applyImportRawText(rawText){
+  const errEl = byId('importErr');
+  errEl.style.display = 'none';
+  try {
+    const { parsed, fail } = parseImportData(rawText);
+    debugInfo('Popup import parse finished', {
+      inputType: String(rawText || '').trim().startsWith('{') || String(rawText || '').trim().startsWith('[') ? 'json' : 'uri_lines',
+      parsedCount: parsed.length,
+      failedCount: fail,
+    });
+    if(!parsed.length){
+      errEl.textContent = t('importNothing');
+      errEl.style.display = 'block';
+      return;
+    }
+    const duplicateCount = parsed.reduce((n, acc) => n + (findPotentialDuplicates(acc, accounts.concat(parsed)).length ? 1 : 0), 0);
+    if(duplicateCount){
+      const ok = window.confirm(tFmt('importDuplicateConfirm', { count: duplicateCount }));
+      if(!ok) return;
+    }
+    accounts = accounts.concat(parsed.map(acc => normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }))));
+    await persistAndRender();
+    debugInfo('Popup import persisted', {
+      importedCount: parsed.length,
+      failedCount: fail,
+      duplicateWarned: duplicateCount,
+      totalAccounts: accounts.length,
+    });
+    closeD('drawImport');
+    byId('importData').value = '';
+    toast(buildImportSummaryText(parsed.length, fail, duplicateCount));
+  } catch(err){
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+byId('btnOpenJsonImportTab').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  browser.tabs.create({ url: browser.runtime.getURL('json-import.html') });
+  toast(t('openJsonImportTabStatus'));
+  debugInfo('Popup opened JSON import tab');
+});
 
 byId('btnDoImport').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
-  const errEl = byId('importErr');
-  errEl.style.display = 'none';
-  const lines = byId('importData').value.split('\n').map(s => s.trim()).filter(Boolean);
-  if(!lines.length){ errEl.textContent = 'Nothing to import.'; errEl.style.display = 'block'; return; }
-  const parsed = [];
-  let fail = 0;
-  for(const uri of lines){
-    try { parsed.push(fromParsed(OTPAuth.URI.parse(uri))); } catch(e){ fail++; }
-  }
-  const duplicateCount = parsed.reduce((n, acc) => n + (findPotentialDuplicates(acc, accounts.concat(parsed)).length ? 1 : 0), 0);
-  if(duplicateCount){
-    const ok = window.confirm(`Detected ${duplicateCount} imported item(s) with similar names. Import all parsed accounts anyway?`);
-    if(!ok) return;
-  }
-  accounts = accounts.concat(parsed.map(acc => Object.assign({}, acc, { id: acc.id || nextAccountId() })));
-  await persistAndRender();
-  closeD('drawImport');
-  byId('importData').value = '';
-  toast(`Imported ${parsed.length} account${parsed.length !== 1 ? 's' : ''}${fail ? `, failed ${fail}` : ''}${duplicateCount ? `, duplicates warned ${duplicateCount}` : ''}`);
+  await applyImportRawText(byId('importData').value);
 });
 
 byId('search').addEventListener('input', render);
@@ -977,6 +1271,7 @@ byId('btnSaveEdit').addEventListener('click', async () => {
     if(idx < 0) throw new Error(uiLanguage === 'zh' ? '账号不存在或已被删除。' : 'Account no longer exists.');
     accounts[idx].issuer = issuer;
     accounts[idx].label = label;
+    accounts[idx].autofillPatterns = parseAutofillPatterns(byId('editAutofillPatterns').value);
     await persistAndRender();
     closeD('drawEdit');
     resetEditForm();

@@ -88,10 +88,26 @@
         <input class="fi" id="fLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
       </div>
       <div class="fg">
-        <label class="fl" id="labelSecret">Secret Key (Base32)</label>
+        <label class="fl" id="labelSecret">Secret Key</label>
         <input class="fi mono" id="fSecret" type="text" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" />
-        <div class="fhint" id="hintManualEntry">Found under "Manual entry" in the service's 2FA setup.</div>
       </div>
+      <div class="fg">
+        <label class="fl" id="labelSecretFormat">Secret Format</label>
+        <select class="fs" id="fSecretFormat">
+          <option value="base32" id="secretFormatBase32">Base32</option>
+          <option value="base64" id="secretFormatBase64">Base64</option>
+          <option value="hex" id="secretFormatHex">Hex</option>
+          <option value="utf8" id="secretFormatUtf8">String (UTF-8)</option>
+          <option value="latin1" id="secretFormatLatin1">String (Latin-1)</option>
+        </select>
+      </div>
+
+      <div class="fg">
+        <label class="fl" id="labelAutofillPatterns">Autofill Domain Rules</label>
+        <input class="fi mono" id="fAutofillPatterns" type="text" placeholder="github.com, *.github.com, login.*.example.com" autocomplete="off" />
+        <div class="fhint" id="hintAutofillPatterns">Comma-separated. Supports * wildcard matching for autofill on matching sites.</div>
+      </div>
+
       <div class="frow">
         <div class="fg">
           <label class="fl" id="labelType">Type</label>
@@ -151,11 +167,14 @@
       <button class="ibtn" id="closeExport">&#x2715;</button>
     </div>
     <div class="fg">
-      <label class="fl">otpauth:// URIs</label>
+      <label class="fl" id="exportUriLabel">otpauth:// URIs</label>
       <textarea class="fta" id="exportData" readonly style="min-height:110px"></textarea>
       <div class="fhint" id="exportHint">Keep these safe &#x2014; they contain your secrets.</div>
     </div>
-    <button class="btn-ok" id="btnCopyExport">Copy to Clipboard</button>
+    <div class="sync-actions">
+      <button class="btn-secondary" id="btnCopyExport">Copy to Clipboard</button>
+      <button class="btn-ok" id="btnDownloadExportJson">Download JSON File</button>
+    </div>
   </div>
 </div>
 
@@ -167,8 +186,10 @@
       <button class="ibtn" id="closeImport">&#x2715;</button>
     </div>
     <div class="fg">
-      <label class="fl">otpauth:// URIs (one per line)</label>
+      <label class="fl" id="importInputLabel">otpauth:// URIs (one per line)</label>
       <textarea class="fta" id="importData" placeholder="otpauth://totp/..." style="min-height:110px"></textarea>
+      <div class="fhint" id="importFileHint">JSON file import opens in a new tab to avoid popup closing.</div>
+      <button class="btn-secondary" id="btnOpenJsonImportTab" type="button">Open JSON Import Tab</button>
     </div>
     <div class="err" id="importErr"></div>
     <button class="btn-ok" id="btnDoImport">Import</button>
@@ -190,6 +211,13 @@
       <label class="fl" id="editLabelAccount">Account / Email</label>
       <input class="fi" id="editLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
     </div>
+    
+    <div class="fg">
+      <label class="fl" id="editLabelAutofillPatterns">Autofill Domain Rules</label>
+      <input class="fi mono" id="editAutofillPatterns" type="text" placeholder="github.com, *.github.com" autocomplete="off" />
+      <div class="fhint" id="editHintAutofillPatterns">Comma-separated. Supports * wildcard matching.</div>
+    </div>
+
     <div class="err" id="editErr"></div>
     <button class="btn-ok" id="btnSaveEdit">Save Changes</button>
   </div>

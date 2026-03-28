@@ -53,6 +53,91 @@ function randomBytes(n){
   return out;
 }
 
+function normalizeAutofillPattern(pattern){
+  return String(pattern || '').trim().toLowerCase();
+}
+function escapeRegex(text){
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function wildcardToRegex(pattern){
+  const normalized = normalizeAutofillPattern(pattern);
+  if(!normalized) return null;
+  const escaped = normalized.split('*').map(escapeRegex).join('.*');
+  return new RegExp(`^${escaped}$`, 'i');
+}
+function getAccountPatterns(account){
+  if(Array.isArray(account && account.autofillPatterns)){
+    return account.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean);
+  }
+  if(account && typeof account.domain === 'string'){
+    const legacy = normalizeAutofillPattern(account.domain);
+    return legacy ? [legacy] : [];
+  }
+  return [];
+}
+function matchHostname(hostname, pattern){
+  const normalizedHost = normalizeAutofillPattern(hostname);
+  const normalizedPattern = normalizeAutofillPattern(pattern);
+  if(!normalizedHost || !normalizedPattern) return false;
+  const direct = wildcardToRegex(normalizedPattern);
+  if(direct && direct.test(normalizedHost)) return true;
+  if(!normalizedPattern.includes('*')){
+    return normalizedHost === normalizedPattern || normalizedHost.endsWith('.' + normalizedPattern);
+  }
+  return false;
+}
+function buildAutofillCodeInfo(account){
+  const type = account && account.type === 'hotp' ? 'hotp' : 'totp';
+  const digits = Math.max(6, Number((account && account.digits) || 6));
+  const algorithm = String((account && account.algorithm) || 'SHA1');
+  const secret = String((account && account.secret) || '').trim();
+  if(!secret) throw new Error('Secret is required.');
+  const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
+  const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
+  if(type === 'hotp'){
+    const counter = Math.max(0, Number((account && account.counter) || 0));
+    const code = OTPAuth.HOTP.generate({ secret: otpSecret, algorithm, digits, counter });
+    return { code, type, digits, algorithm, counter, period: null, remaining: null };
+  }
+  const period = Math.max(1, Number((account && account.period) || 30));
+  const otp = new OTPAuth.TOTP({ secret: otpSecret, algorithm, digits, period });
+  const code = otp.generate();
+  const nowSeconds = Date.now() / 1000;
+  const remaining = Math.max(0, Math.ceil(period - (nowSeconds % period)) % period || period);
+  return { code, type, digits, algorithm, counter: null, period, remaining };
+}
+
+function normalizeImportedAccountRecord(incoming){
+  const type = incoming && incoming.type === 'hotp' ? 'hotp' : 'totp';
+  const secret = String(incoming && incoming.secret || '').toUpperCase().replace(/\s+/g, '');
+  const label = String(incoming && incoming.label || '').trim();
+  const issuer = String(incoming && incoming.issuer || label).trim() || label;
+  const account = {
+    id: String(incoming && incoming.id || ''),
+    type,
+    issuer,
+    label,
+    secret,
+    algorithm: String(incoming && incoming.algorithm || 'SHA1').toUpperCase(),
+    digits: Math.max(6, Number(incoming && incoming.digits || 6)),
+    period: type === 'hotp' ? undefined : Math.max(1, Number(incoming && incoming.period || 30)),
+    counter: type === 'hotp' ? Math.max(0, Number(incoming && incoming.counter || 0)) : undefined,
+    autofillPatterns: Array.isArray(incoming && incoming.autofillPatterns)
+      ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean).filter((v, idx, arr) => arr.indexOf(v) === idx)
+      : [],
+  };
+  if(!account.id){
+    const rand = (crypto && crypto.randomUUID)
+      ? crypto.randomUUID().replace(/-/g, '')
+      : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+    account.id = 'acc_' + rand;
+  }
+  if(!account.secret) throw new Error('Secret is required.');
+  if(!account.label) throw new Error('Account label is required.');
+  OTPAuth.Secret.fromBase32(account.secret);
+  return account;
+}
+
 async function getSyncSettings(){
   const result = await browser.storage.local.get(SYNC_SETTINGS_KEY);
   return Object.assign({}, defaultSyncSettings, result[SYNC_SETTINGS_KEY] || {});
@@ -556,6 +641,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             digits: Number(incoming.digits || 6),
             period: incoming.period != null ? Number(incoming.period) : undefined,
             counter: incoming.counter != null ? Number(incoming.counter) : undefined,
+            autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns : [],
             secretLength: String(incoming.secret || '').length,
           },
         });
@@ -569,6 +655,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           digits: Number(incoming.digits || 6),
           period: incoming.period != null ? Number(incoming.period) : undefined,
           counter: incoming.counter != null ? Number(incoming.counter) : undefined,
+          autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean) : [],
         };
         if(!account.secret) throw new Error('Secret is required.');
         if(!account.label) throw new Error('Account label is required.');
@@ -587,7 +674,103 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, account, sync, settings: await getSyncSettings() });
         return;
       }
+      case 'importAccountsFromJson': {
+        const source = Array.isArray(message.accounts) ? message.accounts : [];
+        if(!source.length) throw new Error('No accounts provided.');
+        const normalized = source.map(normalizeImportedAccountRecord);
+        const existing = await getLocalAccounts();
+        const merged = existing.concat(normalized);
+        await setLocalAccounts(merged);
+        await appendDebugInfo('importAccountsFromJson stored successfully', {
+          importedCount: normalized.length,
+          totalAccounts: merged.length,
+        });
+        sendResponse({ success: true, importedCount: normalized.length, totalAccounts: merged.length, settings: await getSyncSettings() });
+        return;
+      }
 
+
+      case 'getAccountsForAutofill': {
+        const hostname = String(message.hostname || '').trim().toLowerCase();
+        let accounts = [];
+        try {
+          accounts = await getLocalAccounts();
+        } catch (err) {
+          if(err && err.code === 'NEED_UNLOCK'){
+            sendResponse({ success: true, accounts: [], locked: true });
+            return;
+          }
+          throw err;
+        }
+        const matches = accounts
+          .filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern)))
+          .map(account => {
+            const codeInfo = buildAutofillCodeInfo(account);
+            return {
+              id: account.id,
+              issuer: account.issuer || '',
+              label: account.label || '',
+              type: account.type === 'hotp' ? 'hotp' : 'totp',
+              digits: Number(account.digits || 6),
+              period: account.period != null ? Number(account.period) : undefined,
+              counter: account.counter != null ? Number(account.counter) : undefined,
+              autofillPatterns: getAccountPatterns(account),
+              currentCode: codeInfo.code,
+              remaining: codeInfo.remaining,
+              codePeriod: codeInfo.period,
+            };
+          });
+        sendResponse({ success: true, accounts: matches, locked: false });
+        return;
+      }
+      case 'generateCodeForAutofillById': {
+        const id = String(message.id || '');
+        if(!id) throw new Error('Account ID is required.');
+        const hostname = String(message.hostname || '').trim().toLowerCase();
+        const accounts = await getLocalAccounts();
+        const account = accounts.find(item => String(item.id) === id);
+        if(!account) throw new Error('Account not found.');
+        const patterns = getAccountPatterns(account);
+        if(hostname && patterns.length && !patterns.some(pattern => matchHostname(hostname, pattern))){
+          throw new Error('Account does not match this host.');
+        }
+        const info = buildAutofillCodeInfo(account);
+        sendResponse({
+          success: true,
+          id,
+          code: info.code,
+          remaining: info.remaining,
+          period: info.period,
+        });
+        return;
+      }
+      case 'generateCodeForAutofill': {
+        const secret = String(message.secret || '').trim();
+        const type = message.type === 'hotp' ? 'hotp' : 'totp';
+        const digits = Math.max(6, Number(message.digits || 6));
+        if(!secret) throw new Error('Secret is required.');
+        const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
+        const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
+        if(type === 'hotp'){
+          const counter = Math.max(0, Number(message.counter || 0));
+          const code = OTPAuth.HOTP.generate({
+            secret: otpSecret,
+            algorithm: String(message.algorithm || 'SHA1'),
+            digits,
+            counter,
+          });
+          sendResponse({ success: true, code });
+          return;
+        }
+        const otp = new OTPAuth.TOTP({
+          secret: otpSecret,
+          algorithm: String(message.algorithm || 'SHA1'),
+          digits,
+          period: Math.max(1, Number(message.period || 30)),
+        });
+        sendResponse({ success: true, code: otp.generate() });
+        return;
+      }
       case 'downloadSyncToLocal': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();

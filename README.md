@@ -21,8 +21,10 @@
   Upload backups to the cloud via Firefox Sync with a session ID
 - 可手动从云端下载并覆盖本地数据（有确认提示）  
   Manually download cloud data and overwrite local data (with confirmation)
-- 支持导入/导出 `otpauth://` URI  
-  Import/export `otpauth://` URIs
+- 支持通过 `otpauth://` URI或json文件形式导入/导出账号数据  
+  Import/export account data via `otpauth://` URIs or json files
+- 支持根据自定义的网址匹配规则识别验证码输入框并自动填充  
+  Recognizes and automatically fills in 2fa input fields based on custom URL matching rules.
 
 ### 安装与使用 / Install & Use
 
@@ -69,3 +71,13 @@
 - `popup.html`, `popup.js`, `popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
 - `qr.html`, `qr.js`, `qr.css`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
+- `autofill-content.js`, `autofill.css`: 自动填充弹窗 / Autofill pop-up
+- `json-import.js`, `json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+
+### 致谢 / Acknowledgements
+
+本项目使用了以下开源仓库的代码  
+This repository uses code from the following open-source repositories.
+
+- [hectorm/otpauth](https://github.com/hectorm/otpauth)
+- [nimiq/qr-scanner](https://github.com/nimiq/qr-scanner)
