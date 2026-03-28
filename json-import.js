@@ -31,13 +31,13 @@ const I18N = {
     waiting: '等待 JSON 文件…',
     importing: '导入中…',
     resultSub: '账号已导入，可关闭此标签页。',
-    hint: '支持 { accounts: [...] } 或直接账号数组 JSON。',
+    hint: '支持 { accounts: [...] } 或直接账号数组 JSON',
     importedSummary: '已导入 {count} 个账号',
-    notJsonFile: '请选择 JSON 文件。',
-    invalidJson: 'JSON 文件格式无效。',
-    missingAccounts: 'JSON 必须是数组或包含 accounts 数组。',
+    notJsonFile: '请选择 JSON 文件',
+    invalidJson: 'JSON 文件格式无效',
+    missingAccounts: 'JSON 必须是数组或包含 accounts 数组',
     importFailed: '导入失败：',
-    lockedHint: '保险库可能已锁定，请在弹窗中解锁后重试。',
+    lockedHint: '保险库可能已锁定，请在弹窗中解锁后重试',
   },
 };
 
