@@ -15,14 +15,16 @@
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const I18N = {
     en: {
-      title: 'Vault2FA',
+      titleMain: 'Vault',
+      titleAccent: '2FA',
       subtitle: 'Select a code to autofill',
       accountFallback: 'Account',
       hotp: 'Counter-based (HOTP)',
       locked: '🔒Vault2FA is locked.',
     },
     zh: {
-      title: 'Vault2FA',
+      titleMain: 'Vault',
+      titleAccent: '2FA',
       subtitle: '选择验证码进行自动填充',
       accountFallback: '账号',
       hotp: '计数器模式（HOTP）',
@@ -151,7 +153,7 @@
     header.className = 'vault2fa-autofill__header';
     const title = document.createElement('div');
     title.className = 'vault2fa-autofill__title';
-    title.textContent = t('title');
+    title.innerHTML = `${t('titleMain')} <em>${t('titleAccent')}</em>`;
     const sub = document.createElement('div');
     sub.className = 'vault2fa-autofill__sub';
     sub.textContent = t('subtitle');

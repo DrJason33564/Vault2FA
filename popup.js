@@ -58,6 +58,8 @@ const I18N = {
     labelIssuer: 'Issuer / Service',
     labelAccount: 'Account / Email',
     labelSecret: 'Secret Key (Base32)',
+    labelAutofillPatterns: 'Autofill Patterns',
+    autofillMatchLabel: 'Matching',
     hintManualEntry: 'Found under "Manual entry" in the service\'s 2FA setup.',
     labelType: 'Type',
     labelDigits: 'Digits',

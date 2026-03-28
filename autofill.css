@@ -30,7 +30,8 @@
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:12px 14px; background:var(--v2fa-surface); border-bottom:1px solid var(--v2fa-border);
 }
-#vault2fa-autofill .vault2fa-autofill__title { font-weight:700; letter-spacing:.01em; }
+#vault2fa-autofill .vault2fa-autofill__title { font-weight:700; letter-spacing:-.2px; }
+#vault2fa-autofill .vault2fa-autofill__title em { color:var(--v2fa-accent); font-style:normal; }
 #vault2fa-autofill .vault2fa-autofill__sub { font-size:11px; color:var(--v2fa-muted); margin-top:1px; }
 #vault2fa-autofill .vault2fa-autofill__locked {
   padding: 14px;
