@@ -38,7 +38,7 @@ const I18N = {
     noAccountsYet: 'No accounts yet',
     emptySub: 'Add your first account using the\n+ button below.',
     vaultLocked: 'Vault Locked',
-    vaultLockSub: 'This popup uses local encrypted storage. Enter your passphrase to unlock this browser session.',
+    vaultLockSub: 'Local vault is locked. Enter your passphrase to unlock this browser session.',
     unlockVault: 'Unlock Vault',
     searchPlaceholder: 'Search accounts...',
     syncEnabledHint: 'Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.',
@@ -50,7 +50,7 @@ const I18N = {
     syncSaveBtn: 'Save Sync Settings',
     syncUploadBtn: 'Upload Local Data Now',
     syncDownloadBtn: 'Download Cloud Data to Local',
-    syncWarnOverwrite: 'Downloading from the cloud will overwrite your current local accounts. A confirmation dialog will appear first.',
+    syncWarnOverwrite: 'Downloading from the cloud will overwrite your current local accounts.',
     addDrawerTitle: 'Add Account',
     tabManual: 'Manual',
     tabQr: 'Scan QR',
@@ -80,7 +80,7 @@ const I18N = {
     exportUriLabel: 'otpauth:// URIs',
     importDrawerTitle: 'Import Accounts',
     importInputLabel: 'Paste otpauth:// URIs (one per line) or JSON',
-    importFileHint: 'JSON file import opens in a new tab to avoid popup closing.',
+    importFileHint: 'JSON file import opens in a new tab.',
     openJsonImportTabBtn: 'Open JSON Import Tab',
     importBtn: 'Import',
     editDrawerTitle: 'Edit Account',
@@ -1050,7 +1050,7 @@ byId('btnOpenQrTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
-setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新。' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
+setQrStatus(uiLanguage === 'zh' ? '二维码扫描页已打开，请在新页扫描。此弹窗会自动更新' : 'QR scanner tab opened — scan your code there. This popup will update automatically.', false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');
