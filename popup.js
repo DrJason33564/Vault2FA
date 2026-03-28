@@ -76,7 +76,12 @@ const I18N = {
     exportDrawerTitle: 'Export Accounts',
     exportHint: 'Keep these safe — they contain your secrets.',
     copyExportBtn: 'Copy to Clipboard',
+    exportJsonBtn: 'Download JSON File',
+    exportUriLabel: 'otpauth:// URIs',
     importDrawerTitle: 'Import Accounts',
+    importInputLabel: 'Paste otpauth:// URIs (one per line) or JSON',
+    importFileHint: 'Also supports JSON format exported by this extension.',
+    importFileBtn: 'Import from JSON File',
     importBtn: 'Import',
     editDrawerTitle: 'Edit Account',
     editSaveBtn: 'Save Changes',
@@ -101,6 +106,19 @@ const I18N = {
     debugModeOn: 'Debug mode enabled',
     debugModeOff: 'Debug mode disabled',
     debugLogEmpty: 'No debug log available.',
+    importNothing: 'Nothing to import.',
+    importDuplicateConfirm: 'Detected {count} imported item(s) with similar names. Import all parsed accounts anyway?',
+    importSummary: 'Imported {ok} account(s){failPart}{dupPart}',
+    importFailPart: ', failed {count}',
+    importDupPart: ', duplicates warned {count}',
+    importedFromFile: 'Loaded import data from {filename}',
+    exportJsonEmpty: 'No accounts available to export.',
+    exportJsonFilename: 'vault2fa-accounts-{timestamp}.json',
+    nextCodeTitle: 'Next code',
+    deleteBtnTitle: 'Delete',
+    clickToCopy: 'click to copy',
+    unknown: 'Unknown',
+    noLabel: '(no label)',
   },
   zh: {
     localOnly: '仅本地',
@@ -160,7 +178,12 @@ const I18N = {
     exportDrawerTitle: '导出账号',
     exportHint: '请妥善保存——其中包含你的密钥。',
     copyExportBtn: '复制到剪贴板',
+    exportJsonBtn: '下载 JSON 文件',
+    exportUriLabel: 'otpauth:// URI',
     importDrawerTitle: '导入账号',
+    importInputLabel: '粘贴 otpauth:// URI（每行一个）或 JSON',
+    importFileHint: '也支持本扩展导出的 JSON 格式。',
+    importFileBtn: '从 JSON 文件导入',
     importBtn: '导入',
     editDrawerTitle: '编辑账号',
     editSaveBtn: '保存修改',
@@ -185,6 +208,19 @@ const I18N = {
     debugModeOn: '已启用调试模式',
     debugModeOff: '已关闭调试模式',
     debugLogEmpty: '暂无可下载的调试日志。',
+    importNothing: '没有可导入的内容。',
+    importDuplicateConfirm: '检测到 {count} 个导入项存在相似名称。仍要导入全部已解析账号吗？',
+    importSummary: '已导入 {ok} 个账号{failPart}{dupPart}',
+    importFailPart: '，失败 {count} 个',
+    importDupPart: '，重复提醒 {count} 个',
+    importedFromFile: '已从 {filename} 加载导入数据',
+    exportJsonEmpty: '没有可导出的账号。',
+    exportJsonFilename: 'vault2fa-账号-{timestamp}.json',
+    nextCodeTitle: '下一个验证码',
+    deleteBtnTitle: '删除',
+    clickToCopy: '点击复制',
+    unknown: '未知',
+    noLabel: '（无名称）',
   },
 };
 
@@ -195,7 +231,7 @@ const STATIC_TEXT_MAP = {
   hintAutofillPatterns: 'hintAutofillPatterns', editHintAutofillPatterns: 'hintAutofillPatterns',
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
-  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', importDrawerTitle: 'importDrawerTitle', btnDoImport: 'importBtn',
+  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnImportFile: 'importFileBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
@@ -212,6 +248,9 @@ function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.s
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function tFmt(key, values = {}){
+  return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
+}
 function setMultilineText(el, text){
   if(!el) return;
   el.replaceChildren();
@@ -472,7 +511,7 @@ function buildCard(acc){
     nextBtn.className = 'act-btn';
     nextBtn.dataset.a = 'next';
     nextBtn.dataset.id = String(acc.id);
-    nextBtn.title = 'Next code';
+    nextBtn.title = t('nextCodeTitle');
     nextBtn.type = 'button';
     nextBtn.textContent = '↻';
     acts.appendChild(nextBtn);
@@ -491,7 +530,7 @@ function buildCard(acc){
   delBtn.className = 'act-btn del';
   delBtn.dataset.a = 'del';
   delBtn.dataset.id = String(acc.id);
-  delBtn.title = 'Delete';
+  delBtn.title = t('deleteBtnTitle');
   delBtn.type = 'button';
   delBtn.textContent = '✕';
   acts.appendChild(delBtn);
@@ -511,7 +550,7 @@ function buildCard(acc){
 
   const hint = document.createElement('div');
   hint.className = 'otp-hint';
-  hint.textContent = uiLanguage === 'zh' ? '点击复制' : 'click to copy';
+  hint.textContent = t('clickToCopy');
 
   left.appendChild(codeEl);
   left.appendChild(hint);
@@ -615,8 +654,84 @@ function findPotentialDuplicates(acc, pool = accounts){
 }
 
 function duplicateWarningText(acc, matches){
-  const sample = matches.slice(0, 3).map(m => `${m.issuer || 'Unknown'} / ${m.label || '(no label)'}`).join('\n');
-  return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || 'Unknown'} / ${acc.label || '(no label)'}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
+  const sample = matches.slice(0, 3).map(m => `${m.issuer || t('unknown')} / ${m.label || t('noLabel')}`).join('\n');
+  return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || t('unknown')} / ${acc.label || t('noLabel')}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
+}
+
+function getExportRecords(){
+  return accounts.map(acc => normalizeAccountRecord({
+    id: acc.id,
+    type: acc.type === 'hotp' ? 'hotp' : 'totp',
+    issuer: acc.issuer || '',
+    label: acc.label || '',
+    secret: String(acc.secret || '').toUpperCase().replace(/\s+/g, ''),
+    algorithm: acc.algorithm || 'SHA1',
+    digits: acc.digits || 6,
+    period: acc.type === 'hotp' ? undefined : (acc.period || 30),
+    counter: acc.type === 'hotp' ? (acc.counter || 0) : undefined,
+    autofillPatterns: Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns : [],
+  }));
+}
+
+function buildJsonExportPayload(){
+  return {
+    format: 'vault2fa-accounts',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    accounts: getExportRecords(),
+  };
+}
+
+function buildImportSummaryText(parsedCount, failCount, duplicateCount){
+  const failPart = failCount ? tFmt('importFailPart', { count: failCount }) : '';
+  const dupPart = duplicateCount ? tFmt('importDupPart', { count: duplicateCount }) : '';
+  return tFmt('importSummary', { ok: parsedCount, failPart, dupPart });
+}
+
+function parseJsonImportData(raw){
+  const parsed = JSON.parse(raw);
+  const source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
+  if(!source) throw new Error(uiLanguage === 'zh' ? 'JSON 格式不正确，缺少 accounts 数组。' : 'Invalid JSON format: missing accounts array.');
+  const list = [];
+  for(const item of source){
+    const secret = String(item && item.secret || '').toUpperCase().replace(/\s+/g, '');
+    const label = String(item && item.label || '').trim();
+    if(!secret || !label) throw new Error(uiLanguage === 'zh' ? 'JSON 中存在缺少密钥或账号名称的条目。' : 'JSON contains item(s) without secret or account label.');
+    OTPAuth.Secret.fromBase32(secret);
+    const type = item && item.type === 'hotp' ? 'hotp' : 'totp';
+    list.push(normalizeAccountRecord({
+      id: nextAccountId(),
+      type,
+      issuer: String(item.issuer || label).trim() || label,
+      label,
+      secret,
+      algorithm: String(item.algorithm || 'SHA1').toUpperCase(),
+      digits: Math.max(6, Number(item.digits) || 6),
+      period: type === 'hotp' ? undefined : Math.max(1, Number(item.period) || 30),
+      counter: type === 'hotp' ? Math.max(0, Number(item.counter) || 0) : undefined,
+      autofillPatterns: Array.isArray(item.autofillPatterns) ? item.autofillPatterns : [],
+    }));
+  }
+  return list;
+}
+
+function parseUriImportData(raw){
+  const lines = String(raw || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const parsed = [];
+  let fail = 0;
+  for(const uri of lines){
+    try { parsed.push(fromParsed(OTPAuth.URI.parse(uri))); } catch(e){ fail++; }
+  }
+  return { parsed, fail };
+}
+
+function parseImportData(raw){
+  const input = String(raw || '').trim();
+  if(!input) return { parsed: [], fail: 0 };
+  if(input.startsWith('{') || input.startsWith('[')){
+    return { parsed: parseJsonImportData(input), fail: 0 };
+  }
+  return parseUriImportData(input);
 }
 
 async function saveAccounts(){
@@ -957,28 +1072,73 @@ byId('btnCopyExport').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied')));
 });
+byId('btnDownloadExportJson').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
+  const payload = buildJsonExportPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  a.href = url;
+  a.download = tFmt('exportJsonFilename', { timestamp: stamp });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+async function applyImportRawText(rawText){
+  const errEl = byId('importErr');
+  errEl.style.display = 'none';
+  try {
+    const { parsed, fail } = parseImportData(rawText);
+    if(!parsed.length){
+      errEl.textContent = t('importNothing');
+      errEl.style.display = 'block';
+      return;
+    }
+    const duplicateCount = parsed.reduce((n, acc) => n + (findPotentialDuplicates(acc, accounts.concat(parsed)).length ? 1 : 0), 0);
+    if(duplicateCount){
+      const ok = window.confirm(tFmt('importDuplicateConfirm', { count: duplicateCount }));
+      if(!ok) return;
+    }
+    accounts = accounts.concat(parsed.map(acc => normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }))));
+    await persistAndRender();
+    closeD('drawImport');
+    byId('importData').value = '';
+    toast(buildImportSummaryText(parsed.length, fail, duplicateCount));
+  } catch(err){
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+byId('btnImportFile').addEventListener('click', () => {
+  if(!guardVaultUnlocked()) return;
+  byId('importFileInput').click();
+});
+
+byId('importFileInput').addEventListener('change', async (event) => {
+  if(!guardVaultUnlocked()) return;
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  try {
+    const text = await file.text();
+    byId('importData').value = text;
+    toast(tFmt('importedFromFile', { filename: file.name }));
+  } catch(err){
+    const errEl = byId('importErr');
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    event.target.value = '';
+  }
+});
 
 byId('btnDoImport').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
-  const errEl = byId('importErr');
-  errEl.style.display = 'none';
-  const lines = byId('importData').value.split('\n').map(s => s.trim()).filter(Boolean);
-  if(!lines.length){ errEl.textContent = 'Nothing to import.'; errEl.style.display = 'block'; return; }
-  const parsed = [];
-  let fail = 0;
-  for(const uri of lines){
-    try { parsed.push(fromParsed(OTPAuth.URI.parse(uri))); } catch(e){ fail++; }
-  }
-  const duplicateCount = parsed.reduce((n, acc) => n + (findPotentialDuplicates(acc, accounts.concat(parsed)).length ? 1 : 0), 0);
-  if(duplicateCount){
-    const ok = window.confirm(`Detected ${duplicateCount} imported item(s) with similar names. Import all parsed accounts anyway?`);
-    if(!ok) return;
-  }
-  accounts = accounts.concat(parsed.map(acc => normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }))));
-  await persistAndRender();
-  closeD('drawImport');
-  byId('importData').value = '';
-  toast(`Imported ${parsed.length} account${parsed.length !== 1 ? 's' : ''}${fail ? `, failed ${fail}` : ''}${duplicateCount ? `, duplicates warned ${duplicateCount}` : ''}`);
+  await applyImportRawText(byId('importData').value);
 });
 
 byId('search').addEventListener('input', render);
