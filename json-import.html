@@ -1,0 +1,55 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Vault 2FA — JSON Import</title>
+<style>
+  :root{--bg:#0d1117;--surf:#161b22;--border:rgba(255,255,255,0.08);--text:#e6edf3;--muted:#7d8590;--accent:#58a6ff;--green:#3fb950;--red:#f85149;color-scheme:dark;}
+  :root[data-theme='light']{--bg:#f5f7fb;--surf:#ffffff;--border:rgba(15,23,42,.12);--text:#0f172a;--muted:#475569;--accent:#2563eb;--green:#15803d;--red:#dc2626;color-scheme:light;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .page{width:100%;max-width:500px;padding:40px 24px;display:flex;flex-direction:column;gap:24px;}
+  .logo{display:flex;align-items:center;justify-content:center;gap:12px;text-align:center;font-size:22px;font-weight:700;}.logo-img{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);}
+  .logo em{color:var(--accent);font-style:normal;}
+  .card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:32px;display:flex;flex-direction:column;gap:20px;}
+  .drop-zone{border:2px dashed var(--border);border-radius:10px;padding:48px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative;}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(88,166,255,0.06);}
+  .drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .dz-icon{font-size:48px;margin-bottom:14px;}
+  .dz-title{font-size:16px;font-weight:600;margin-bottom:6px;}
+  .dz-sub{font-size:13px;color:var(--muted);}
+  .status{font-size:13px;color:var(--muted);text-align:center;min-height:20px;}
+  .result{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);border-radius:8px;padding:20px;text-align:center;display:none;flex-direction:column;gap:8px;}
+  .result.show{display:flex;}
+  .result-icon{font-size:36px;}
+  .result-name{font-size:15px;font-weight:600;color:var(--green);}
+  .result-sub{font-size:13px;color:var(--muted);}
+  .err{background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:14px;font-size:13px;color:var(--red);text-align:center;display:none;}
+  .err.show{display:block;}
+  .hint{font-size:12px;color:var(--muted);text-align:center;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="logo"><img class="logo-img" src="icons/icon48.png" alt="Vault 2FA"/><span id="pageTitle">Vault <em>2FA</em> &mdash; JSON Import</span></div>
+  <div class="card">
+    <div class="drop-zone" id="dz">
+      <div class="dz-icon">&#x1F4C4;</div>
+      <div class="dz-title" id="dzTitle">Drop a JSON file here</div>
+      <div class="dz-sub" id="dzSub">or click to choose a file</div>
+      <input type="file" id="fileInput" accept=".json,application/json"/>
+    </div>
+    <div class="status" id="status">Waiting for a JSON file&hellip;</div>
+    <div class="result" id="result">
+      <div class="result-icon">&#x2705;</div>
+      <div class="result-name" id="resultName"></div>
+      <div class="result-sub" id="resultSub">Accounts imported — you can close this tab.</div>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+  <div class="hint" id="pageHint">Supports either { accounts: [...] } or a raw account array JSON.</div>
+</div>
+<script src="json-import.js"></script>
+</body>
+</html>

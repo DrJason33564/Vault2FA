@@ -158,11 +158,14 @@
       <button class="ibtn" id="closeExport">&#x2715;</button>
     </div>
     <div class="fg">
-      <label class="fl">otpauth:// URIs</label>
+      <label class="fl" id="exportUriLabel">otpauth:// URIs</label>
       <textarea class="fta" id="exportData" readonly style="min-height:110px"></textarea>
       <div class="fhint" id="exportHint">Keep these safe &#x2014; they contain your secrets.</div>
     </div>
-    <button class="btn-ok" id="btnCopyExport">Copy to Clipboard</button>
+    <div class="sync-actions">
+      <button class="btn-secondary" id="btnCopyExport">Copy to Clipboard</button>
+      <button class="btn-ok" id="btnDownloadExportJson">Download JSON File</button>
+    </div>
   </div>
 </div>
 
@@ -174,8 +177,10 @@
       <button class="ibtn" id="closeImport">&#x2715;</button>
     </div>
     <div class="fg">
-      <label class="fl">otpauth:// URIs (one per line)</label>
+      <label class="fl" id="importInputLabel">otpauth:// URIs (one per line)</label>
       <textarea class="fta" id="importData" placeholder="otpauth://totp/..." style="min-height:110px"></textarea>
+      <div class="fhint" id="importFileHint">JSON file import opens in a new tab to avoid popup closing.</div>
+      <button class="btn-secondary" id="btnOpenJsonImportTab" type="button">Open JSON Import Tab</button>
     </div>
     <div class="err" id="importErr"></div>
     <button class="btn-ok" id="btnDoImport">Import</button>
