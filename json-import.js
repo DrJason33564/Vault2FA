@@ -65,6 +65,13 @@ function applyI18n(){
 function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent = ''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent = msg; errEl.classList.add('show'); showStatus(''); }
+async function debugInfo(message, context){
+  try {
+    await browser.runtime.sendMessage({ action:'appendDebugInfo', message, context });
+  } catch (_) {
+    // Ignore debug logging failures.
+  }
+}
 
 function parseJsonText(text){
   let parsed;
@@ -73,9 +80,10 @@ function parseJsonText(text){
   } catch(_) {
     throw new Error(t('invalidJson'));
   }
+  const format = Array.isArray(parsed) ? 'array' : 'object_with_accounts';
   const accounts = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
   if(!accounts) throw new Error(t('missingAccounts'));
-  return accounts;
+  return { accounts, format };
 }
 
 async function importFile(file){
@@ -83,22 +91,44 @@ async function importFile(file){
   resultEl.classList.remove('show');
   if(!file || (!/\.json$/i.test(file.name || '') && file.type && !/json/i.test(file.type))){
     showErr(t('notJsonFile'));
+    await debugInfo('JSON import rejected non-json file', {
+      fileName: file && file.name ? file.name : '',
+      fileType: file && file.type ? file.type : '',
+      fileSize: file && typeof file.size === 'number' ? file.size : null,
+    });
     return;
   }
   showStatus(t('importing'));
   try {
+    await debugInfo('JSON import started', {
+      fileName: file.name || '',
+      fileType: file.type || '',
+      fileSize: typeof file.size === 'number' ? file.size : null,
+    });
     const text = await file.text();
-    const accounts = parseJsonText(text);
-    const resp = await browser.runtime.sendMessage({ action:'importAccountsFromJson', accounts });
+    const parsed = parseJsonText(text);
+    await debugInfo('JSON import parsed payload', {
+      accountCount: parsed.accounts.length,
+      format: parsed.format,
+    });
+    const resp = await browser.runtime.sendMessage({ action:'importAccountsFromJson', accounts: parsed.accounts });
     if(!resp || resp.success === false){
       throw new Error((resp && resp.error) || 'Unknown error');
     }
-    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || accounts.length });
+    await debugInfo('JSON import persisted via background', {
+      importedCount: resp.importedCount || parsed.accounts.length,
+      totalAccounts: resp.totalAccounts,
+    });
+    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || parsed.accounts.length });
     resultEl.classList.add('show');
     showStatus('');
   } catch(err){
     const msg = String((err && err.message) || err);
     const extra = /Vault is locked|unlock/i.test(msg) ? ` ${t('lockedHint')}` : '';
+    await debugInfo('JSON import failed', {
+      error: msg,
+      vaultLockedHintShown: !!extra,
+    });
     showErr(t('importFailed') + msg + extra);
   }
 }

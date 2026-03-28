@@ -629,6 +629,14 @@ function toast(msg){
   toast._tmr = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+async function debugInfo(message, context){
+  try {
+    await browser.runtime.sendMessage({ action:'appendDebugInfo', message, context });
+  } catch (_) {
+    // Ignore debug logging errors to avoid affecting UX.
+  }
+}
+
 function openD(id){ byId(id).classList.add('open'); }
 function closeD(id){ byId(id).classList.remove('open'); }
 
@@ -1076,6 +1084,10 @@ byId('btnDownloadExportJson').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
   const payload = buildJsonExportPayload();
+  debugInfo('Popup JSON export requested', {
+    accountCount: payload.accounts.length,
+    fields: ['id','type','issuer','label','secret','algorithm','digits','period','counter','autofillPatterns'],
+  });
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1086,6 +1098,10 @@ byId('btnDownloadExportJson').addEventListener('click', () => {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  debugInfo('Popup JSON export download triggered', {
+    accountCount: payload.accounts.length,
+    filename: a.download,
+  });
 });
 
 async function applyImportRawText(rawText){
@@ -1093,6 +1109,11 @@ async function applyImportRawText(rawText){
   errEl.style.display = 'none';
   try {
     const { parsed, fail } = parseImportData(rawText);
+    debugInfo('Popup import parse finished', {
+      inputType: String(rawText || '').trim().startsWith('{') || String(rawText || '').trim().startsWith('[') ? 'json' : 'uri_lines',
+      parsedCount: parsed.length,
+      failedCount: fail,
+    });
     if(!parsed.length){
       errEl.textContent = t('importNothing');
       errEl.style.display = 'block';
@@ -1105,6 +1126,12 @@ async function applyImportRawText(rawText){
     }
     accounts = accounts.concat(parsed.map(acc => normalizeAccountRecord(Object.assign({}, acc, { id: acc.id || nextAccountId() }))));
     await persistAndRender();
+    debugInfo('Popup import persisted', {
+      importedCount: parsed.length,
+      failedCount: fail,
+      duplicateWarned: duplicateCount,
+      totalAccounts: accounts.length,
+    });
     closeD('drawImport');
     byId('importData').value = '';
     toast(buildImportSummaryText(parsed.length, fail, duplicateCount));
@@ -1118,6 +1145,7 @@ byId('btnOpenJsonImportTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.tabs.create({ url: browser.runtime.getURL('json-import.html') });
   toast(t('openJsonImportTabStatus'));
+  debugInfo('Popup opened JSON import tab');
 });
 
 byId('btnDoImport').addEventListener('click', async () => {
