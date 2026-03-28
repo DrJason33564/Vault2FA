@@ -54,7 +54,15 @@ function applyTheme(){
 
 function applyI18n(){
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  document.getElementById('pageTitle').innerHTML = t('title');
+  const pageTitle = document.getElementById('pageTitle');
+  if(pageTitle){
+    pageTitle.replaceChildren();
+    pageTitle.appendChild(document.createTextNode('Vault '));
+    const accent = document.createElement('em');
+    accent.textContent = '2FA';
+    pageTitle.appendChild(accent);
+    pageTitle.appendChild(document.createTextNode(lang === 'zh' ? ' — JSON 导入' : ' — JSON Import'));
+  }
   document.getElementById('dzTitle').textContent = t('dzTitle');
   document.getElementById('dzSub').textContent = t('dzSub');
   document.getElementById('status').textContent = t('waiting');

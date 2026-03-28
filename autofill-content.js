@@ -153,7 +153,11 @@
     header.className = 'vault2fa-autofill__header';
     const title = document.createElement('div');
     title.className = 'vault2fa-autofill__title';
-    title.innerHTML = `${t('titleMain')} <em>${t('titleAccent')}</em>`;
+    title.replaceChildren();
+    title.appendChild(document.createTextNode(`${t('titleMain')} `));
+    const accent = document.createElement('em');
+    accent.textContent = t('titleAccent');
+    title.appendChild(accent);
     const sub = document.createElement('div');
     sub.className = 'vault2fa-autofill__sub';
     sub.textContent = t('subtitle');
@@ -177,7 +181,26 @@
     wrap.dataset.accountId = String(account.id);
     const ringId = `vault2fa-autofill-timer-ring-${String(account.id).replace(/\W/g, '_')}`;
     const textId = `vault2fa-autofill-timer-text-${String(account.id).replace(/\W/g, '_')}`;
-    wrap.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="vault2fa-autofill__timer-bg" cx="12" cy="12" r="10"></circle><circle id="${ringId}" class="vault2fa-autofill__timer-ring" cx="12" cy="12" r="10"></circle></svg><span id="${textId}">30</span>`;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const bg = document.createElementNS(svgNS, 'circle');
+    bg.setAttribute('class', 'vault2fa-autofill__timer-bg');
+    bg.setAttribute('cx', '12');
+    bg.setAttribute('cy', '12');
+    bg.setAttribute('r', '10');
+    const ring = document.createElementNS(svgNS, 'circle');
+    ring.id = ringId;
+    ring.setAttribute('class', 'vault2fa-autofill__timer-ring');
+    ring.setAttribute('cx', '12');
+    ring.setAttribute('cy', '12');
+    ring.setAttribute('r', '10');
+    svg.append(bg, ring);
+    const text = document.createElement('span');
+    text.id = textId;
+    text.textContent = '30';
+    wrap.append(svg, text);
     return wrap;
   }
   function updateItemTimers(){
