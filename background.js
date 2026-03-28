@@ -107,6 +107,37 @@ function buildAutofillCodeInfo(account){
   return { code, type, digits, algorithm, counter: null, period, remaining };
 }
 
+function normalizeImportedAccountRecord(incoming){
+  const type = incoming && incoming.type === 'hotp' ? 'hotp' : 'totp';
+  const secret = String(incoming && incoming.secret || '').toUpperCase().replace(/\s+/g, '');
+  const label = String(incoming && incoming.label || '').trim();
+  const issuer = String(incoming && incoming.issuer || label).trim() || label;
+  const account = {
+    id: String(incoming && incoming.id || ''),
+    type,
+    issuer,
+    label,
+    secret,
+    algorithm: String(incoming && incoming.algorithm || 'SHA1').toUpperCase(),
+    digits: Math.max(6, Number(incoming && incoming.digits || 6)),
+    period: type === 'hotp' ? undefined : Math.max(1, Number(incoming && incoming.period || 30)),
+    counter: type === 'hotp' ? Math.max(0, Number(incoming && incoming.counter || 0)) : undefined,
+    autofillPatterns: Array.isArray(incoming && incoming.autofillPatterns)
+      ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean).filter((v, idx, arr) => arr.indexOf(v) === idx)
+      : [],
+  };
+  if(!account.id){
+    const rand = (crypto && crypto.randomUUID)
+      ? crypto.randomUUID().replace(/-/g, '')
+      : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+    account.id = 'acc_' + rand;
+  }
+  if(!account.secret) throw new Error('Secret is required.');
+  if(!account.label) throw new Error('Account label is required.');
+  OTPAuth.Secret.fromBase32(account.secret);
+  return account;
+}
+
 async function getSyncSettings(){
   const result = await browser.storage.local.get(SYNC_SETTINGS_KEY);
   return Object.assign({}, defaultSyncSettings, result[SYNC_SETTINGS_KEY] || {});
@@ -641,6 +672,20 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           totalAccounts: accounts.length,
         });
         sendResponse({ success: true, account, sync, settings: await getSyncSettings() });
+        return;
+      }
+      case 'importAccountsFromJson': {
+        const source = Array.isArray(message.accounts) ? message.accounts : [];
+        if(!source.length) throw new Error('No accounts provided.');
+        const normalized = source.map(normalizeImportedAccountRecord);
+        const existing = await getLocalAccounts();
+        const merged = existing.concat(normalized);
+        await setLocalAccounts(merged);
+        await appendDebugInfo('importAccountsFromJson stored successfully', {
+          importedCount: normalized.length,
+          totalAccounts: merged.length,
+        });
+        sendResponse({ success: true, importedCount: normalized.length, totalAccounts: merged.length, settings: await getSyncSettings() });
         return;
       }
 

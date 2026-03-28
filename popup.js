@@ -80,8 +80,8 @@ const I18N = {
     exportUriLabel: 'otpauth:// URIs',
     importDrawerTitle: 'Import Accounts',
     importInputLabel: 'Paste otpauth:// URIs (one per line) or JSON',
-    importFileHint: 'Also supports JSON format exported by this extension.',
-    importFileBtn: 'Import from JSON File',
+    importFileHint: 'JSON file import opens in a new tab to avoid popup closing.',
+    openJsonImportTabBtn: 'Open JSON Import Tab',
     importBtn: 'Import',
     editDrawerTitle: 'Edit Account',
     editSaveBtn: 'Save Changes',
@@ -111,7 +111,7 @@ const I18N = {
     importSummary: 'Imported {ok} account(s){failPart}{dupPart}',
     importFailPart: ', failed {count}',
     importDupPart: ', duplicates warned {count}',
-    importedFromFile: 'Loaded import data from {filename}',
+    openJsonImportTabStatus: 'JSON import tab opened — continue there.',
     exportJsonEmpty: 'No accounts available to export.',
     exportJsonFilename: 'vault2fa-accounts-{timestamp}.json',
     nextCodeTitle: 'Next code',
@@ -182,8 +182,8 @@ const I18N = {
     exportUriLabel: 'otpauth:// URI',
     importDrawerTitle: '导入账号',
     importInputLabel: '粘贴 otpauth:// URI（每行一个）或 JSON',
-    importFileHint: '也支持本扩展导出的 JSON 格式。',
-    importFileBtn: '从 JSON 文件导入',
+    importFileHint: 'JSON 文件导入会在新标签页中进行，避免弹窗关闭。',
+    openJsonImportTabBtn: '打开 JSON 导入页',
     importBtn: '导入',
     editDrawerTitle: '编辑账号',
     editSaveBtn: '保存修改',
@@ -213,7 +213,7 @@ const I18N = {
     importSummary: '已导入 {ok} 个账号{failPart}{dupPart}',
     importFailPart: '，失败 {count} 个',
     importDupPart: '，重复提醒 {count} 个',
-    importedFromFile: '已从 {filename} 加载导入数据',
+    openJsonImportTabStatus: '已打开 JSON 导入页，请在新标签页继续。',
     exportJsonEmpty: '没有可导出的账号。',
     exportJsonFilename: 'vault2fa-账号-{timestamp}.json',
     nextCodeTitle: '下一个验证码',
@@ -231,7 +231,7 @@ const STATIC_TEXT_MAP = {
   hintAutofillPatterns: 'hintAutofillPatterns', editHintAutofillPatterns: 'hintAutofillPatterns',
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
-  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnImportFile: 'importFileBtn', btnDoImport: 'importBtn',
+  exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
@@ -1114,26 +1114,10 @@ async function applyImportRawText(rawText){
   }
 }
 
-byId('btnImportFile').addEventListener('click', () => {
+byId('btnOpenJsonImportTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
-  byId('importFileInput').click();
-});
-
-byId('importFileInput').addEventListener('change', async (event) => {
-  if(!guardVaultUnlocked()) return;
-  const file = event.target.files && event.target.files[0];
-  if(!file) return;
-  try {
-    const text = await file.text();
-    byId('importData').value = text;
-    toast(tFmt('importedFromFile', { filename: file.name }));
-  } catch(err){
-    const errEl = byId('importErr');
-    errEl.textContent = err.message;
-    errEl.style.display = 'block';
-  } finally {
-    event.target.value = '';
-  }
+  browser.tabs.create({ url: browser.runtime.getURL('json-import.html') });
+  toast(t('openJsonImportTabStatus'));
 });
 
 byId('btnDoImport').addEventListener('click', async () => {
