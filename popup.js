@@ -57,13 +57,13 @@ const I18N = {
     tabUri: 'URI',
     labelIssuer: 'Issuer / Service',
     labelAccount: 'Account / Email',
-    labelSecret: 'Secret Key (Base32)',
+    labelSecret: 'Secret Key',
+    labelSecretFormat: 'Secret Format',
     labelAutofillPatterns: 'Autofill Patterns',
     hintAutofillPatterns: 'Comma-separated. Supports * wildcard matching.',
     hintAutofillExample: 'Example: github.com, *.github.com',
     autofillMatchLabel: 'Matching',
     noAutofillRules: 'No autofill rules set',
-    hintManualEntry: 'Found under "Manual entry" in the service\'s 2FA setup.',
     labelType: 'Type',
     labelDigits: 'Digits',
     labelPeriod: 'Period',
@@ -119,6 +119,7 @@ const I18N = {
     clickToCopy: 'click to copy',
     unknown: 'Unknown',
     noLabel: '(no label)',
+    invalidSecretByFormat: 'Invalid secret for selected format.',
   },
   zh: {
     localOnly: '仅本地',
@@ -159,13 +160,13 @@ const I18N = {
     tabUri: 'URI',
     labelIssuer: '发行方 / 服务',
     labelAccount: '账号 / 邮箱',
-    labelSecret: '密钥（Base32）',
+    labelSecret: '密钥',
+    labelSecretFormat: '密钥格式',
     labelAutofillPatterns: '自动填充域名规则',
     hintAutofillPatterns: '使用英文逗号分隔，支持 * 通配符模糊匹配。',
     hintAutofillExample: '示例：github.com, *.github.com',
     autofillMatchLabel: '自动填充',
     noAutofillRules: '未设置自动填充规则',
-    hintManualEntry: '可在服务 2FA 设置中的“手动输入”处找到。',
     labelType: '类型',
     labelDigits: '位数',
     labelPeriod: '周期',
@@ -221,13 +222,14 @@ const I18N = {
     clickToCopy: '点击复制',
     unknown: '未知',
     noLabel: '（无名称）',
+    invalidSecretByFormat: '所选格式的密钥无效。',
   },
 };
 
 const STATIC_TEXT_MAP = {
   lockTitle: 'vaultLocked', lockSub: 'vaultLockSub', btnUnlock: 'unlockVault',
   emptyTitle: 'noAccountsYet', addDrawerTitle: 'addDrawerTitle', tabManualBtn: 'tabManual', tabQrBtn: 'tabQr', tabUriBtn: 'tabUri',
-  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', labelAutofillPatterns: 'labelAutofillPatterns', editLabelAutofillPatterns: 'labelAutofillPatterns', hintManualEntry: 'hintManualEntry',
+  labelIssuer: 'labelIssuer', labelAccount: 'labelAccount', labelSecret: 'labelSecret', labelSecretFormat: 'labelSecretFormat', labelAutofillPatterns: 'labelAutofillPatterns', editLabelAutofillPatterns: 'labelAutofillPatterns',
   hintAutofillPatterns: 'hintAutofillPatterns', editHintAutofillPatterns: 'hintAutofillPatterns',
   labelType: 'labelType', labelDigits: 'labelDigits', labelPeriod: 'labelPeriod', qrTabTitle: 'qrTabTitle', qrTabSub: 'qrTabSub',
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
@@ -251,6 +253,30 @@ function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[k
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
 }
+
+function parseSecretByFormat(secretRaw, format){
+  const input = String(secretRaw || '').trim();
+  const normalized = input.replace(/\s+/g, '');
+  switch(String(format || 'base32').toLowerCase()){
+    case 'base32':
+      return OTPAuth.Secret.fromBase32(normalized.toUpperCase());
+    case 'base64': {
+      const b64 = normalized.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - (b64.length % 4 || 4)) % 4);
+      const bytes = Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
+      return new OTPAuth.Secret({ buffer: bytes.buffer });
+    }
+    case 'hex':
+      return OTPAuth.Secret.fromHex(normalized);
+    case 'utf8':
+      return OTPAuth.Secret.fromUTF8(input);
+    case 'latin1':
+      return OTPAuth.Secret.fromLatin1(input);
+    default:
+      throw new Error('Unsupported secret format.');
+  }
+}
+
 function setMultilineText(el, text){
   if(!el) return;
   el.replaceChildren();
@@ -302,6 +328,17 @@ function applyStaticTranslations(){
   byId('search').placeholder = t('searchPlaceholder');
   byId('unlockPassphrase').placeholder = uiLanguage === 'zh' ? '口令' : 'Passphrase';
   byId('vaultPassphrase').placeholder = uiLanguage === 'zh' ? '至少 6 个字符' : 'At least 6 characters';
+  const secretFormatLabels = {
+    base32: 'Base32',
+    base64: 'Base64',
+    hex: 'Hex',
+    utf8: uiLanguage === 'zh' ? '字符串（UTF-8）' : 'String (UTF-8)',
+    latin1: uiLanguage === 'zh' ? '字符串（Latin-1）' : 'String (Latin-1)',
+  };
+  for(const [value, label] of Object.entries(secretFormatLabels)){
+    const opt = document.querySelector(`#fSecretFormat option[value="${value}"]`);
+    if(opt) opt.textContent = label;
+  }
   setMultilineText(byId('emptySub'), t('emptySub'));
 }
 function setLanguage(next){
@@ -784,6 +821,7 @@ function resetForm(){
   byId('addErr').style.display = 'none';
   byId('dupHint').style.display = 'none';
   byId('fType').value = 'totp';
+  byId('fSecretFormat').value = 'base32';
   byId('fDigits').value = '6';
   byId('fPeriod').value = '30';
   setQrStatus('', false);
@@ -1040,15 +1078,36 @@ byId('btnSave').addEventListener('click', async () => {
     } else {
       const secret = byId('fSecret').value.trim();
       const label = byId('fLabel').value.trim();
+      const secretFormat = byId('fSecretFormat').value;
       if(!secret) throw new Error(uiLanguage === 'zh' ? '密钥不能为空。' : 'Secret key is required.');
       if(!label) throw new Error(uiLanguage === 'zh' ? '账号名称不能为空。' : 'Account name is required.');
-      OTPAuth.Secret.fromBase32(secret.toUpperCase().replace(/\s+/g,''));
+      let parsedSecret;
+      try {
+        parsedSecret = parseSecretByFormat(secret, secretFormat);
+      } catch(e){
+        debugInfo('Popup manual secret parse failed', {
+          secretFormat,
+          secretLength: secret.length,
+          parseError: e && e.message ? e.message : String(e),
+          issuer: byId('fIssuer').value.trim() || label,
+          label,
+        });
+        throw new Error(t('invalidSecretByFormat'));
+      }
+      debugInfo('Popup manual secret parsed', {
+        secretFormat,
+        secretLength: secret.length,
+        normalizedBase32Length: parsedSecret.base32.length,
+        issuer: byId('fIssuer').value.trim() || label,
+        label,
+        type: byId('fType').value,
+      });
       acc = {
         id: nextAccountId(),
         type: byId('fType').value,
         issuer: byId('fIssuer').value.trim() || label,
         label,
-        secret: secret.toUpperCase().replace(/\s+/g,''),
+        secret: parsedSecret.base32,
         algorithm: 'SHA1',
         digits: parseInt(byId('fDigits').value, 10),
         period: parseInt(byId('fPeriod').value, 10),
@@ -1057,8 +1116,22 @@ byId('btnSave').addEventListener('click', async () => {
       };
     }
     const added = await pushAccount(acc);
+    debugInfo('Popup add account submit result', {
+      activeTab,
+      added: !!added,
+      accountType: acc && acc.type,
+      issuer: acc && acc.issuer,
+      label: acc && acc.label,
+    });
     if(added){ closeD('drawAdd'); resetForm(); toast(uiLanguage === 'zh' ? '账号已添加！' : 'Account added!'); }
-  } catch(e){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  } catch(e){
+    debugInfo('Popup add account failed', {
+      activeTab,
+      error: e && e.message ? e.message : String(e),
+    });
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('btnExport').addEventListener('click', () => {

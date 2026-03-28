@@ -88,9 +88,18 @@
         <input class="fi" id="fLabel" type="text" placeholder="alice@example.com" autocomplete="off" />
       </div>
       <div class="fg">
-        <label class="fl" id="labelSecret">Secret Key (Base32)</label>
+        <label class="fl" id="labelSecret">Secret Key</label>
         <input class="fi mono" id="fSecret" type="text" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" />
-        <div class="fhint" id="hintManualEntry">Found under "Manual entry" in the service's 2FA setup.</div>
+      </div>
+      <div class="fg">
+        <label class="fl" id="labelSecretFormat">Secret Format</label>
+        <select class="fs" id="fSecretFormat">
+          <option value="base32" id="secretFormatBase32">Base32</option>
+          <option value="base64" id="secretFormatBase64">Base64</option>
+          <option value="hex" id="secretFormatHex">Hex</option>
+          <option value="utf8" id="secretFormatUtf8">String (UTF-8)</option>
+          <option value="latin1" id="secretFormatLatin1">String (Latin-1)</option>
+        </select>
       </div>
 
       <div class="fg">
