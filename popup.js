@@ -18,8 +18,6 @@ const debugTapTimes = [];
 const DEBUG_TAP_WINDOW_MS = 1600;
 let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
-let displayCodeSignature = '';
-let displayCodeNextRefreshAt = 0;
 
 const I18N = {
   en: {
@@ -490,34 +488,32 @@ function updateVisibleCodes(){
 async function refreshDisplayCodes(){
   if(displayCodeRefreshInFlight) return;
   const ids = visibleAccounts.map(acc => String(acc.id || '')).filter(Boolean);
-  const signature = visibleAccounts.map(acc => {
-    if(acc.type === 'hotp') return `${acc.id}:hotp:${Number(acc.counter || 0)}`;
-    return `${acc.id}:totp:${Number(acc.period || 30)}:${Number(acc.digits || 6)}`;
-  }).join('|');
   const now = Date.now();
-  const shouldFetch = signature !== displayCodeSignature || !ids.length || now >= displayCodeNextRefreshAt;
-  if(!ids.length){
-    displayCodesById = new Map();
-    displayCodeSignature = '';
-    displayCodeNextRefreshAt = 0;
-    return;
-  }
-  if(!shouldFetch) return;
+  if(!ids.length) return;
+  const visibleById = new Map(visibleAccounts.map(acc => [String(acc.id || ''), acc]));
+  const idsToFetch = ids.filter((id) => {
+    const cached = displayCodesById.get(id);
+    if(!cached) return true;
+    if(cached.type === 'hotp'){
+      const acc = visibleById.get(id);
+      const cachedCounter = Number(cached.counterSnapshot || 0);
+      const currentCounter = Number((acc && acc.counter) || 0);
+      return cachedCounter !== currentCounter;
+    }
+    const nextRefreshAt = Number(cached.nextRefreshAt || 0);
+    return !Number.isFinite(nextRefreshAt) || now >= nextRefreshAt;
+  });
+  if(!idsToFetch.length) return;
   displayCodeRefreshInFlight = true;
   try {
-    const resp = await sendMessage({ action:'generateCodesForDisplay', ids });
-    const next = new Map();
-    let nextRefreshAt = Number.POSITIVE_INFINITY;
+    const resp = await sendMessage({ action:'generateCodesForDisplay', ids: idsToFetch });
     for(const item of (resp.items || [])){
-      next.set(String(item.id || ''), item);
-      if(item && item.nextRefreshAt != null){
-        const ts = Number(item.nextRefreshAt);
-        if(Number.isFinite(ts)) nextRefreshAt = Math.min(nextRefreshAt, ts);
-      }
+      const id = String(item.id || '');
+      const acc = visibleById.get(id);
+      displayCodesById.set(id, Object.assign({}, item, {
+        counterSnapshot: item.type === 'hotp' ? Number((acc && acc.counter) || 0) : undefined,
+      }));
     }
-    displayCodesById = next;
-    displayCodeSignature = signature;
-    displayCodeNextRefreshAt = Number.isFinite(nextRefreshAt) ? nextRefreshAt : Number.POSITIVE_INFINITY;
     updateVisibleCodes();
   } finally {
     displayCodeRefreshInFlight = false;
