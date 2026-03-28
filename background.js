@@ -86,6 +86,26 @@ function matchHostname(hostname, pattern){
   }
   return false;
 }
+function buildAutofillCodeInfo(account){
+  const type = account && account.type === 'hotp' ? 'hotp' : 'totp';
+  const digits = Math.max(6, Number((account && account.digits) || 6));
+  const algorithm = String((account && account.algorithm) || 'SHA1');
+  const secret = String((account && account.secret) || '').trim();
+  if(!secret) throw new Error('Secret is required.');
+  const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
+  const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
+  if(type === 'hotp'){
+    const counter = Math.max(0, Number((account && account.counter) || 0));
+    const code = OTPAuth.HOTP.generate({ secret: otpSecret, algorithm, digits, counter });
+    return { code, type, digits, algorithm, counter, period: null, remaining: null };
+  }
+  const period = Math.max(1, Number((account && account.period) || 30));
+  const otp = new OTPAuth.TOTP({ secret: otpSecret, algorithm, digits, period });
+  const code = otp.generate();
+  const nowSeconds = Date.now() / 1000;
+  const remaining = Math.max(0, Math.ceil(period - (nowSeconds % period)) % period || period);
+  return { code, type, digits, algorithm, counter: null, period, remaining };
+}
 
 async function getSyncSettings(){
   const result = await browser.storage.local.get(SYNC_SETTINGS_KEY);
@@ -627,19 +647,56 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'getAccountsForAutofill': {
         const hostname = String(message.hostname || '').trim().toLowerCase();
+        let accounts = [];
+        try {
+          accounts = await getLocalAccounts();
+        } catch (err) {
+          if(err && err.code === 'NEED_UNLOCK'){
+            sendResponse({ success: true, accounts: [], locked: true });
+            return;
+          }
+          throw err;
+        }
+        const matches = accounts
+          .filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern)))
+          .map(account => {
+            const codeInfo = buildAutofillCodeInfo(account);
+            return {
+              id: account.id,
+              issuer: account.issuer || '',
+              label: account.label || '',
+              type: account.type === 'hotp' ? 'hotp' : 'totp',
+              digits: Number(account.digits || 6),
+              period: account.period != null ? Number(account.period) : undefined,
+              counter: account.counter != null ? Number(account.counter) : undefined,
+              autofillPatterns: getAccountPatterns(account),
+              currentCode: codeInfo.code,
+              remaining: codeInfo.remaining,
+              codePeriod: codeInfo.period,
+            };
+          });
+        sendResponse({ success: true, accounts: matches, locked: false });
+        return;
+      }
+      case 'generateCodeForAutofillById': {
+        const id = String(message.id || '');
+        if(!id) throw new Error('Account ID is required.');
+        const hostname = String(message.hostname || '').trim().toLowerCase();
         const accounts = await getLocalAccounts();
-        const matches = accounts.filter(account => getAccountPatterns(account).some(pattern => matchHostname(hostname, pattern))).map(account => ({
-          id: account.id,
-          issuer: account.issuer || '',
-          label: account.label || '',
-          type: account.type === 'hotp' ? 'hotp' : 'totp',
-          digits: Number(account.digits || 6),
-          period: account.period != null ? Number(account.period) : undefined,
-          counter: account.counter != null ? Number(account.counter) : undefined,
-          secret: String(account.secret || ''),
-          autofillPatterns: getAccountPatterns(account),
-        }));
-        sendResponse({ success: true, accounts: matches });
+        const account = accounts.find(item => String(item.id) === id);
+        if(!account) throw new Error('Account not found.');
+        const patterns = getAccountPatterns(account);
+        if(hostname && patterns.length && !patterns.some(pattern => matchHostname(hostname, pattern))){
+          throw new Error('Account does not match this host.');
+        }
+        const info = buildAutofillCodeInfo(account);
+        sendResponse({
+          success: true,
+          id,
+          code: info.code,
+          remaining: info.remaining,
+          period: info.period,
+        });
         return;
       }
       case 'generateCodeForAutofill': {
