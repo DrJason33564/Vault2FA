@@ -16,6 +16,8 @@ let uiTheme = 'auto';
 let editingAccountId = null;
 const debugTapTimes = [];
 const DEBUG_TAP_WINDOW_MS = 1600;
+let displayCodesById = new Map();
+let displayCodeRefreshInFlight = false;
 
 const I18N = {
   en: {
@@ -412,35 +414,6 @@ async function sendMessage(payload){
   return resp;
 }
 
-function getToken(acc){
-  const period = acc.period || 30;
-  try {
-    if(acc.type === 'hotp'){
-      const otp = new OTPAuth.HOTP({
-        algorithm: acc.algorithm || 'SHA1',
-        digits: acc.digits || 6,
-        counter: acc.counter || 0,
-        secret: OTPAuth.Secret.fromBase32(acc.secret.toUpperCase().replace(/\s+/g,'')),
-      });
-      const code = OTPAuth.HOTP.generate({
-        secret: otp.secret, algorithm: otp.algorithm, digits: otp.digits, counter: acc.counter || 0,
-      });
-      return { code, remaining: null, period: null };
-    }
-    const otp = new OTPAuth.TOTP({
-      algorithm: acc.algorithm || 'SHA1',
-      digits: acc.digits || 6,
-      period,
-      secret: OTPAuth.Secret.fromBase32(acc.secret.toUpperCase().replace(/\s+/g,'')),
-    });
-    const code = otp.generate();
-    const remaining = Math.max(0, Math.ceil(period - ((Date.now() / 1000) % period)) % period || period);
-    return { code, remaining, period };
-  } catch(e) {
-    return { code:'------', remaining: acc.type!=='hotp' ? (acc.period||30) : null, period: acc.type!=='hotp' ? (acc.period||30) : null };
-  }
-}
-
 function setNodeState(el, baseClass, stateClass){
   if(!el) return;
   const value = (baseClass + (stateClass ? ' ' + stateClass : '')).trim();
@@ -453,7 +426,10 @@ function setNodeState(el, baseClass, stateClass){
 
 function startTicker(){
   if(globalTick !== null) return;
-  globalTick = setInterval(updateVisibleCodes, 1000);
+  globalTick = setInterval(() => {
+    updateVisibleCodes();
+    refreshDisplayCodes().catch(() => {});
+  }, 1000);
 }
 
 function isVaultLocked(){
@@ -469,6 +445,25 @@ function stopTicker(){
   if(globalTick !== null){ clearInterval(globalTick); globalTick = null; }
 }
 
+function getDisplayCode(acc){
+  const info = displayCodesById.get(String(acc.id || ''));
+  if(info){
+    if(info.type === 'hotp') return info;
+    const period = Math.max(1, Number(info.period || acc.period || 30));
+    const generatedAt = Number(info.generatedAt || 0);
+    const baseRemaining = Math.max(1, Number(info.baseRemaining || info.remaining || period));
+    if(!generatedAt){
+      return Object.assign({}, info, { remaining: Math.max(0, baseRemaining) });
+    }
+    const elapsed = Math.max(0, Math.floor((Date.now() - generatedAt) / 1000));
+    const remaining = Math.max(0, baseRemaining - elapsed);
+    return Object.assign({}, info, { remaining, period });
+  }
+  if(acc.type === 'hotp') return { code: '------', remaining: null, period: null };
+  const period = Math.max(1, Number(acc.period || 30));
+  return { code: '------', remaining: period, period };
+}
+
 function updateVisibleCodes(){
   for(const acc of visibleAccounts){
     if(acc.type === 'hotp') continue;
@@ -477,7 +472,7 @@ function updateVisibleCodes(){
     if(!codeEl) continue;
     const ringEl = byId('rfg-' + id);
     const textEl = byId('rtxt-' + id);
-    const { code, remaining, period } = getToken(acc);
+    const { code, remaining, period } = getDisplayCode(acc);
     const level = remaining <= 5 ? 'urgent' : remaining <= 10 ? 'warn' : '';
     const pretty = fmt(code, acc.digits || 6);
     if(codeEl.textContent !== pretty) codeEl.textContent = pretty;
@@ -490,8 +485,43 @@ function updateVisibleCodes(){
   }
 }
 
+async function refreshDisplayCodes(){
+  if(displayCodeRefreshInFlight) return;
+  const ids = visibleAccounts.map(acc => String(acc.id || '')).filter(Boolean);
+  const now = Date.now();
+  if(!ids.length) return;
+  const visibleById = new Map(visibleAccounts.map(acc => [String(acc.id || ''), acc]));
+  const idsToFetch = ids.filter((id) => {
+    const cached = displayCodesById.get(id);
+    if(!cached) return true;
+    if(cached.type === 'hotp'){
+      const acc = visibleById.get(id);
+      const cachedCounter = Number(cached.counterSnapshot || 0);
+      const currentCounter = Number((acc && acc.counter) || 0);
+      return cachedCounter !== currentCounter;
+    }
+    const nextRefreshAt = Number(cached.nextRefreshAt || 0);
+    return !Number.isFinite(nextRefreshAt) || now >= nextRefreshAt;
+  });
+  if(!idsToFetch.length) return;
+  displayCodeRefreshInFlight = true;
+  try {
+    const resp = await sendMessage({ action:'generateCodesForDisplay', ids: idsToFetch });
+    for(const item of (resp.items || [])){
+      const id = String(item.id || '');
+      const acc = visibleById.get(id);
+      displayCodesById.set(id, Object.assign({}, item, {
+        counterSnapshot: item.type === 'hotp' ? Number((acc && acc.counter) || 0) : undefined,
+      }));
+    }
+    updateVisibleCodes();
+  } finally {
+    displayCodeRefreshInFlight = false;
+  }
+}
+
 function buildCard(acc){
-  const { code, remaining, period } = getToken(acc);
+  const { code, remaining, period } = getDisplayCode(acc);
   const color = pal(acc.issuer || '');
   const level =
     remaining !== null && remaining <= 5 ? 'urgent' :
@@ -655,7 +685,7 @@ empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   for(const acc of visibleAccounts) frag.appendChild(buildCard(acc));
   list.replaceChildren(empty, frag);
   if(visibleAccounts.some(a => a.type !== 'hotp')) startTicker(); else stopTicker();
-  updateVisibleCodes();
+  refreshDisplayCodes().catch(() => {});
 }
 
 function toast(msg){

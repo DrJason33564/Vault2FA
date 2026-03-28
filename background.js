@@ -107,6 +107,41 @@ function buildAutofillCodeInfo(account){
   return { code, type, digits, algorithm, counter: null, period, remaining };
 }
 
+function buildDisplayCodeInfo(account){
+  const id = String(account && account.id || '');
+  const generatedAt = Date.now();
+  try {
+    const info = buildAutofillCodeInfo(account);
+    return {
+      id,
+      code: info.code,
+      baseRemaining: info.remaining,
+      remaining: info.remaining,
+      period: info.period,
+      type: info.type,
+      digits: info.digits,
+      generatedAt,
+      nextRefreshAt: info.type === 'totp' && info.remaining != null
+        ? generatedAt + Math.max(1, Number(info.remaining || 1)) * 1000
+        : null,
+    };
+  } catch (_) {
+    const isHotp = account && account.type === 'hotp';
+    const fallbackPeriod = Math.max(1, Number((account && account.period) || 30));
+    return {
+      id,
+      code: '------',
+      baseRemaining: isHotp ? null : fallbackPeriod,
+      remaining: isHotp ? null : fallbackPeriod,
+      period: isHotp ? null : fallbackPeriod,
+      type: isHotp ? 'hotp' : 'totp',
+      digits: Math.max(6, Number((account && account.digits) || 6)),
+      generatedAt,
+      nextRefreshAt: isHotp ? null : generatedAt + fallbackPeriod * 1000,
+    };
+  }
+}
+
 function normalizeImportedAccountRecord(incoming){
   const type = incoming && incoming.type === 'hotp' ? 'hotp' : 'totp';
   const secret = String(incoming && incoming.secret || '').toUpperCase().replace(/\s+/g, '');
@@ -742,6 +777,25 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           remaining: info.remaining,
           period: info.period,
         });
+        return;
+      }
+      case 'generateCodesForDisplay': {
+        const ids = Array.isArray(message.ids) ? message.ids.map(v => String(v || '')).filter(Boolean) : [];
+        if(!ids.length){
+          sendResponse({ success: true, items: [] });
+          return;
+        }
+        const idSet = new Set(ids);
+        const accounts = await getLocalAccounts();
+        const byId = new Map(accounts.map(acc => [String(acc.id || ''), acc]));
+        const items = [];
+        for(const id of ids){
+          if(!idSet.has(id)) continue;
+          const account = byId.get(id);
+          if(!account) continue;
+          items.push(buildDisplayCodeInfo(account));
+        }
+        sendResponse({ success: true, items });
         return;
       }
       case 'generateCodeForAutofill': {
