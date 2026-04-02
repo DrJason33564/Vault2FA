@@ -1384,17 +1384,20 @@ byId('btnApplyVault').addEventListener('click', async () => {
 byId('btnLockVault').addEventListener('click', async () => {
   const errEl = byId('vaultErr'); errEl.style.display = 'none';
   try {
-    const lockResp = await sendMessage({ action:'lockVault' });
-    if(!lockResp || lockResp.success === false){
-      toast(t('needEncryptBeforeLock'));
-      return;
-    }
+    await sendMessage({ action:'lockVault' });
     await refreshVaultStatus();
     ['drawAdd','drawImport','drawExport','drawSync','drawEdit'].forEach(closeD);
     accounts = [];
     render();
     toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');
-  } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
+  } catch(err){
+    if(err && err.code === 'NEED_ENCRYPTION_FIRST'){
+      toast(t('needEncryptBeforeLock'));
+      return;
+    }
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('debugEnabled').addEventListener('change', async () => {
