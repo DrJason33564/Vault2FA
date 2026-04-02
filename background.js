@@ -32,7 +32,7 @@ const KDF_ALGO = 'PBKDF2-HMAC-SHA256';
 const KDF_ITERATIONS = 250000;
 const KDF_KEY_LENGTH = 256;
 const CIPHER_ALGO = 'AES-GCM';
-const ENCRYPTED_PAYLOAD_VERSION = 2;
+const ENCRYPTED_PAYLOAD_VERSION = 1;
 
 let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
@@ -317,10 +317,21 @@ function resolvePayloadSalt(payload, fallbackSalt){
   }
   return fallbackSalt || null;
 }
+function hasVersionedPayloadHeader(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return (
+    payload.kdf === KDF_ALGO &&
+    Number(payload.iterations) === KDF_ITERATIONS &&
+    typeof payload.salt === 'string' && !!payload.salt &&
+    Number(payload.keyLength) === KDF_KEY_LENGTH &&
+    payload.cipher === CIPHER_ALGO &&
+    Number(payload.version) === ENCRYPTED_PAYLOAD_VERSION &&
+    typeof payload.iv === 'string' && !!payload.iv
+  );
+}
 function isLegacyEncryptedPayload(payload){
   if(!payload || typeof payload !== 'object') return false;
-  const version = Number(payload.version) || 1;
-  return version < ENCRYPTED_PAYLOAD_VERSION;
+  return !hasVersionedPayloadHeader(payload);
 }
 
 async function encryptJson(value, key, saltB64){
@@ -343,20 +354,11 @@ async function decryptJson(payload, key, expectedSalt){
   if(!payload || typeof payload !== 'object'){
     throw new Error('Encrypted payload is invalid.');
   }
-  const version = Number(payload.version) || 1;
-  if(version >= 2){
-    if(payload.cipher && payload.cipher !== CIPHER_ALGO){
-      throw new Error('Unsupported cipher algorithm.');
-    }
-    if(payload.kdf && payload.kdf !== KDF_ALGO){
-      throw new Error('Unsupported KDF algorithm.');
-    }
-    if(payload.iterations && Number(payload.iterations) !== KDF_ITERATIONS){
-      throw new Error('Unsupported KDF iterations.');
-    }
-    if(payload.keyLength && Number(payload.keyLength) !== KDF_KEY_LENGTH){
-      throw new Error('Unsupported KDF key length.');
-    }
+  if(hasVersionedPayloadHeader(payload)){
+    if(payload.cipher !== CIPHER_ALGO) throw new Error('Unsupported cipher algorithm.');
+    if(payload.kdf !== KDF_ALGO) throw new Error('Unsupported KDF algorithm.');
+    if(Number(payload.iterations) !== KDF_ITERATIONS) throw new Error('Unsupported KDF iterations.');
+    if(Number(payload.keyLength) !== KDF_KEY_LENGTH) throw new Error('Unsupported KDF key length.');
   }
   const payloadSalt = resolvePayloadSalt(payload, null);
   if(expectedSalt && payloadSalt && expectedSalt !== payloadSalt){
@@ -399,7 +401,7 @@ async function clearEncryptedPayload(){
 async function requireUnlockedCrypto(){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled) return null;
-  if(!unlockedCrypto || unlockedCrypto.salt !== vault.salt || !unlockedCrypto.key){
+  if(!unlockedCrypto || !unlockedCrypto.salt || !unlockedCrypto.key){
     const err = new Error('Vault is locked. Unlock it first.');
     err.code = 'NEED_UNLOCK';
     throw err;
@@ -613,10 +615,11 @@ async function unlockVault(passphrase){
     decryptedAccounts = await decryptJson(payload, key, activeSalt);
     if(isLegacyEncryptedPayload(payload)){
       await setEncryptedPayload(await encryptJson(decryptedAccounts, key, activeSalt));
+      await setVaultSettings({ salt: null });
     }
   }
   unlockedCrypto = { salt: activeSalt, key };
-  await setVaultSettings({ lastUnlockedAt: Date.now(), salt: activeSalt });
+  await setVaultSettings({ lastUnlockedAt: Date.now() });
   return { success: true, unlocked: true, encryptionEnabled: true };
 }
 
@@ -635,7 +638,7 @@ async function enableEncryption(passphrase){
   const payload = await encryptJson(accounts, key, salt);
   await setEncryptedPayload(payload);
   await clearPlainAccounts();
-  await setVaultSettings({ encryptionEnabled: true, salt, lastUnlockedAt: Date.now() });
+  await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: Date.now() });
   return { success: true, encryptionEnabled: true, unlocked: true };
 }
 
@@ -660,7 +663,7 @@ async function getVaultStatus(){
   return {
     success: true,
     encryptionEnabled: !!vault.encryptionEnabled,
-    unlocked: !vault.encryptionEnabled || !!(unlockedCrypto && unlockedCrypto.salt === vault.salt),
+    unlocked: !vault.encryptionEnabled || !!(unlockedCrypto && unlockedCrypto.salt && unlockedCrypto.key),
     lastUnlockedAt: vault.lastUnlockedAt || null,
   };
 }
