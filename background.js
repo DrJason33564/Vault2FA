@@ -329,6 +329,38 @@ function hasVersionedPayloadHeader(payload){
     typeof payload.iv === 'string' && !!payload.iv
   );
 }
+function hasPayloadHeaderFields(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return (
+    typeof payload.kdf === 'string' &&
+    Number.isFinite(Number(payload.iterations)) &&
+    typeof payload.salt === 'string' && !!payload.salt &&
+    Number.isFinite(Number(payload.keyLength)) &&
+    typeof payload.cipher === 'string' &&
+    Number.isFinite(Number(payload.version)) &&
+    typeof payload.iv === 'string' && !!payload.iv
+  );
+}
+function getPayloadHeaderForLog(payload){
+  if(!payload || typeof payload !== 'object') return null;
+  const hasHeader = hasPayloadHeaderFields(payload) || hasVersionedPayloadHeader(payload);
+  if(!hasHeader) return null;
+  return {
+    kdf: payload.kdf,
+    iterations: Number(payload.iterations),
+    salt: payload.salt,
+    keyLength: Number(payload.keyLength),
+    cipher: payload.cipher,
+    version: Number(payload.version),
+    iv: payload.iv,
+  };
+}
+function getMigrationReason(payload){
+  if(!payload || typeof payload !== 'object') return null;
+  if(!hasPayloadHeaderFields(payload)) return 'legacy_without_header';
+  if(Number(payload.version) < ENCRYPTED_PAYLOAD_VERSION) return 'header_version_upgrade';
+  return null;
+}
 function isLegacyEncryptedPayload(payload){
   if(!payload || typeof payload !== 'object') return false;
   return !hasVersionedPayloadHeader(payload);
@@ -429,6 +461,11 @@ async function setLocalAccounts(accounts){
   const salt = state.salt || vault.salt;
   const payload = await encryptJson(list, state.key, salt);
   await setEncryptedPayload(payload);
+  await appendDebugInfo('Vault payload encrypted and stored', {
+    trigger: 'setLocalAccounts',
+    accountCount: list.length,
+    header: getPayloadHeaderForLog(payload),
+  });
 }
 
 async function uploadToSync(accounts, settings){
@@ -613,9 +650,21 @@ async function unlockVault(passphrase){
   let decryptedAccounts = null;
   if(payload){
     decryptedAccounts = await decryptJson(payload, key, activeSalt);
-    if(isLegacyEncryptedPayload(payload)){
-      await setEncryptedPayload(await encryptJson(decryptedAccounts, key, activeSalt));
+    const migrationReason = getMigrationReason(payload);
+    if(migrationReason){
+      const migratedPayload = await encryptJson(decryptedAccounts, key, activeSalt);
+      await setEncryptedPayload(migratedPayload);
       await setVaultSettings({ salt: null });
+      await appendDebugInfo('Vault payload migrated to latest header', {
+        migrationReason,
+        fromHeader: getPayloadHeaderForLog(payload),
+        toHeader: getPayloadHeaderForLog(migratedPayload),
+        accountCount: Array.isArray(decryptedAccounts) ? decryptedAccounts.length : 0,
+      });
+    } else if(isLegacyEncryptedPayload(payload)){
+      await appendDebugInfo('Vault payload legacy detected but not migrated', {
+        note: 'legacy payload does not match supported migration paths',
+      });
     }
   }
   unlockedCrypto = { salt: activeSalt, key };
@@ -637,6 +686,12 @@ async function enableEncryption(passphrase){
   unlockedCrypto = { salt, key };
   const payload = await encryptJson(accounts, key, salt);
   await setEncryptedPayload(payload);
+  await appendDebugInfo('Vault encryption enabled and payload stored', {
+    trigger: 'enableEncryption',
+    accountCount: accounts.length,
+    header: getPayloadHeaderForLog(payload),
+    migratedFromPlain: true,
+  });
   await clearPlainAccounts();
   await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: Date.now() });
   return { success: true, encryptionEnabled: true, unlocked: true };
