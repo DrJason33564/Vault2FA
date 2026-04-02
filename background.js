@@ -723,9 +723,19 @@ async function getVaultStatus(){
   };
 }
 
-function lockVault(){
+async function lockVault(){
+  const vault = await getVaultSettings();
+  if(!vault.encryptionEnabled){
+    return {
+      success: false,
+      code: 'NEED_ENCRYPTION_FIRST',
+      error: 'You need to encrypt the vault first.',
+      unlocked: true,
+      encryptionEnabled: false,
+    };
+  }
   unlockedCrypto = null;
-  return { success: true, unlocked: false };
+  return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -970,7 +980,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'lockVault': {
-        sendResponse(lockVault());
+        sendResponse(await lockVault());
         return;
       }
       case 'enableEncryption': {

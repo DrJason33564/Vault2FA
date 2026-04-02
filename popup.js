@@ -97,6 +97,7 @@ const I18N = {
     applyVaultBtn: 'Apply Security Setting',
     lockVaultBtn: 'Lock Vault Now',
     vaultLockedPill: 'Locked',
+    needEncryptBeforeLock: 'You need to encrypt the vault first.',
     themeToggleTitle: 'Toggle light/dark theme',
     themeLight: 'Light mode',
     themeDark: 'Dark mode',
@@ -200,6 +201,7 @@ const I18N = {
     applyVaultBtn: '应用安全设置',
     lockVaultBtn: '立即锁定保险库',
     vaultLockedPill: '已锁定',
+    needEncryptBeforeLock: '你需要先加密密码库',
     themeToggleTitle: '切换深浅色主题',
     themeLight: '浅色模式',
     themeDark: '深色模式',
@@ -1382,7 +1384,11 @@ byId('btnApplyVault').addEventListener('click', async () => {
 byId('btnLockVault').addEventListener('click', async () => {
   const errEl = byId('vaultErr'); errEl.style.display = 'none';
   try {
-    await sendMessage({ action:'lockVault' });
+    const lockResp = await sendMessage({ action:'lockVault' });
+    if(!lockResp || lockResp.success === false){
+      toast(t('needEncryptBeforeLock'));
+      return;
+    }
     await refreshVaultStatus();
     ['drawAdd','drawImport','drawExport','drawSync','drawEdit'].forEach(closeD);
     accounts = [];
