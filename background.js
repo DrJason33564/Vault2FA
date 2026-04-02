@@ -28,8 +28,13 @@ const defaultDebugSettings = {
 const SYNC_MAX_ITEM_BYTES = 8192;
 const SYNC_SAFE_ITEM_BYTES = 7000;
 const SYNC_MAX_TOTAL_BYTES = 102400;
+const KDF_ALGO = 'PBKDF2-HMAC-SHA256';
+const KDF_ITERATIONS = 250000;
+const KDF_KEY_LENGTH = 256;
+const CIPHER_ALGO = 'AES-GCM';
+const ENCRYPTED_PAYLOAD_VERSION = 1;
 
-let unlockedCrypto = null; // { passphrase, salt, key }
+let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
 const AUTO_UPLOAD_TICK_MS = 60 * 1000;
 
@@ -298,27 +303,101 @@ async function deriveKey(passphrase, saltB64){
   const salt = bytesFromB64(saltB64);
   const baseKey = await crypto.subtle.importKey('raw', enc(passphrase), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: KDF_ITERATIONS, hash: 'SHA-256' },
     baseKey,
-    { name: 'AES-GCM', length: 256 },
+    { name: CIPHER_ALGO, length: KDF_KEY_LENGTH },
     false,
     ['encrypt', 'decrypt']
   );
 }
 
-async function encryptJson(value, key){
-  const iv = randomBytes(12);
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc(JSON.stringify(value)));
+function resolvePayloadSalt(payload, fallbackSalt){
+  if(payload && typeof payload === 'object' && typeof payload.salt === 'string' && payload.salt){
+    return payload.salt;
+  }
+  return fallbackSalt || null;
+}
+function hasVersionedPayloadHeader(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return (
+    payload.kdf === KDF_ALGO &&
+    Number(payload.iterations) === KDF_ITERATIONS &&
+    typeof payload.salt === 'string' && !!payload.salt &&
+    Number(payload.keyLength) === KDF_KEY_LENGTH &&
+    payload.cipher === CIPHER_ALGO &&
+    Number(payload.version) === ENCRYPTED_PAYLOAD_VERSION &&
+    typeof payload.iv === 'string' && !!payload.iv
+  );
+}
+function hasPayloadHeaderFields(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return (
+    typeof payload.kdf === 'string' &&
+    Number.isFinite(Number(payload.iterations)) &&
+    typeof payload.salt === 'string' && !!payload.salt &&
+    Number.isFinite(Number(payload.keyLength)) &&
+    typeof payload.cipher === 'string' &&
+    Number.isFinite(Number(payload.version)) &&
+    typeof payload.iv === 'string' && !!payload.iv
+  );
+}
+function getPayloadHeaderForLog(payload){
+  if(!payload || typeof payload !== 'object') return null;
+  const hasHeader = hasPayloadHeaderFields(payload) || hasVersionedPayloadHeader(payload);
+  if(!hasHeader) return null;
   return {
-    version: 1,
+    kdf: payload.kdf,
+    iterations: Number(payload.iterations),
+    salt: payload.salt,
+    keyLength: Number(payload.keyLength),
+    cipher: payload.cipher,
+    version: Number(payload.version),
+    iv: payload.iv,
+  };
+}
+function getMigrationReason(payload){
+  if(!payload || typeof payload !== 'object') return null;
+  if(!hasPayloadHeaderFields(payload)) return 'legacy_without_header';
+  if(Number(payload.version) < ENCRYPTED_PAYLOAD_VERSION) return 'header_version_upgrade';
+  return null;
+}
+function isLegacyEncryptedPayload(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return !hasVersionedPayloadHeader(payload);
+}
+
+async function encryptJson(value, key, saltB64){
+  if(!saltB64) throw new Error('Missing KDF salt for encryption.');
+  const iv = randomBytes(12);
+  const cipher = await crypto.subtle.encrypt({ name: CIPHER_ALGO, iv }, key, enc(JSON.stringify(value)));
+  return {
+    kdf: KDF_ALGO,
+    iterations: KDF_ITERATIONS,
+    salt: saltB64,
+    keyLength: KDF_KEY_LENGTH,
+    cipher: CIPHER_ALGO,
+    version: ENCRYPTED_PAYLOAD_VERSION,
     iv: b64FromBytes(iv),
     data: b64FromBytes(new Uint8Array(cipher)),
   };
 }
 
-async function decryptJson(payload, key){
+async function decryptJson(payload, key, expectedSalt){
+  if(!payload || typeof payload !== 'object'){
+    throw new Error('Encrypted payload is invalid.');
+  }
+  if(hasVersionedPayloadHeader(payload)){
+    if(payload.cipher !== CIPHER_ALGO) throw new Error('Unsupported cipher algorithm.');
+    if(payload.kdf !== KDF_ALGO) throw new Error('Unsupported KDF algorithm.');
+    if(Number(payload.iterations) !== KDF_ITERATIONS) throw new Error('Unsupported KDF iterations.');
+    if(Number(payload.keyLength) !== KDF_KEY_LENGTH) throw new Error('Unsupported KDF key length.');
+  }
+  const payloadSalt = resolvePayloadSalt(payload, null);
+  if(expectedSalt && payloadSalt && expectedSalt !== payloadSalt){
+    throw new Error('Vault salt mismatch.');
+  }
   const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: bytesFromB64(payload.iv) },
+    { name: CIPHER_ALGO, iv: bytesFromB64(payload.iv) },
     key,
     bytesFromB64(payload.data)
   );
@@ -354,7 +433,7 @@ async function clearEncryptedPayload(){
 async function requireUnlockedCrypto(){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled) return null;
-  if(!unlockedCrypto || unlockedCrypto.salt !== vault.salt || !unlockedCrypto.key){
+  if(!unlockedCrypto || !unlockedCrypto.salt || !unlockedCrypto.key){
     const err = new Error('Vault is locked. Unlock it first.');
     err.code = 'NEED_UNLOCK';
     throw err;
@@ -368,7 +447,7 @@ async function getLocalAccounts(){
   const state = await requireUnlockedCrypto();
   const payload = await getEncryptedPayload();
   if(!payload) return [];
-  return decryptJson(payload, state.key);
+  return decryptJson(payload, state.key, state.salt);
 }
 
 async function setLocalAccounts(accounts){
@@ -379,8 +458,14 @@ async function setLocalAccounts(accounts){
     return;
   }
   const state = await requireUnlockedCrypto();
-  const payload = await encryptJson(list, state.key);
+  const salt = state.salt || vault.salt;
+  const payload = await encryptJson(list, state.key, salt);
   await setEncryptedPayload(payload);
+  await appendDebugInfo('Vault payload encrypted and stored', {
+    trigger: 'setLocalAccounts',
+    accountCount: list.length,
+    header: getPayloadHeaderForLog(payload),
+  });
 }
 
 async function uploadToSync(accounts, settings){
@@ -558,12 +643,31 @@ async function unlockVault(passphrase){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled) return { success: true, unlocked: true, encryptionEnabled: false };
   if(!passphrase) throw new Error('Passphrase is required.');
-  const key = await deriveKey(passphrase, vault.salt);
   const payload = await getEncryptedPayload();
+  const activeSalt = resolvePayloadSalt(payload, vault.salt);
+  if(!activeSalt) throw new Error('Vault salt is missing.');
+  const key = await deriveKey(passphrase, activeSalt);
+  let decryptedAccounts = null;
   if(payload){
-    await decryptJson(payload, key);
+    decryptedAccounts = await decryptJson(payload, key, activeSalt);
+    const migrationReason = getMigrationReason(payload);
+    if(migrationReason){
+      const migratedPayload = await encryptJson(decryptedAccounts, key, activeSalt);
+      await setEncryptedPayload(migratedPayload);
+      await setVaultSettings({ salt: null });
+      await appendDebugInfo('Vault payload migrated to latest header', {
+        migrationReason,
+        fromHeader: getPayloadHeaderForLog(payload),
+        toHeader: getPayloadHeaderForLog(migratedPayload),
+        accountCount: Array.isArray(decryptedAccounts) ? decryptedAccounts.length : 0,
+      });
+    } else if(isLegacyEncryptedPayload(payload)){
+      await appendDebugInfo('Vault payload legacy detected but not migrated', {
+        note: 'legacy payload does not match supported migration paths',
+      });
+    }
   }
-  unlockedCrypto = { passphrase, salt: vault.salt, key };
+  unlockedCrypto = { salt: activeSalt, key };
   await setVaultSettings({ lastUnlockedAt: Date.now() });
   return { success: true, unlocked: true, encryptionEnabled: true };
 }
@@ -579,11 +683,17 @@ async function enableEncryption(passphrase){
   const accounts = await getPlainAccounts();
   const salt = b64FromBytes(randomBytes(16));
   const key = await deriveKey(passphrase, salt);
-  unlockedCrypto = { passphrase, salt, key };
-  const payload = await encryptJson(accounts, key);
+  unlockedCrypto = { salt, key };
+  const payload = await encryptJson(accounts, key, salt);
   await setEncryptedPayload(payload);
+  await appendDebugInfo('Vault encryption enabled and payload stored', {
+    trigger: 'enableEncryption',
+    accountCount: accounts.length,
+    header: getPayloadHeaderForLog(payload),
+    migratedFromPlain: true,
+  });
   await clearPlainAccounts();
-  await setVaultSettings({ encryptionEnabled: true, salt, lastUnlockedAt: Date.now() });
+  await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: Date.now() });
   return { success: true, encryptionEnabled: true, unlocked: true };
 }
 
@@ -608,14 +718,24 @@ async function getVaultStatus(){
   return {
     success: true,
     encryptionEnabled: !!vault.encryptionEnabled,
-    unlocked: !vault.encryptionEnabled || !!(unlockedCrypto && unlockedCrypto.salt === vault.salt),
+    unlocked: !vault.encryptionEnabled || !!(unlockedCrypto && unlockedCrypto.salt && unlockedCrypto.key),
     lastUnlockedAt: vault.lastUnlockedAt || null,
   };
 }
 
-function lockVault(){
+async function lockVault(){
+  const vault = await getVaultSettings();
+  if(!vault.encryptionEnabled){
+    return {
+      success: false,
+      code: 'NEED_ENCRYPTION_FIRST',
+      error: 'You need to encrypt the vault first.',
+      unlocked: true,
+      encryptionEnabled: false,
+    };
+  }
   unlockedCrypto = null;
-  return { success: true, unlocked: false };
+  return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -860,7 +980,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'lockVault': {
-        sendResponse(lockVault());
+        sendResponse(await lockVault());
         return;
       }
       case 'enableEncryption': {

@@ -31,7 +31,7 @@
 #### 从AMO安装（发行版） / Install from AMO (release)
 [![Download button](firefox-addon.png)](https://addons.mozilla.org/en-US/firefox/addon/vault2fa)
 
-#### 从仓库安装（开发版） / User install (development)
+#### 从仓库安装（开发版） / Install from repository (development)
 1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`  
    Open Firefox and go to `about:debugging#/runtime/this-firefox`
 2. 点击 **Load Temporary Add-on...**  

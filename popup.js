@@ -97,6 +97,7 @@ const I18N = {
     applyVaultBtn: 'Apply Security Setting',
     lockVaultBtn: 'Lock Vault Now',
     vaultLockedPill: 'Locked',
+    needEncryptBeforeLock: 'You need to encrypt the vault first.',
     themeToggleTitle: 'Toggle light/dark theme',
     themeLight: 'Light mode',
     themeDark: 'Dark mode',
@@ -200,6 +201,7 @@ const I18N = {
     applyVaultBtn: '应用安全设置',
     lockVaultBtn: '立即锁定保险库',
     vaultLockedPill: '已锁定',
+    needEncryptBeforeLock: '你需要先加密密码库',
     themeToggleTitle: '切换深浅色主题',
     themeLight: '浅色模式',
     themeDark: '深色模式',
@@ -1388,7 +1390,14 @@ byId('btnLockVault').addEventListener('click', async () => {
     accounts = [];
     render();
     toast(uiLanguage === 'zh' ? '保险库已锁定' : 'Vault locked');
-  } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
+  } catch(err){
+    if(err && err.code === 'NEED_ENCRYPTION_FIRST'){
+      toast(t('needEncryptBeforeLock'));
+      return;
+    }
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('debugEnabled').addEventListener('change', async () => {
