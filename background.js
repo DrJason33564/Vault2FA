@@ -33,6 +33,14 @@ const KDF_ITERATIONS = 250000;
 const KDF_KEY_LENGTH = 256;
 const CIPHER_ALGO = 'AES-GCM';
 const ENCRYPTED_PAYLOAD_VERSION = 1;
+const MENU_I18N = {
+  en: {
+    scanQrFromImage: 'Scan QR code',
+  },
+  zh: {
+    scanQrFromImage: '扫描二维码',
+  },
+};
 
 let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
@@ -149,12 +157,35 @@ async function refreshAutofillInjectionForOpenTabs(){
   }
 }
 const QR_CONTEXT_MENU_ID = 'vault2fa-scan-qr-image';
-function setupContextMenus(){
+function normalizeLanguage(value){
+  return String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+function getContextMenuTitle(language){
+  const lang = normalizeLanguage(language);
+  return (MENU_I18N[lang] && MENU_I18N[lang].scanQrFromImage) || MENU_I18N.en.scanQrFromImage;
+}
+async function resolveContextMenuLanguage(){
+  try {
+    const settings = await browser.storage.local.get('uiLanguage');
+    if(settings && settings.uiLanguage) return normalizeLanguage(settings.uiLanguage);
+  } catch (_) {}
+  try {
+    if(browser.i18n && typeof browser.i18n.getUILanguage === 'function'){
+      return normalizeLanguage(browser.i18n.getUILanguage());
+    }
+  } catch (_) {}
+  return 'en';
+}
+async function setupContextMenus(){
   if(!browser.contextMenus || typeof browser.contextMenus.create !== 'function') return;
+  const language = await resolveContextMenuLanguage();
+  try {
+    await browser.contextMenus.remove(QR_CONTEXT_MENU_ID);
+  } catch (_) {}
   try {
     browser.contextMenus.create({
       id: QR_CONTEXT_MENU_ID,
-      title: '扫描二维码',
+      title: getContextMenuTitle(language),
       contexts: ['image'],
     });
   } catch (_) {}
@@ -1090,10 +1121,10 @@ if(browser.tabs && typeof browser.tabs.onUpdated !== 'undefined'){
   });
 }
 
-setupContextMenus();
+setupContextMenus().catch(() => {});
 if(browser.runtime && browser.runtime.onInstalled){
   browser.runtime.onInstalled.addListener(() => {
-    setupContextMenus();
+    setupContextMenus().catch(() => {});
     refreshAutofillInjectionForOpenTabs().catch(() => {});
   });
 }
@@ -1106,6 +1137,13 @@ if(browser.contextMenus && browser.contextMenus.onClicked){
   browser.contextMenus.onClicked.addListener((info) => {
     if(!info || info.menuItemId !== QR_CONTEXT_MENU_ID) return;
     openQrScannerForImageUrl(info.srcUrl).catch(() => {});
+  });
+}
+if(browser.storage && browser.storage.onChanged){
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if(areaName !== 'local') return;
+    if(!changes || !changes.uiLanguage) return;
+    setupContextMenus().catch(() => {});
   });
 }
 
