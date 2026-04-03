@@ -13,7 +13,10 @@
   },
   "permissions": [
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "contextMenus",
+    "scripting",
+    "webNavigation"
   ],
   "background": {
     "scripts": [
@@ -52,18 +55,5 @@
   "host_permissions": [
     "<all_urls>"
   ],
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "autofill-content.js"
-      ],
-      "css": [
-        "autofill.css"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
+  "content_scripts": []
 }
