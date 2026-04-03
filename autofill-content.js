@@ -15,24 +15,7 @@
     locked: false,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
-  const I18N = {
-    en: {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: 'Select a code to autofill',
-      accountFallback: 'Account',
-      hotp: 'Counter-based (HOTP)',
-      locked: '🔒Vault2FA is locked.',
-    },
-    zh: {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: '选择验证码进行自动填充',
-      accountFallback: '账号',
-      hotp: '计数器模式（HOTP）',
-      locked: '🔒Vault2FA已锁定',
-    },
-  };
+  const I18N = { en: {} };
 
   function byId(id){ return document.getElementById(id); }
   function t(key){ return (I18N[state.language] && I18N[state.language][key]) || I18N.en[key] || key; }
@@ -52,12 +35,20 @@
     if(typeof el.className === 'string') el.className = value;
     else el.setAttribute('class', value);
   }
-  function normalizeLanguage(value){ return value === 'zh' ? 'zh' : 'en'; }
+  function normalizeLanguage(value){ return window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(value) : (value === 'zh' ? 'zh' : 'en'); }
   async function loadPreferences(){
     try {
       const result = await browserApi.storage.local.get(['uiTheme', 'uiLanguage']);
       state.theme = result.uiTheme || 'auto';
       state.language = normalizeLanguage(result.uiLanguage);
+      if(window.Vault2FALocales){
+        const [enSection, zhSection] = await Promise.all([
+          window.Vault2FALocales.getSection('autofill', 'en'),
+          window.Vault2FALocales.getSection('autofill', 'zh'),
+        ]);
+        I18N.en = Object.assign({}, I18N.en, enSection || {});
+        I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+      }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
         if(state.dropdown.style.display === 'block') renderDropdown();

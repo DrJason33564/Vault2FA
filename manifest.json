@@ -21,6 +21,7 @@
   "background": {
     "scripts": [
       "otpauth.min.js",
+      "i18n.js",
       "background.js"
     ]
   },
@@ -31,7 +32,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "qr-scanner-worker.min.js"
+        "qr-scanner-worker.min.js",
+        "i18n.js",
+        "locales/en-US.lang",
+        "locales/zh-CN.lang"
       ],
       "matches": [
         "<all_urls>"

@@ -8,48 +8,20 @@ const resultEl = document.getElementById('result');
 const nameEl   = document.getElementById('resultName');
 const errEl    = document.getElementById('err');
 
-const QR_I18N = {
-  en: {
-    title: 'Vault <em>2FA</em> — QR Scanner',
-    dzTitle: 'Drop a QR image here',
-    dzSub: 'or click to choose a file',
-    waiting: 'Waiting for a QR code image…',
-    resultSub: 'Account added to Vault 2FA — you can close this tab.',
-    hint: 'Tip: drag a QR image from your downloads, desktop, or any website directly onto the box above.',
-    notImage: 'Please drop an image file.',
-    scanning: 'Scanning…',
-    qrLibFail: 'QR decoder failed to load.',
-    qrEmpty: 'No QR code data was found.',
-    invalidOtp: 'QR found but not a valid otpauth:// URI: ',
-    addedSuffix: ' added!',
-    unknownAccount: 'Account',
-    scanFail: 'Could not scan QR image: ',
-    addFail: 'Could not add account: ',
-    loadingFromImage: 'Loading image from web page…',
-    loadImageFail: 'Could not load the selected image: ',
-  },
-  zh: {
-    title: 'Vault <em>2FA</em> — 二维码扫描',
-    dzTitle: '将二维码图片拖到这里',
-    dzSub: '或点击选择文件',
-    waiting: '等待二维码图片…',
-    resultSub: '账号已添加到 Vault 2FA，可关闭此标签页',
-    hint: '提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域',
-    notImage: '请拖入图片文件',
-    scanning: '扫描中…',
-    qrLibFail: '二维码解码库加载失败',
-    qrEmpty: '未检测到二维码数据',
-    invalidOtp: '已识别二维码，但不是有效的 otpauth:// URI：',
-    addedSuffix: ' 已添加！',
-    unknownAccount: '账号',
-    scanFail: '无法扫描二维码图片：',
-    addFail: '无法添加账号：',
-    loadingFromImage: '正在加载网页中的图片…',
-    loadImageFail: '无法加载所选图片：',
-  },
-};
+const QR_I18N = { en: {} };
 
 let qrLang = 'en';
+
+async function loadQrLocales(){
+  if(!window.Vault2FALocales) return;
+  const [enSection, zhSection] = await Promise.all([
+    window.Vault2FALocales.getSection('qr-scanner', 'en'),
+    window.Vault2FALocales.getSection('qr-scanner', 'zh'),
+  ]);
+  QR_I18N.en = Object.assign({}, QR_I18N.en, enSection || {});
+  QR_I18N.zh = Object.assign({}, QR_I18N.zh || {}, zhSection || {});
+}
+
 
 function applyTheme(){
   const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -67,8 +39,9 @@ function applyQrI18n(){
   document.getElementById('qrHint').textContent = qrt('hint');
 }
 
-browser.storage.local.get('uiLanguage').then((result) => {
-  qrLang = result.uiLanguage === 'zh' ? 'zh' : 'en';
+browser.storage.local.get('uiLanguage').then(async (result) => {
+  qrLang = window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(result.uiLanguage) : (result.uiLanguage === 'zh' ? 'zh' : 'en');
+  await loadQrLocales();
   applyQrI18n();
 });
 
