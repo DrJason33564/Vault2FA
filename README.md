@@ -69,11 +69,11 @@
 ### 项目结构 / Project Structure
 
 - `manifest.json`: 扩展配置 / Extension manifest
-- `popup.html`, `popup.js`, `popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
-- `qr.html`, `qr.js`, `qr.css`: 二维码扫描页面 / QR scanning page
+- `popup/popup.html`, `popup/popup.js`, `popup/popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
+- `qr/qr.html`, `qr/qr.js`, `qr/qr.css`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
-- `autofill-content.js`, `autofill.css`: 自动填充弹窗 / Autofill pop-up
-- `json-import.js`, `json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+- `autofill/autofill-content.js`, `autofill/autofill.css`: 自动填充弹窗 / Autofill pop-up
+- `json-import/json-import.js`, `json-import/json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
 
 ### 致谢 / Acknowledgements
 

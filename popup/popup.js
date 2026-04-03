@@ -898,7 +898,7 @@ for(const btn of document.querySelectorAll('.tab')){
 byId('btnOpenQrTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
-  browser.tabs.create({ url: browser.runtime.getURL('qr.html') });
+  browser.tabs.create({ url: browser.runtime.getURL('qr/qr.html') });
 setQrStatus(t('qrTabOpenedStatus'), false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
@@ -1065,7 +1065,7 @@ async function applyImportRawText(rawText){
 
 byId('btnOpenJsonImportTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
-  browser.tabs.create({ url: browser.runtime.getURL('json-import.html') });
+  browser.tabs.create({ url: browser.runtime.getURL('json-import/json-import.html') });
   toast(t('openJsonImportTabStatus'));
   debugInfo('Popup opened JSON import tab');
 });

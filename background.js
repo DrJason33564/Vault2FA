@@ -120,11 +120,11 @@ async function shouldInjectAutofillForHostname(hostname){
 async function injectAutofillAssets(tabId){
   await browser.scripting.insertCSS({
     target: { tabId, allFrames: false },
-    files: ['autofill.css'],
+    files: ['autofill/autofill.css'],
   });
   await browser.scripting.executeScript({
     target: { tabId, allFrames: false },
-    files: ['locales/i18n.js', 'autofill-content.js'],
+    files: ['locales/i18n.js', 'autofill/autofill-content.js'],
   });
 }
 async function maybeInjectAutofillForTab(tabId, url){
@@ -197,7 +197,7 @@ async function setupContextMenus(){
 async function openQrScannerForImageUrl(imageUrl){
   const source = String(imageUrl || '').trim();
   if(!source) return;
-  const pageUrl = browser.runtime.getURL(`qr.html?imageUrl=${encodeURIComponent(source)}`);
+  const pageUrl = browser.runtime.getURL(`qr/qr.html?imageUrl=${encodeURIComponent(source)}`);
   await browser.tabs.create({ url: pageUrl });
 }
 function buildAutofillCodeInfo(account){
