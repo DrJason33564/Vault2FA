@@ -25,9 +25,9 @@
   Import/export account data via `otpauth://` URIs or json files
 - 支持根据自定义的网址匹配规则识别验证码输入框并自动填充  
   Recognizes and automatically fills in 2fa input fields based on custom URL matching rules
-- 支持通过右键菜单直接扫描网页内的二维码图片
+- 支持通过右键菜单直接扫描网页内的二维码图片  
   Right-click to scan QR code images in web pages
-- 完全支持移动端
+- 完全支持移动端  
   Full-support for mobile devices
 
 ### 安装与使用 / Install & Use
