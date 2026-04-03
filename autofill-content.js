@@ -15,7 +15,24 @@
     locked: false,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
-  const I18N = { en: {} };
+  const I18N = {
+    en: {
+      titleMain: 'Vault',
+      titleAccent: '2FA',
+      subtitle: 'Select a code to autofill',
+      accountFallback: 'Account',
+      hotp: 'Counter-based (HOTP)',
+      locked: '🔒Vault2FA is locked.',
+    },
+    zh: {
+      titleMain: 'Vault',
+      titleAccent: '2FA',
+      subtitle: '选择验证码进行自动填充',
+      accountFallback: '账号',
+      hotp: '计数器模式（HOTP）',
+      locked: '🔒Vault2FA已锁定',
+    },
+  };
 
   function byId(id){ return document.getElementById(id); }
   function t(key){ return (I18N[state.language] && I18N[state.language][key]) || I18N.en[key] || key; }
