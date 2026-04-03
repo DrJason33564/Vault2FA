@@ -50,6 +50,17 @@ function applyI18n(){
   document.getElementById('pageHint').textContent = t('hint');
 }
 
+
+function toDebugEnglishMessage(message){
+  const raw = String(message == null ? '' : message);
+  if(!raw) return raw;
+  const langPack = I18N[lang] || {};
+  for(const [key, value] of Object.entries(langPack)){
+    if(String(value) === raw && I18N.en[key]) return String(I18N.en[key]);
+  }
+  return raw;
+}
+
 function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent = ''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent = msg; errEl.classList.add('show'); showStatus(''); }
@@ -112,9 +123,10 @@ async function importFile(file){
     showStatus('');
   } catch(err){
     const msg = String((err && err.message) || err);
+    const debugMsg = toDebugEnglishMessage(msg);
     const extra = /Vault is locked|unlock/i.test(msg) ? ` ${t('lockedHint')}` : '';
     await debugInfo('JSON import failed', {
-      error: msg,
+      error: debugMsg,
       vaultLockedHintShown: !!extra,
     });
     showErr(t('importFailed') + msg + extra);

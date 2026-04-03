@@ -85,7 +85,7 @@ async function processImageUrlFromQuery(){
     await process(file);
   } catch (error) {
     const msg = error && error.message ? error.message : String(error);
-    await debugInfo('QR image URL load failed', { imageUrl, error: msg });
+    await debugInfo('QR image URL load failed', { imageUrl, error: toDebugEnglishMessage(msg) });
     showErr(qrt('loadImageFail') + msg);
   }
 }
@@ -220,7 +220,7 @@ async function process(file){
     try {
       parsed = OTPAuth.URI.parse(rawValue);
     } catch(e){
-      await debugInfo('QR parse failed', { error: e && e.message ? e.message : String(e) });
+      await debugInfo('QR parse failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
       showErr(qrt('invalidOtp') + e.message);
       return;
     }
@@ -243,7 +243,7 @@ async function process(file){
     const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
     await debugInfo('QR <- background response', {
       success: !!(resp && resp.success),
-      error: resp && resp.error ? String(resp.error) : undefined,
+      error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
       account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
       sync: resp && resp.sync ? resp.sync : undefined,
     });
@@ -259,7 +259,7 @@ async function process(file){
     setTimeout(() => window.close(), 2500);
   } catch(e){
     await debugInfo('QR processing failed', {
-      error: e && e.message ? e.message : String(e),
+      error: toDebugEnglishMessage(e && e.message ? e.message : String(e)),
       stack: e && e.stack ? e.stack : null,
     });
     const msg = e && e.message ? e.message : String(e);
@@ -278,6 +278,16 @@ function maskSecret(secret){
   if(value.length <= 6) return `${value.slice(0, 1)}***`;
   return `${value.slice(0, 4)}***${value.slice(-2)}`;
 }
+function toDebugEnglishMessage(message){
+  const raw = String(message == null ? '' : message);
+  if(!raw) return raw;
+  const langPack = QR_I18N[qrLang] || {};
+  for(const [key, value] of Object.entries(langPack)){
+    if(String(value) === raw && QR_I18N.en[key]) return String(QR_I18N.en[key]);
+  }
+  return raw;
+}
+
 function summarizeAccount(account){
   const acc = account || {};
   return {

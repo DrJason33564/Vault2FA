@@ -497,6 +497,17 @@ empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   refreshDisplayCodes().catch(() => {});
 }
 
+
+function toDebugEnglishMessage(message){
+  const raw = String(message == null ? '' : message);
+  if(!raw) return raw;
+  const langPack = I18N[uiLanguage] || {};
+  for(const [key, value] of Object.entries(langPack)){
+    if(String(value) === raw && I18N.en[key]) return String(I18N.en[key]);
+  }
+  return raw;
+}
+
 function toast(msg){
   const t = byId('toast');
   t.textContent = msg;
@@ -965,7 +976,7 @@ byId('btnSave').addEventListener('click', async () => {
   } catch(e){
     debugInfo('Popup add account failed', {
       activeTab,
-      error: e && e.message ? e.message : String(e),
+      error: toDebugEnglishMessage(e && e.message ? e.message : String(e)),
     });
     errEl.textContent = e.message;
     errEl.style.display = 'block';
