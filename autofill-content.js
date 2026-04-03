@@ -72,6 +72,8 @@
       }
     } catch(_) {}
   }
+  const preferencesReady = loadPreferences();
+
   function isOtpInput(input){
     if(!input || input.tagName !== 'INPUT') return false;
     if(['hidden','submit','button','checkbox','radio'].includes(String(input.type || '').toLowerCase())) return false;
@@ -316,6 +318,7 @@
     if(shouldRerender) renderDropdown();
   }
   async function onFocusIn(event){
+    await preferencesReady.catch(() => {});
     const input = event.target;
     if(!isOtpInput(input)) return;
     state.activeInput = input;
@@ -364,5 +367,4 @@
     };
     if(media.addEventListener) media.addEventListener('change', onTheme); else if(media.addListener) media.addListener(onTheme);
   }
-  loadPreferences();
 })();
