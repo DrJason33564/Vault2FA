@@ -25,6 +25,8 @@ const QR_I18N = {
     unknownAccount: 'Account',
     scanFail: 'Could not scan QR image: ',
     addFail: 'Could not add account: ',
+    loadingFromImage: 'Loading image from web page…',
+    loadImageFail: 'Could not load the selected image: ',
   },
   zh: {
     title: 'Vault <em>2FA</em> — 二维码扫描',
@@ -42,6 +44,8 @@ const QR_I18N = {
     unknownAccount: '账号',
     scanFail: '无法扫描二维码图片：',
     addFail: '无法添加账号：',
+    loadingFromImage: '正在加载网页中的图片…',
+    loadImageFail: '无法加载所选图片：',
   },
 };
 
@@ -91,6 +95,27 @@ dz.addEventListener('drop', async e => {
 fileInput.addEventListener('change', async e => {
   if(e.target.files[0]) await process(e.target.files[0]);
 });
+
+async function processImageUrlFromQuery(){
+  const params = new URLSearchParams(window.location.search || '');
+  const imageUrl = String(params.get('imageUrl') || '').trim();
+  if(!imageUrl) return;
+  showStatus(qrt('loadingFromImage'));
+  hideErr();
+  await debugInfo('QR image URL received from context menu', { imageUrl });
+  try {
+    const response = await fetch(imageUrl);
+    if(!response || !response.ok) throw new Error(`HTTP ${response ? response.status : 'ERR'}`);
+    const blob = await response.blob();
+    if(!blob || !(blob.type || '').startsWith('image/')) throw new Error('Not an image resource.');
+    const file = new File([blob], 'context-menu-image', { type: blob.type || 'image/png' });
+    await process(file);
+  } catch (error) {
+    const msg = error && error.message ? error.message : String(error);
+    await debugInfo('QR image URL load failed', { imageUrl, error: msg });
+    showErr(qrt('loadImageFail') + msg);
+  }
+}
 
 async function imageDataFromFile(file){
   const canvas = document.createElement('canvas');
@@ -314,3 +339,5 @@ async function sha256Hex(bytes){
 function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent=''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent=msg; errEl.classList.add('show'); showStatus(''); }
+
+processImageUrlFromQuery().catch(() => {});

@@ -2,7 +2,9 @@
 'use strict';
 
 (() => {
-  const browserApi = typeof browser !== 'undefined' ? browser : chrome;
+  if(window.__vault2faAutofillLoaded) return;
+  window.__vault2faAutofillLoaded = true;
+  const browserApi = browser;
   const state = {
     dropdown: null,
     activeInput: null,
