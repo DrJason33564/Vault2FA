@@ -7,7 +7,7 @@
   <p align="center">
     一个为Firefox开发的、简洁安全的TOTP/HOTP认证器插件
     <br />
-    A secure and simple TOTP/HOTP authenticator add-on for Firefox.
+    A secure and simple TOTP/HOTP authenticator add-on for Firefox
 
 ### 功能特性 / Features
 
@@ -24,7 +24,11 @@
 - 支持通过 `otpauth://` URI或json文件形式导入/导出账号数据  
   Import/export account data via `otpauth://` URIs or json files
 - 支持根据自定义的网址匹配规则识别验证码输入框并自动填充  
-  Recognizes and automatically fills in 2fa input fields based on custom URL matching rules.
+  Recognizes and automatically fills in 2fa input fields based on custom URL matching rules
+- 支持通过右键菜单直接扫描网页内的二维码图片
+  Right-click to scan QR code images in web pages
+- 完全支持移动端
+  Full-support for mobile devices
 
 ### 安装与使用 / Install & Use
 
@@ -34,30 +38,31 @@
 #### 从仓库安装（开发版） / Install from repository (development)
 1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`  
    Open Firefox and go to `about:debugging#/runtime/this-firefox`
-2. 点击 **Load Temporary Add-on...**  
+2. 点击 **临时加载附加组件...**  
    Click **Load Temporary Add-on...**
 3. 选择本仓库中的 `manifest.json`  
    Select `manifest.json` from this repository
 
 #### 快速上手 / Quick start
-1. 点击插件图标，选择 **Add Account**  
+1. 点击插件图标，选择 **添加账号**  
    Click the add-on icon and choose **Add Account**
-2. 通过 **Manual** 或 **Scan QR** 添加账户  
+2. 通过 **手动录入** 或 **扫描二维码** 添加账户  
    Add an account via **Manual** or **Scan QR**
-3. 在 **Sync & Security** 中可启用：  
-   In **Sync & Security**, you can enable:
+3. 在 **设置** 中可启用：  
+   In **Setting**, you can enable:
    - Firefox Sync 上传 / Firefox Sync upload
    - 本地加密与锁定 / Local encryption and vault lock
+   - Debug模式开关和日志下载 / Debug mode setting and log downloading
 
 ### 安全提示 / Security Notes
 
 - 请妥善保管导出的 URI、同步会话 ID 和加密口令。  
-  Keep exported URIs, sync session IDs, and vault passphrases secure.
+  Keep exported URIs, sync session IDs, and vault passphrases secure
 - 丢失口令可能导致无法解密本地数据。  
-  Losing your passphrase may make local data unrecoverable.
+  Losing your passphrase may make local data unrecoverable
 - 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题。  
   It is strongly recommended to keep a local backup of your vault since Firefox Sync is not designed for syncing secrets. Cloud sync
-  therefore may have potential bugs.
+  therefore may have potential bugs
 
 ### 截图 / Screenshots
 ![IMG_20260318_215605.jpg](images/IMG_20260318_215605.jpg)
@@ -69,11 +74,12 @@
 ### 项目结构 / Project Structure
 
 - `manifest.json`: 扩展配置 / Extension manifest
-- `popup.html`, `popup.js`, `popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
-- `qr.html`, `qr.js`, `qr.css`: 二维码扫描页面 / QR scanning page
+- `popup/popup.html`, `popup/popup.js`, `popup/popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
+- `qr/qr.html`, `qr/qr.js`, `qr/qr.css`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
-- `autofill-content.js`, `autofill.css`: 自动填充弹窗 / Autofill pop-up
-- `json-import.js`, `json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+- `autofill/autofill-content.js`, `autofill/autofill.css`: 自动填充弹窗 / Autofill pop-up
+- `json-import/json-import.js`, `json-import/json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+- `locales`: 本地化文件 / Localization files
 
 ### 致谢 / Acknowledgements
 

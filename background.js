@@ -33,14 +33,7 @@ const KDF_ITERATIONS = 250000;
 const KDF_KEY_LENGTH = 256;
 const CIPHER_ALGO = 'AES-GCM';
 const ENCRYPTED_PAYLOAD_VERSION = 1;
-const MENU_I18N = {
-  en: {
-    scanQrFromImage: 'Scan QR code',
-  },
-  zh: {
-    scanQrFromImage: '扫描二维码',
-  },
-};
+const MENU_I18N = { en: {} };
 
 let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
@@ -127,11 +120,11 @@ async function shouldInjectAutofillForHostname(hostname){
 async function injectAutofillAssets(tabId){
   await browser.scripting.insertCSS({
     target: { tabId, allFrames: false },
-    files: ['autofill.css'],
+    files: ['autofill/autofill.css'],
   });
   await browser.scripting.executeScript({
     target: { tabId, allFrames: false },
-    files: ['autofill-content.js'],
+    files: ['locales/i18n.js', 'autofill/autofill-content.js'],
   });
 }
 async function maybeInjectAutofillForTab(tabId, url){
@@ -158,8 +151,18 @@ async function refreshAutofillInjectionForOpenTabs(){
 }
 const QR_CONTEXT_MENU_ID = 'vault2fa-scan-qr-image';
 function normalizeLanguage(value){
-  return String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  return window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(value) : (String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
 }
+async function loadBackgroundLocales(){
+  if(!window.Vault2FALocales) return;
+  const [enSection, zhSection] = await Promise.all([
+    window.Vault2FALocales.getSection('background', 'en'),
+    window.Vault2FALocales.getSection('background', 'zh'),
+  ]);
+  MENU_I18N.en = Object.assign({}, MENU_I18N.en, enSection || {});
+  MENU_I18N.zh = Object.assign({}, MENU_I18N.zh || {}, zhSection || {});
+}
+
 function getContextMenuTitle(language){
   const lang = normalizeLanguage(language);
   return (MENU_I18N[lang] && MENU_I18N[lang].scanQrFromImage) || MENU_I18N.en.scanQrFromImage;
@@ -177,6 +180,7 @@ async function resolveContextMenuLanguage(){
   return 'en';
 }
 async function setupContextMenus(){
+  await loadBackgroundLocales();
   if(!browser.contextMenus || typeof browser.contextMenus.create !== 'function') return;
   const language = await resolveContextMenuLanguage();
   try {
@@ -193,7 +197,7 @@ async function setupContextMenus(){
 async function openQrScannerForImageUrl(imageUrl){
   const source = String(imageUrl || '').trim();
   if(!source) return;
-  const pageUrl = browser.runtime.getURL(`qr.html?imageUrl=${encodeURIComponent(source)}`);
+  const pageUrl = browser.runtime.getURL(`qr/qr.html?imageUrl=${encodeURIComponent(source)}`);
   await browser.tabs.create({ url: pageUrl });
 }
 function buildAutofillCodeInfo(account){

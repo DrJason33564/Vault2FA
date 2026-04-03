@@ -8,40 +8,20 @@ const resultEl = document.getElementById('result');
 const resultNameEl = document.getElementById('resultName');
 const errEl = document.getElementById('err');
 
-const I18N = {
-  en: {
-    title: 'Vault <em>2FA</em> — JSON Import',
-    dzTitle: 'Drop a JSON file here',
-    dzSub: 'or click to choose a file',
-    waiting: 'Waiting for a JSON file…',
-    importing: 'Importing…',
-    resultSub: 'Accounts imported — you can close this tab.',
-    hint: 'Supports either { accounts: [...] } or a raw account array JSON.',
-    importedSummary: 'Imported {count} account(s)',
-    notJsonFile: 'Please select a JSON file.',
-    invalidJson: 'Invalid JSON file format.',
-    missingAccounts: 'JSON must be an array or contain an accounts array.',
-    importFailed: 'Import failed: ',
-    lockedHint: 'Vault may be locked. Unlock it in popup and retry.',
-  },
-  zh: {
-    title: 'Vault <em>2FA</em> — JSON 导入',
-    dzTitle: '将 JSON 文件拖到这里',
-    dzSub: '或点击选择文件',
-    waiting: '等待 JSON 文件…',
-    importing: '导入中…',
-    resultSub: '账号已导入，可关闭此标签页。',
-    hint: '支持 { accounts: [...] } 或直接账号数组 JSON',
-    importedSummary: '已导入 {count} 个账号',
-    notJsonFile: '请选择 JSON 文件',
-    invalidJson: 'JSON 文件格式无效',
-    missingAccounts: 'JSON 必须是数组或包含 accounts 数组',
-    importFailed: '导入失败：',
-    lockedHint: '保险库可能已锁定，请在弹窗中解锁后重试',
-  },
-};
+const I18N = { en: {} };
 
 let lang = 'en';
+
+async function loadJsonImportLocales(){
+  if(!window.Vault2FALocales) return;
+  const [enSection, zhSection] = await Promise.all([
+    window.Vault2FALocales.getSection('json-import', 'en'),
+    window.Vault2FALocales.getSection('json-import', 'zh'),
+  ]);
+  I18N.en = Object.assign({}, I18N.en, enSection || {});
+  I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+}
+
 function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key; }
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
@@ -61,13 +41,24 @@ function applyI18n(){
     const accent = document.createElement('em');
     accent.textContent = '2FA';
     pageTitle.appendChild(accent);
-    pageTitle.appendChild(document.createTextNode(lang === 'zh' ? ' — JSON 导入' : ' — JSON Import'));
+    pageTitle.appendChild(document.createTextNode(t('titleSuffix')));
   }
   document.getElementById('dzTitle').textContent = t('dzTitle');
   document.getElementById('dzSub').textContent = t('dzSub');
   document.getElementById('status').textContent = t('waiting');
   document.getElementById('resultSub').textContent = t('resultSub');
   document.getElementById('pageHint').textContent = t('hint');
+}
+
+
+function toDebugEnglishMessage(message){
+  const raw = String(message == null ? '' : message);
+  if(!raw) return raw;
+  const langPack = I18N[lang] || {};
+  for(const [key, value] of Object.entries(langPack)){
+    if(String(value) === raw && I18N.en[key]) return String(I18N.en[key]);
+  }
+  return raw;
 }
 
 function showStatus(msg){ statusEl.textContent = msg; }
@@ -132,9 +123,10 @@ async function importFile(file){
     showStatus('');
   } catch(err){
     const msg = String((err && err.message) || err);
+    const debugMsg = toDebugEnglishMessage(msg);
     const extra = /Vault is locked|unlock/i.test(msg) ? ` ${t('lockedHint')}` : '';
     await debugInfo('JSON import failed', {
-      error: msg,
+      error: debugMsg,
       vaultLockedHintShown: !!extra,
     });
     showErr(t('importFailed') + msg + extra);
@@ -154,8 +146,9 @@ fileInput.addEventListener('change', async (e) => {
   await importFile(e.target.files && e.target.files[0]);
 });
 
-browser.storage.local.get('uiLanguage').then((result) => {
-  lang = result.uiLanguage === 'zh' ? 'zh' : 'en';
+browser.storage.local.get('uiLanguage').then(async (result) => {
+  lang = window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(result.uiLanguage) : (result.uiLanguage === 'zh' ? 'zh' : 'en');
+  await loadJsonImportLocales();
   applyI18n();
 });
 

@@ -52,18 +52,28 @@
     if(typeof el.className === 'string') el.className = value;
     else el.setAttribute('class', value);
   }
-  function normalizeLanguage(value){ return value === 'zh' ? 'zh' : 'en'; }
+  function normalizeLanguage(value){ return window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(value) : (value === 'zh' ? 'zh' : 'en'); }
   async function loadPreferences(){
     try {
       const result = await browserApi.storage.local.get(['uiTheme', 'uiLanguage']);
       state.theme = result.uiTheme || 'auto';
       state.language = normalizeLanguage(result.uiLanguage);
+      if(window.Vault2FALocales){
+        const [enSection, zhSection] = await Promise.all([
+          window.Vault2FALocales.getSection('autofill', 'en'),
+          window.Vault2FALocales.getSection('autofill', 'zh'),
+        ]);
+        I18N.en = Object.assign({}, I18N.en, enSection || {});
+        I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+      }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
         if(state.dropdown.style.display === 'block') renderDropdown();
       }
     } catch(_) {}
   }
+  const preferencesReady = loadPreferences();
+
   function isOtpInput(input){
     if(!input || input.tagName !== 'INPUT') return false;
     if(['hidden','submit','button','checkbox','radio'].includes(String(input.type || '').toLowerCase())) return false;
@@ -308,6 +318,7 @@
     if(shouldRerender) renderDropdown();
   }
   async function onFocusIn(event){
+    await preferencesReady.catch(() => {});
     const input = event.target;
     if(!isOtpInput(input)) return;
     state.activeInput = input;
@@ -356,5 +367,4 @@
     };
     if(media.addEventListener) media.addEventListener('change', onTheme); else if(media.addListener) media.addListener(onTheme);
   }
-  loadPreferences();
 })();
