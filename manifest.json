@@ -21,7 +21,7 @@
   "background": {
     "scripts": [
       "otpauth.min.js",
-      "i18n.js",
+      "locales/i18n.js",
       "background.js"
     ]
   },

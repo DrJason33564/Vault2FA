@@ -124,7 +124,7 @@ async function injectAutofillAssets(tabId){
   });
   await browser.scripting.executeScript({
     target: { tabId, allFrames: false },
-    files: ['i18n.js', 'autofill-content.js'],
+    files: ['locales/i18n.js', 'autofill-content.js'],
   });
 }
 async function maybeInjectAutofillForTab(tabId, url){
