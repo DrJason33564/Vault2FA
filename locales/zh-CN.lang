@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=1.0.0
+VERSION=1.0.1
 
 [Language]
 LANGUAGE=简体中文
@@ -148,6 +148,7 @@ localEncryptionDisabled=已关闭本地加密
 noSecurityChangeNeeded=无需安全设置变更
 vaultLockedToast=保险库已锁定
 popupLoadFailed=弹窗加载失败
+migrationAccountsImported=已导入第三方账号数据
 
 [qr-scanner]
 title=Vault <em>2FA</em> — 二维码扫描
@@ -155,7 +156,7 @@ dzTitle=将二维码图片拖到这里
 dzSub=或点击选择文件
 waiting=等待二维码图片…
 resultSub=账号已添加到 Vault 2FA，可关闭此标签页
-hint=提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域
+hint=提示：在网页中右击图片可直接调用扫描
 notImage=请拖入图片文件
 scanning=扫描中…
 qrLibFail=二维码解码库加载失败
@@ -167,6 +168,7 @@ scanFail=无法扫描二维码图片：
 addFail=无法添加账号：
 loadingFromImage=正在加载网页中的图片…
 loadImageFail=无法加载所选图片：
+migrationAccountsAdded=已由第三方源添加账号！
 
 [json-import]
 title=Vault <em>2FA</em> — JSON 导入
