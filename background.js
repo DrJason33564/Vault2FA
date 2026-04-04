@@ -232,6 +232,7 @@ function buildDisplayCodeInfo(account){
       baseRemaining: info.remaining,
       remaining: info.remaining,
       period: info.period,
+      counter: info.counter != null ? Number(info.counter) : undefined,
       type: info.type,
       digits: info.digits,
       generatedAt,

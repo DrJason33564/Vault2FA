@@ -268,27 +268,27 @@ function getDisplayCode(acc){
     const remaining = Math.max(0, baseRemaining - elapsed);
     return Object.assign({}, info, { remaining, period });
   }
-  if(acc.type === 'hotp') return { code: '------', remaining: null, period: null };
+  if(acc.type === 'hotp') return { code: '------', remaining: null, period: null, counter: Math.max(0, Number(acc.counter || 0)) };
   const period = Math.max(1, Number(acc.period || 30));
   return { code: '------', remaining: period, period };
 }
 
 function updateVisibleCodes(){
   for(const acc of visibleAccounts){
-    if(acc.type === 'hotp') continue;
     const id = sid(acc);
     const codeEl = byId('code-' + id);
     if(!codeEl) continue;
     const ringEl = byId('rfg-' + id);
     const textEl = byId('rtxt-' + id);
-    const { code, remaining, period } = getDisplayCode(acc);
-    const level = remaining <= 5 ? 'urgent' : remaining <= 10 ? 'warn' : '';
+    const { code, remaining, period, counter } = getDisplayCode(acc);
+    const isHotp = acc.type === 'hotp';
+    const level = isHotp ? '' : (remaining <= 5 ? 'urgent' : remaining <= 10 ? 'warn' : '');
     const pretty = fmt(code, acc.digits || 6);
     if(codeEl.textContent !== pretty) codeEl.textContent = pretty;
     setNodeState(codeEl, 'otp-code', level);
-    if(textEl) textEl.textContent = String(remaining);
+    if(textEl) textEl.textContent = isHotp ? String(Math.max(0, Number(counter || acc.counter || 0))) : String(remaining);
     if(ringEl){
-      ringEl.style.strokeDashoffset = (2 * Math.PI * 13 * (1 - remaining / period)).toFixed(2);
+      ringEl.style.strokeDashoffset = isHotp ? '0' : (2 * Math.PI * 13 * (1 - remaining / period)).toFixed(2);
       setNodeState(ringEl, 'ring-fg', level);
     }
   }
@@ -304,10 +304,7 @@ async function refreshDisplayCodes(){
     const cached = displayCodesById.get(id);
     if(!cached) return true;
     if(cached.type === 'hotp'){
-      const acc = visibleById.get(id);
-      const cachedCounter = Number(cached.counterSnapshot || 0);
-      const currentCounter = Number((acc && acc.counter) || 0);
-      return cachedCounter !== currentCounter;
+      return true;
     }
     const nextRefreshAt = Number(cached.nextRefreshAt || 0);
     return !Number.isFinite(nextRefreshAt) || now >= nextRefreshAt;
@@ -330,14 +327,14 @@ async function refreshDisplayCodes(){
 }
 
 function buildCard(acc){
-  const { code, remaining, period } = getDisplayCode(acc);
+  const { code, remaining, period, counter } = getDisplayCode(acc);
   const color = pal(acc.issuer || '');
   const level =
-    remaining !== null && remaining <= 5 ? 'urgent' :
+    acc.type !== 'hotp' && remaining !== null && remaining <= 5 ? 'urgent' :
     remaining !== null && remaining <= 10 ? 'warn' : '';
 
   const da = 2 * Math.PI * 13;
-  const doff = remaining !== null ? (da * (1 - remaining / period)).toFixed(2) : '0';
+  const doff = acc.type === 'hotp' ? '0' : (remaining !== null ? (da * (1 - remaining / period)).toFixed(2) : '0');
   const id = sid(acc);
 
   const card = document.createElement('div');
@@ -432,7 +429,7 @@ function buildCard(acc){
   left.appendChild(hint);
   otp.appendChild(left);
 
-  if (acc.type !== 'hotp') {
+  {
     const wrap = document.createElement('div');
     wrap.className = 'ring-wrap';
 
@@ -468,7 +465,9 @@ function buildCard(acc){
     const num = document.createElement('div');
     num.className = 'ring-num';
     num.id = `rtxt-${id}`;
-    num.textContent = String(remaining);
+    num.textContent = acc.type === 'hotp'
+      ? String(Math.max(0, Number(counter || acc.counter || 0)))
+      : String(remaining);
 
     wrap.appendChild(svg);
     wrap.appendChild(num);
@@ -1103,7 +1102,10 @@ byId('list').addEventListener('click', async e => {
   if(codeEl){
     const card = codeEl.closest('.card');
     const acc = accounts.find(a => String(a.id) === card.dataset.id);
-    if(acc) navigator.clipboard.writeText(getToken(acc).code).then(() => toast(t('copied')));
+    if(!acc) return;
+    if(acc.type === 'hotp') await refreshDisplayCodes();
+    const info = getDisplayCode(acc);
+    navigator.clipboard.writeText((info && info.code) || '').then(() => toast(t('copied')));
   }
 });
 
