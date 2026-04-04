@@ -209,7 +209,7 @@ function buildAutofillCodeInfo(account){
   const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
   const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
   if(type === 'hotp'){
-    const counter = Math.max(0, Number((account && account.counter) || 0));
+    const counter = Math.max(0, Number((account && account.counter) || 0)) + 1;
     const code = OTPAuth.HOTP.generate({ secret: otpSecret, algorithm, digits, counter });
     return { code, type, digits, algorithm, counter, period: null, remaining: null };
   }
@@ -994,19 +994,38 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if(!id) throw new Error('Account ID is required.');
         const hostname = String(message.hostname || '').trim().toLowerCase();
         const accounts = await getLocalAccounts();
-        const account = accounts.find(item => String(item.id) === id);
+        const accountIndex = accounts.findIndex(item => String(item.id) === id);
+        const account = accountIndex >= 0 ? accounts[accountIndex] : null;
         if(!account) throw new Error('Account not found.');
         const patterns = getAccountPatterns(account);
         if(hostname && patterns.length && !patterns.some(pattern => matchHostname(hostname, pattern))){
           throw new Error('Account does not match this host.');
         }
-        const info = buildAutofillCodeInfo(account);
+        let info;
+        if(account.type === 'hotp'){
+          const nextCounter = Math.max(0, Number(account.counter || 0)) + 1;
+          const digits = Math.max(6, Number(account.digits || 6));
+          const algorithm = String(account.algorithm || 'SHA1');
+          const otpSecret = OTPAuth.Secret.fromBase32(String(account.secret || '').trim().toUpperCase().replace(/\s+/g, ''));
+          const code = OTPAuth.HOTP.generate({
+            secret: otpSecret,
+            algorithm,
+            digits,
+            counter: nextCounter,
+          });
+          accounts[accountIndex] = Object.assign({}, account, { counter: nextCounter });
+          await setLocalAccounts(accounts);
+          info = { code, remaining: null, period: null, counter: nextCounter };
+        } else {
+          info = buildAutofillCodeInfo(account);
+        }
         sendResponse({
           success: true,
           id,
           code: info.code,
           remaining: info.remaining,
           period: info.period,
+          counter: info.counter != null ? Number(info.counter) : undefined,
         });
         return;
       }

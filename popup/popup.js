@@ -304,7 +304,10 @@ async function refreshDisplayCodes(){
     const cached = displayCodesById.get(id);
     if(!cached) return true;
     if(cached.type === 'hotp'){
-      return true;
+      const acc = visibleById.get(id);
+      const cachedCounter = Number(cached.counterSnapshot || 0);
+      const currentCounter = Number((acc && acc.counter) || 0);
+      return cachedCounter !== currentCounter;
     }
     const nextRefreshAt = Number(cached.nextRefreshAt || 0);
     return !Number.isFinite(nextRefreshAt) || now >= nextRefreshAt;
@@ -323,23 +326,6 @@ async function refreshDisplayCodes(){
     updateVisibleCodes();
   } finally {
     displayCodeRefreshInFlight = false;
-  }
-}
-
-async function fetchSingleDisplayCode(accountId){
-  const id = String(accountId || '').trim();
-  if(!id) return null;
-  try {
-    const resp = await sendMessage({ action:'generateCodesForDisplay', ids:[id] });
-    const item = Array.isArray(resp.items) ? resp.items.find(entry => String(entry.id || '') === id) : null;
-    if(!item) return null;
-    const acc = visibleAccounts.find(entry => String(entry.id || '') === id) || accounts.find(entry => String(entry.id || '') === id);
-    displayCodesById.set(id, Object.assign({}, item, {
-      counterSnapshot: item.type === 'hotp' ? Number((acc && acc.counter) || 0) : undefined,
-    }));
-    return item;
-  } catch (_) {
-    return null;
   }
 }
 
@@ -1118,7 +1104,26 @@ byId('list').addEventListener('click', async e => {
     const card = codeEl.closest('.card');
     const acc = accounts.find(a => String(a.id) === card.dataset.id);
     if(!acc) return;
-    if(acc.type === 'hotp') await fetchSingleDisplayCode(acc.id);
+    if(acc.type === 'hotp'){
+      const result = await sendMessage({ action:'generateCodeForAutofillById', id: acc.id });
+      const nextCounter = Math.max(0, Number(result && result.counter != null ? result.counter : (acc.counter || 0) + 1));
+      acc.counter = nextCounter;
+      displayCodesById.set(String(acc.id), {
+        id: String(acc.id),
+        code: String((result && result.code) || ''),
+        baseRemaining: null,
+        remaining: null,
+        period: null,
+        type: 'hotp',
+        digits: Math.max(6, Number(acc.digits || 6)),
+        generatedAt: Date.now(),
+        nextRefreshAt: null,
+        counterSnapshot: nextCounter,
+      });
+      updateVisibleCodes();
+      navigator.clipboard.writeText(String((result && result.code) || '')).then(() => toast(t('copied')));
+      return;
+    }
     const info = getDisplayCode(acc);
     navigator.clipboard.writeText((info && info.code) || '').then(() => toast(t('copied')));
   }
