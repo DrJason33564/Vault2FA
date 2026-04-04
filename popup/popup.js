@@ -304,10 +304,7 @@ async function refreshDisplayCodes(){
     const cached = displayCodesById.get(id);
     if(!cached) return true;
     if(cached.type === 'hotp'){
-      const acc = visibleById.get(id);
-      const cachedCounter = Number(cached.counterSnapshot || 0);
-      const currentCounter = Number((acc && acc.counter) || 0);
-      return cachedCounter !== currentCounter;
+      return true;
     }
     const nextRefreshAt = Number(cached.nextRefreshAt || 0);
     return !Number.isFinite(nextRefreshAt) || now >= nextRefreshAt;
@@ -326,6 +323,23 @@ async function refreshDisplayCodes(){
     updateVisibleCodes();
   } finally {
     displayCodeRefreshInFlight = false;
+  }
+}
+
+async function fetchSingleDisplayCode(accountId){
+  const id = String(accountId || '').trim();
+  if(!id) return null;
+  try {
+    const resp = await sendMessage({ action:'generateCodesForDisplay', ids:[id] });
+    const item = Array.isArray(resp.items) ? resp.items.find(entry => String(entry.id || '') === id) : null;
+    if(!item) return null;
+    const acc = visibleAccounts.find(entry => String(entry.id || '') === id) || accounts.find(entry => String(entry.id || '') === id);
+    displayCodesById.set(id, Object.assign({}, item, {
+      counterSnapshot: item.type === 'hotp' ? Number((acc && acc.counter) || 0) : undefined,
+    }));
+    return item;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -1103,7 +1117,10 @@ byId('list').addEventListener('click', async e => {
   if(codeEl){
     const card = codeEl.closest('.card');
     const acc = accounts.find(a => String(a.id) === card.dataset.id);
-    if(acc) navigator.clipboard.writeText(getToken(acc).code).then(() => toast(t('copied')));
+    if(!acc) return;
+    if(acc.type === 'hotp') await fetchSingleDisplayCode(acc.id);
+    const info = getDisplayCode(acc);
+    navigator.clipboard.writeText((info && info.code) || '').then(() => toast(t('copied')));
   }
 });
 
