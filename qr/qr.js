@@ -216,43 +216,66 @@ async function process(file){
     });
     if(!rawValue) throw new Error(qrt('qrEmpty'));
 
-    let parsed;
-    try {
-      parsed = OTPAuth.URI.parse(rawValue);
-    } catch(e){
-      await debugInfo('QR parse failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
-      showErr(qrt('invalidOtp') + e.message);
-      return;
+    let uris = [rawValue];
+    if(
+      window.Vault2FAGoogleMigration &&
+      window.Vault2FAGoogleMigration.isGoogleMigrationUri(rawValue)
+    ){
+      const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
+      uris = (decoded.accounts || []).map(item =>
+        window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
+      );
     }
 
-    const acc = {
-      id:        generateId(),
-      type:      parsed instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
-      issuer:    parsed.issuer  || '',
-      label:     parsed.label   || '',
-      secret:    parsed.secret.base32,
-      algorithm: parsed.algorithm || 'SHA1',
-      digits:    parsed.digits,
-      period:    parsed instanceof OTPAuth.TOTP ? parsed.period  : undefined,
-      counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
-    };
+    if(!uris.length) throw new Error(qrt('qrEmpty'));
 
-    await debugInfo('QR parsed account', summarizeAccount(acc));
-    const requestPayload = { action: 'addAccountFromQr', account: summarizeAccount(acc) };
-    await debugInfo('QR -> background request', requestPayload);
-    const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
-    await debugInfo('QR <- background response', {
-      success: !!(resp && resp.success),
-      error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
-      account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
-      sync: resp && resp.sync ? resp.sync : undefined,
-    });
-    if(!resp || resp.success === false){
-      throw new Error((resp && resp.error) || 'Failed to add account.');
+    const addedAccounts = [];
+
+    for(const uri of uris){
+      let parsed;
+      try {
+        parsed = OTPAuth.URI.parse(uri);
+      } catch(e){
+        await debugInfo('QR parse failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
+        showErr(qrt('invalidOtp') + e.message);
+        return;
+      }
+
+      const acc = {
+        id:        generateId(),
+        type:      parsed instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
+        issuer:    parsed.issuer  || '',
+        label:     parsed.label   || '',
+        secret:    parsed.secret.base32,
+        algorithm: parsed.algorithm || 'SHA1',
+        digits:    parsed.digits,
+        period:    parsed instanceof OTPAuth.TOTP ? parsed.period  : undefined,
+        counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
+      };
+
+      await debugInfo('QR parsed account', summarizeAccount(acc));
+      const requestPayload = { action: 'addAccountFromQr', account: summarizeAccount(acc) };
+      await debugInfo('QR -> background request', requestPayload);
+      const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
+      await debugInfo('QR <- background response', {
+        success: !!(resp && resp.success),
+        error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
+        account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
+        sync: resp && resp.sync ? resp.sync : undefined,
+      });
+      if(!resp || resp.success === false){
+        throw new Error((resp && resp.error) || 'Failed to add account.');
+      }
+
+      addedAccounts.push(acc);
     }
 
-    const name = [acc.issuer, acc.label].filter(Boolean).join(' — ') || qrt('unknownAccount');
-    nameEl.textContent = name + qrt('addedSuffix');
+    const first = addedAccounts[0] || null;
+    const name = addedAccounts.length > 1
+      ? tFmt('migrationAccountsAdded', { count: addedAccounts.length })
+      : ([first.issuer, first.label].filter(Boolean).join(' — ') || qrt('unknownAccount')) + qrt('addedSuffix');
+
+    nameEl.textContent = name;
     resultEl.classList.add('show');
     showStatus('');
     hideErr();
