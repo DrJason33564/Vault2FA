@@ -22,7 +22,9 @@
 - 可手动从云端下载并覆盖本地数据（有确认提示）  
   Manually download cloud data and overwrite local data (with confirmation)
 - 支持通过 `otpauth://` URI或json文件形式导入/导出账号数据  
-  Import/export account data via `otpauth://` URIs or json files
+  Import/export account data via `otpauth://` URIs or json files  
+- 支持从Google Authenticator以及微软Authenticator导入数据  
+  Support importing account from Google Authenticator and Microsoft Authenticator
 - 支持根据自定义的网址匹配规则识别验证码输入框并自动填充  
   Recognizes and automatically fills in 2fa input fields based on custom URL matching rules
 - 支持通过右键菜单直接扫描网页内的二维码图片  
@@ -56,11 +58,11 @@
 
 ### 安全提示 / Security Notes
 
-- 请妥善保管导出的 URI、同步会话 ID 和加密口令。  
+- 请妥善保管导出的 URI、同步会话 ID 和加密口令  
   Keep exported URIs, sync session IDs, and vault passphrases secure
-- 丢失口令可能导致无法解密本地数据。  
+- 丢失口令可能导致无法解密本地数据  
   Losing your passphrase may make local data unrecoverable
-- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题。  
+- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题 
   It is strongly recommended to keep a local backup of your vault since Firefox Sync is not designed for syncing secrets. Cloud sync
   therefore may have potential bugs
 
@@ -79,12 +81,13 @@
 - `background.js`: 后台逻辑 / Background logic
 - `autofill/autofill-content.js`, `autofill/autofill.css`: 自动填充弹窗 / Autofill pop-up
 - `json-import/json-import.js`, `json-import/json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
-- `locales`: 本地化文件 / Localization files
+- `migration/`: 对第三方来源进行解码 / Decode third-party origins
+- `locales/`: 本地化文件 / Localization files
 
 ### 致谢 / Acknowledgements
 
 本项目使用了以下开源仓库的代码  
-This repository uses code from the following open-source repositories.
+This repository uses code from the following open-source repositories
 
 - [hectorm/otpauth](https://github.com/hectorm/otpauth)
 - [nimiq/qr-scanner](https://github.com/nimiq/qr-scanner)
