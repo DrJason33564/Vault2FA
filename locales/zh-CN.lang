@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=1.0.0
+VERSION=1.1.0
 
 [Language]
 LANGUAGE=简体中文
@@ -58,7 +58,7 @@ labelPeriod=周期
 qrTabTitle=扫描二维码
 qrTabSub=将打开新标签页，你可以拖放或选择二维码图片。扫描成功后账号会自动添加
 openQrTab=打开二维码扫描页
-labelUri=otpauth:// URI
+labelUri=otpauth:// otpauth-migration:// URI
 hintUri=从二维码识别工具或其他验证器导出中粘贴
 saveAccountBtn=添加账号
 exportDrawerTitle=导出账号
@@ -67,7 +67,7 @@ copyExportBtn=复制到剪贴板
 exportJsonBtn=下载 JSON 文件
 exportUriLabel=otpauth:// URI
 importDrawerTitle=导入账号
-importInputLabel=粘贴 otpauth:// URI（每行一个）或 JSON
+importInputLabel=粘贴 otpauth:// otpauth-migration:// URI（每行一个）或 JSON
 importFileHint=JSON 文件导入会在新标签页中进行
 openJsonImportTabBtn=打开 JSON 导入页
 importBtn=导入
@@ -99,7 +99,7 @@ importNothing=没有可导入的内容
 importDuplicateConfirm=检测到 {count} 个导入项存在相似名称。仍要导入全部已解析账号吗？
 importSummary=已导入 {ok} 个账号{failPart}{dupPart}
 importFailPart=，失败 {count} 个
-importDupPart=，重复提醒 {count} 个
+importDupPart=，存在重复 {count} 个
 openJsonImportTabStatus=已打开 JSON 导入页，请在新标签页继续
 exportJsonEmpty=没有可导出的账号
 exportJsonFilename=vault2fa-账号-{timestamp}.json
@@ -133,11 +133,12 @@ vaultMetaLastUnlock=上次解锁：
 vaultUnlockedToast=保险库已解锁
 qrTabOpenedStatus=二维码扫描页已打开，请在新页扫描。此弹窗会自动更新
 qrAccountAdded=已添加二维码账号！
-needOtpAuthUri=请输入 otpauth:// URI。
-useOpenQrTabBtn=请使用上方“打开二维码扫描页”按钮。
-secretRequired=密钥不能为空。
-accountNameRequired=账号名称不能为空。
+needOtpAuthUri=请输入 otpauth:// 或 otpauth-migration:// URI
+useOpenQrTabBtn=请使用上方“打开二维码扫描页”按钮
+secretRequired=密钥不能为空
+accountNameRequired=账号名称不能为空
 accountAdded=账号已添加！
+accountSaved=账号已保存！
 noEditAccountSelected=未找到要编辑的账号。
 accountNotExists=账号不存在或已被删除。
 confirmCloudOverwrite=云端数据将覆盖当前本地账号，是否继续？
@@ -148,6 +149,7 @@ localEncryptionDisabled=已关闭本地加密
 noSecurityChangeNeeded=无需安全设置变更
 vaultLockedToast=保险库已锁定
 popupLoadFailed=弹窗加载失败
+migrationAccountsImported=已导入第三方账号数据
 
 [qr-scanner]
 title=Vault <em>2FA</em> — 二维码扫描
@@ -155,18 +157,19 @@ dzTitle=将二维码图片拖到这里
 dzSub=或点击选择文件
 waiting=等待二维码图片…
 resultSub=账号已添加到 Vault 2FA，可关闭此标签页
-hint=提示：可将下载目录、桌面或网页中的二维码图片直接拖拽到上方区域
+hint=提示：在网页中右击图片可直接调用扫描
 notImage=请拖入图片文件
 scanning=扫描中…
 qrLibFail=二维码解码库加载失败
 qrEmpty=未检测到二维码数据
-invalidOtp=已识别二维码，但不是有效的 otpauth:// URI：
+invalidOtp=已识别二维码，但不是Vault2FA可解析的URI：
 addedSuffix= 已添加！
 unknownAccount=账号
 scanFail=无法扫描二维码图片：
 addFail=无法添加账号：
 loadingFromImage=正在加载网页中的图片…
 loadImageFail=无法加载所选图片：
+migrationAccountsAdded=已由第三方源添加账号！
 
 [json-import]
 title=Vault <em>2FA</em> — JSON 导入

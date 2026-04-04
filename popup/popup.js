@@ -614,7 +614,14 @@ function parseUriImportData(raw){
   const parsed = [];
   let fail = 0;
   for(const uri of lines){
-    try { parsed.push(fromParsed(OTPAuth.URI.parse(uri))); } catch(e){ fail++; }
+    try {
+      const expanded = expandMigrationIfNeeded(uri);
+      for(const item of expanded){
+        parsed.push(fromParsed(OTPAuth.URI.parse(item)));
+      }
+    } catch(e){
+      fail++;
+    }
   }
   return { parsed, fail };
 }
@@ -636,6 +643,21 @@ async function saveAccounts(){
 async function persistAndRender(){
   await saveAccounts();
   render();
+}
+
+function expandMigrationIfNeeded(uri){
+  const value = String(uri || '').trim();
+  if(!value) return [];
+  if(
+    window.Vault2FAGoogleMigration &&
+    window.Vault2FAGoogleMigration.isGoogleMigrationUri(value)
+  ){
+    const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(value);
+    return (decoded.accounts || []).map(item =>
+      window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
+    );
+  }
+  return [value];
 }
 
 function fromParsed(p){
@@ -898,7 +920,7 @@ byId('btnOpenQrTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr/qr.html') });
-setQrStatus(t('qrTabOpenedStatus'), false);
+  setQrStatus(t('qrTabOpenedStatus'), false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');
@@ -919,8 +941,23 @@ byId('btnSave').addEventListener('click', async () => {
     let acc;
     if(activeTab === 'uri'){
       const uri = byId('fUri').value.trim();
-      if(!uri) throw new Error(t('needOtpAuthUri'));
-      acc = fromParsed(OTPAuth.URI.parse(uri));
+       if(!uri) throw new Error(t('needOtpAuthUri'));
+ 
+       const expanded = expandMigrationIfNeeded(uri);
+       if(!expanded.length) throw new Error(t('needOtpAuthUri'));
+ 
+       let addedCount = 0;
+       for(const item of expanded){
+         const added = await pushAccount(fromParsed(OTPAuth.URI.parse(item)));
+         if(added) addedCount++;
+       }
+ 
+      if(addedCount > 0){
+         closeD('drawAdd');
+         resetForm();
+         toast(addedCount > 1 ? tFmt('migrationAccountsImported', { count: addedCount }) : t('accountSaved'));
+       }
+       return;
     } else if(activeTab === 'qr'){
       throw new Error(t('useOpenQrTabBtn'));
     } else {
