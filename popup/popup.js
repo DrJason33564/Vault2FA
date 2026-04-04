@@ -920,7 +920,7 @@ byId('btnOpenQrTab').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   browser.storage.local.remove('pendingQrAccount');
   browser.tabs.create({ url: browser.runtime.getURL('qr/qr.html') });
-setQrStatus(t('qrTabOpenedStatus'), false);
+  setQrStatus(t('qrTabOpenedStatus'), false);
   if(resetForm.qrPollInterval) clearInterval(resetForm.qrPollInterval);
   resetForm.qrPollInterval = setInterval(async () => {
     const result = await browser.storage.local.get('pendingQrAccount');

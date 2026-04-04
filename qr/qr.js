@@ -73,9 +73,10 @@ async function processImageUrlFromQuery(){
   const params = new URLSearchParams(window.location.search || '');
   const imageUrl = String(params.get('imageUrl') || '').trim();
   if(!imageUrl) return;
+  const safeImageUrl = maskContextImageUrl(imageUrl);
   showStatus(qrt('loadingFromImage'));
   hideErr();
-  await debugInfo('QR image URL received from context menu', { imageUrl });
+  await debugInfo('QR image URL received from context menu', { imageUrl: safeImageUrl });
   try {
     const response = await fetch(imageUrl);
     if(!response || !response.ok) throw new Error(`HTTP ${response ? response.status : 'ERR'}`);
@@ -85,7 +86,7 @@ async function processImageUrlFromQuery(){
     await process(file);
   } catch (error) {
     const msg = error && error.message ? error.message : String(error);
-    await debugInfo('QR image URL load failed', { imageUrl, error: toDebugEnglishMessage(msg) });
+    await debugInfo('QR image URL load failed', { imageUrl: safeImageUrl, error: toDebugEnglishMessage(msg) });
     showErr(qrt('loadImageFail') + msg);
   }
 }
@@ -208,19 +209,22 @@ async function process(file){
   });
   try{
     const rawValue = await decodeQrText(file);
+    const rawText = rawValue ? String(rawValue) : '';
+    const isMigrationUri = !!(
+      rawText &&
+      window.Vault2FAGoogleMigration &&
+      window.Vault2FAGoogleMigration.isGoogleMigrationUri(rawText)
+    );
     await debugInfo('QR decode result', {
       hasValue: !!rawValue,
-      rawLength: rawValue ? String(rawValue).length : 0,
-      rawPreview: rawValue ? String(rawValue).slice(0, 120) : '',
-      isOtpAuth: !!(rawValue && String(rawValue).startsWith('otpauth://')),
+      rawLength: rawText.length,
+      rawPreview: buildSafeQrPreview(rawText),
+      isOtpAuth: !!(rawText.startsWith('otpauth://') || isMigrationUri),
     });
     if(!rawValue) throw new Error(qrt('qrEmpty'));
 
     let uris = [rawValue];
-    if(
-      window.Vault2FAGoogleMigration &&
-      window.Vault2FAGoogleMigration.isGoogleMigrationUri(rawValue)
-    ){
+    if(isMigrationUri){
       const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
       uris = (decoded.accounts || []).map(item =>
         window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
@@ -294,6 +298,37 @@ async function process(file){
 function generateId(){
   const rand = (crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   return 'acc_' + rand;
+}
+function maskTail(value, keepHead = 4, keepTail = 2){
+  const text = String(value || '');
+  if(!text) return '';
+  if(text.length <= keepHead + keepTail) return `${text.slice(0, 1)}***`;
+  return `${text.slice(0, keepHead)}***${text.slice(-keepTail)}`;
+}
+function maskOtpUriSecrets(input){
+  return String(input || '').replace(/([?&]secret=)([^&#]+)/i, (_, prefix, secret) => `${prefix}${maskTail(secret)}`);
+}
+function maskMigrationData(input){
+  return String(input || '').replace(/([?&]data=)([^&#]+)/i, (_, prefix) => `${prefix}***`);
+}
+function maskContextImageUrl(input){
+  const text = String(input || '');
+  if(!text) return '';
+  if(!/^data:/i.test(text)) return text;
+  const commaIndex = text.indexOf(',');
+  if(commaIndex === -1) return 'data:***';
+  const head = text.slice(0, Math.min(commaIndex + 1, 80));
+  return `${head}***`;
+}
+function buildSafeQrPreview(rawText){
+  const text = String(rawText || '');
+  if(!text) return '';
+  const isMigration = !!(
+    window.Vault2FAGoogleMigration &&
+    window.Vault2FAGoogleMigration.isGoogleMigrationUri(text)
+  );
+  const masked = isMigration ? maskMigrationData(text) : maskOtpUriSecrets(text);
+  return masked.slice(0, 120);
 }
 function maskSecret(secret){
   const value = String(secret || '');
