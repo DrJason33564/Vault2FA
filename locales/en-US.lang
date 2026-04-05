@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=1.1.0
+VERSION=2.4.0
 
 [Language]
 LANGUAGE=English
@@ -19,11 +19,11 @@ syncSaved=Sync settings saved
 syncDisabled=Auto upload disabled
 needSession=Please enter a sync session ID first.
 needSessionEnable=Please enter a sync session ID before enabling sync.
-noAccountsToExport=No accounts to export
+noAccountsToExport=No account to export
 copied=Copied!
 addAccount=Add Account
 editAccount=Edit Account
-noAccountsYet=No accounts yet
+noAccountsYet=No account yet
 emptySub=Add your first account using the\n+ button below.
 vaultLocked=Vault Locked
 vaultLockSub=Local vault is locked. Enter your passphrase to unlock this browser session.
@@ -117,7 +117,7 @@ unlockPassphrasePlaceholder=Passphrase
 vaultPassphrasePlaceholder=At least 6 characters
 secretFormatUtf8=String (UTF-8)
 secretFormatLatin1=String (Latin-1)
-btnLangText=EN/中
+btnLangText=🌐
 jsonMissingAccounts=Invalid JSON format: missing accounts array.
 jsonMissingSecretOrLabel=JSON contains item(s) without secret or account label.
 duplicateHint=Warning: found {count} similar account name{suffix}. You will be asked to confirm before adding.
@@ -150,6 +150,7 @@ noSecurityChangeNeeded=No security change needed
 vaultLockedToast=Vault locked
 popupLoadFailed=Failed to load popup
 migrationAccountsImported=Account imported from third-party source!
+langVersionMismatch=Language file version mismatches with add-on version
 
 [qr-scanner]
 title=Vault <em>2FA</em> — QR Scanner
