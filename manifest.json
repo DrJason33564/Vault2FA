@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vault2FA",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "A fine TOTP/HOTP 2FA extension for Firefox with optional sync and auto fill.",
   "icons": {
     "16": "icons/icon16.png",
@@ -15,8 +15,7 @@
     "storage",
     "clipboardWrite",
     "contextMenus",
-    "scripting",
-    "webNavigation"
+    "scripting"
   ],
   "background": {
     "scripts": [
@@ -32,6 +31,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "locales/*.lang",
         "third-party/qr-scanner-worker.min.js"
       ],
       "matches": [
