@@ -25,14 +25,6 @@
       hotp: 'Counter-based (HOTP)',
       locked: '🔒Vault2FA is locked.',
     },
-    'zh-CN': {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: '选择验证码进行自动填充',
-      accountFallback: '账号',
-      hotp: '计数器模式（HOTP）',
-      locked: '🔒Vault2FA已锁定',
-    },
   };
 
   function byId(id){ return document.getElementById(id); }
