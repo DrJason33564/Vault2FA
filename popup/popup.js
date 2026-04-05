@@ -7,7 +7,14 @@ let accounts = [];
 let visibleAccounts = [];
 let activeTab = 'manual';
 let globalTick = null;
-let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploadedAt:null, lastDownloadedAt:null };
+let syncSettings = {
+  enabled:false,
+  sessionId:'',
+  intervalMinutes:5,
+  lastUploadedAt:null,
+  lastDownloadedAt:null,
+  useEncryptedPayload:false,
+};
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let debugState = { enabled:false };
 let debugUiUnlocked = false;
@@ -82,6 +89,10 @@ function t(key){
 }
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
+}
+function tf(key, fallback){
+  const value = t(key);
+  return value === key ? fallback : value;
 }
 
 function parseSecretByFormat(secretRaw, format){
@@ -160,6 +171,14 @@ function applyStaticTranslations(){
   byId('search').placeholder = t('searchPlaceholder');
   byId('unlockPassphrase').placeholder = t('unlockPassphrasePlaceholder');
   byId('vaultPassphrase').placeholder = t('vaultPassphrasePlaceholder');
+  const encryptedSyncTextEl = byId('syncUseEncryptedPayloadText');
+  if(encryptedSyncTextEl){
+    encryptedSyncTextEl.textContent = tf('syncUseEncryptedPayloadText', 'Upload encrypted local vault payload directly');
+  }
+  const encryptedSyncHintEl = byId('syncUseEncryptedPayloadHint');
+  if(encryptedSyncHintEl){
+    encryptedSyncHintEl.textContent = tf('syncUseEncryptedPayloadHint', 'When local encryption is enabled, upload encrypted storage payload from this browser instead of plaintext account data.');
+  }
   const secretFormatLabels = {
     base32: 'Base32',
     base64: 'Base64',
@@ -825,6 +844,11 @@ function updateSyncUi(){
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
+  byId('syncUseEncryptedPayload').checked = !!syncSettings.useEncryptedPayload;
+  const encryptedUploadRow = byId('syncEncryptedUploadRow');
+  if(encryptedUploadRow){
+    encryptedUploadRow.style.display = vaultStatus.encryptionEnabled ? 'block' : 'none';
+  }
   const meta = [
     t('storageModeLabel') + (syncSettings.enabled && syncSettings.sessionId ? t('storageModeSync') : t('storageModeLocal')),
     t('lastUpload') + fmtTs(syncSettings.lastUploadedAt),
@@ -886,6 +910,10 @@ function updateVaultUi(){
   ].join('\n');
   byId('vaultLockedPill').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'inline-flex' : 'none';
   byId('lockScreen').style.display = vaultStatus.encryptionEnabled && !vaultStatus.unlocked ? 'flex' : 'none';
+  const encryptedUploadRow = byId('syncEncryptedUploadRow');
+  if(encryptedUploadRow){
+    encryptedUploadRow.style.display = vaultStatus.encryptionEnabled ? 'block' : 'none';
+  }
 
   const locked = isVaultLocked();
   const gatedIds = ['btnAdd','btnImport','btnExport','btnSync'];
@@ -1253,9 +1281,10 @@ byId('btnSaveSync').addEventListener('click', async () => {
   const enabled = byId('syncEnabled').checked;
   const sessionId = byId('syncSessionId').value.trim();
   const intervalMinutes = Math.max(1, parseInt(byId('syncInterval').value, 10) || 5);
+  const useEncryptedPayload = byId('syncUseEncryptedPayload').checked;
   if(enabled && !sessionId){ errEl.textContent = t('needSessionEnable'); errEl.style.display = 'block'; return; }
   try {
-    const resp = await sendMessage({ action:'saveSyncSettings', settings:{ enabled, sessionId, intervalMinutes } });
+    const resp = await sendMessage({ action:'saveSyncSettings', settings:{ enabled, sessionId, intervalMinutes, useEncryptedPayload } });
     syncSettings = resp.settings || syncSettings;
     updateSyncUi();
     updateSyncBadgeFromResponse(resp);
@@ -1269,7 +1298,7 @@ byId('btnUploadSync').addEventListener('click', async () => {
   try {
     const sessionId = byId('syncSessionId').value.trim();
     if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
-    const resp = await sendMessage({ action:'uploadSyncNow', sessionId });
+    const resp = await sendMessage({ action:'uploadSyncNow', sessionId, useEncryptedPayload: byId('syncUseEncryptedPayload').checked });
     syncSettings.lastUploadedAt = resp.upload && resp.upload.updatedAt ? resp.upload.updatedAt : Date.now();
     updateSyncUi(); updateSyncBadgeFromResponse(resp); toast(t('uploadSuccess'));
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
@@ -1282,10 +1311,23 @@ byId('btnDownloadSync').addEventListener('click', async () => {
   if(!sessionId){ errEl.textContent = t('needSession'); errEl.style.display = 'block'; return; }
   if(!window.confirm(t('confirmCloudOverwrite'))) return;
   try {
-    const resp = await sendMessage({ action:'downloadSyncToLocal', sessionId });
-    accounts = Array.isArray(resp.accounts) ? resp.accounts : [];
+    const preview = await sendMessage({ action:'downloadSyncToLocal', sessionId, dryRun:true });
+    const hasEncryptedHeader = !!(preview && preview.containsEncryptedHeader);
+    const encryptedConfirmText = tf('confirmCloudEncryptedOverwrite', 'Downloaded cloud data contains an encrypted vault payload. Overwrite local data with encrypted payload and lock vault now?');
+    if(hasEncryptedHeader && !window.confirm(encryptedConfirmText)) return;
+    const resp = await sendMessage({ action:'downloadSyncToLocal', sessionId, allowEncrypted: hasEncryptedHeader });
     syncSettings.lastDownloadedAt = Date.now();
-    render(); updateSyncUi(); toast(t('downloadedCloudData'));
+    if(resp && resp.appliedEncryptedPayload){
+      await refreshVaultStatus();
+      accounts = [];
+      render();
+      toast(tf('downloadedEncryptedCloudData', 'Downloaded encrypted cloud data and locked vault'));
+    } else {
+      accounts = Array.isArray(resp.accounts) ? resp.accounts : [];
+      render();
+      toast(t('downloadedCloudData'));
+    }
+    updateSyncUi();
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
 });
 

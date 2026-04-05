@@ -248,6 +248,13 @@
       </label>
       <div class="fhint" id="syncEnabledHint">Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.</div>
     </div>
+    <div class="fg sync-toggle-row" id="syncEncryptedUploadRow" style="display:none">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="syncUseEncryptedPayload" />
+        <span id="syncUseEncryptedPayloadText">Upload encrypted local vault payload directly</span>
+      </label>
+      <div class="fhint" id="syncUseEncryptedPayloadHint">When local encryption is enabled, upload encrypted storage payload from this browser instead of plaintext account data.</div>
+    </div>
     <div class="fg">
       <label class="fl" id="labelSyncSession">Sync Session ID</label>
       <input class="fi mono" id="syncSessionId" type="text" placeholder="my-team-phone-1" autocomplete="off" />
