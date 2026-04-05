@@ -11,7 +11,7 @@ let syncSettings = { enabled:false, sessionId:'', intervalMinutes:5, lastUploade
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let debugState = { enabled:false };
 let debugUiUnlocked = false;
-let uiLanguage = 'en';
+let uiLanguage = 'en-US';
 let uiTheme = 'auto';
 let editingAccountId = null;
 const debugTapTimes = [];
@@ -19,22 +19,37 @@ const DEBUG_TAP_WINDOW_MS = 1600;
 let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
 
-const I18N = { en: {} };
+const I18N = {};
+let availableLanguages = [];
+const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+let popupVersion = '';
 
-
-
-function normalizeLanguage(value){
-  return String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+function resolveLocaleId(value){
+  const raw = String(value || '').trim();
+  if(window.Vault2FALocales && raw){
+    const mapped = window.Vault2FALocales.localeIdFromLanguage(raw);
+    if(mapped) return mapped;
+  }
+  if(raw.includes('-')) return raw;
+  return raw.toLowerCase().startsWith('zh') ? 'zh-CN' : DEFAULT_LOCALE_ID;
 }
 
 async function loadPopupLocales(){
   if(!window.Vault2FALocales) return;
-  const [enSection, zhSection] = await Promise.all([
-    window.Vault2FALocales.getSection('popup', 'en'),
-    window.Vault2FALocales.getSection('popup', 'zh'),
-  ]);
-  I18N.en = Object.assign({}, I18N.en, enSection || {});
-  I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+  availableLanguages = await window.Vault2FALocales.getAvailableLanguages();
+  for(const meta of availableLanguages){
+    const section = await window.Vault2FALocales.getSection('popup', meta.localeId);
+    I18N[meta.localeId] = Object.assign({}, I18N[meta.localeId] || {}, section || {});
+  }
+  if(!I18N[DEFAULT_LOCALE_ID]){
+    I18N[DEFAULT_LOCALE_ID] = {};
+  }
+  try {
+    const manifest = browser.runtime.getManifest && browser.runtime.getManifest();
+    popupVersion = String((manifest && manifest.version) || '');
+  } catch (_) {
+    popupVersion = '';
+  }
 }
 
 const STATIC_TEXT_MAP = {
@@ -60,7 +75,11 @@ function byId(id){ return document.getElementById(id); }
 function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.slice(0,3)+' '+code.slice(3); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
-function t(key){ return (I18N[uiLanguage] && I18N[uiLanguage][key]) || I18N.en[key] || key; }
+function t(key){
+  return (I18N[uiLanguage] && I18N[uiLanguage][key])
+    || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || key;
+}
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
 }
@@ -135,6 +154,8 @@ function applyStaticTranslations(){
   byId('btnExport').title = t('btnExportTitle');
   byId('btnSync').title = t('btnSyncTitle');
   byId('btnLang').title = t('btnLangTitle');
+  byId('btnLang').textContent = t('btnLangText');
+  byId('langDrawerTitle').textContent = t('btnLangTitle');
   byId('btnTheme').title = t('themeToggleTitle');
   byId('search').placeholder = t('searchPlaceholder');
   byId('unlockPassphrase').placeholder = t('unlockPassphrasePlaceholder');
@@ -151,10 +172,61 @@ function applyStaticTranslations(){
     if(opt) opt.textContent = label;
   }
   setMultilineText(byId('emptySub'), t('emptySub'));
+  renderLanguageDrawer();
 }
+function majorMinor(version){
+  const [major = '', minor = ''] = String(version || '').split('.');
+  return `${major}.${minor}`;
+}
+
+function renderLanguageDrawer(){
+  const listEl = byId('langList');
+  if(!listEl) return;
+  listEl.replaceChildren();
+  const mismatchTipRaw = t('langVersionMismatch');
+  const mismatchTip = mismatchTipRaw === 'langVersionMismatch' ? 'Language file version is incompatible with current extension version.' : mismatchTipRaw;
+  for(const meta of availableLanguages){
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'lang-item';
+    if(meta.localeId === uiLanguage) row.classList.add('active');
+    row.addEventListener('click', () => {
+      setLanguage(meta.localeId);
+      closeD('drawLang');
+    });
+
+    const left = document.createElement('div');
+    left.className = 'lang-item-left';
+    const name = document.createElement('div');
+    name.className = 'lang-item-name';
+    name.textContent = meta.language || meta.localeId;
+    const locale = document.createElement('div');
+    locale.className = 'lang-item-locale';
+    locale.textContent = meta.localeId;
+    left.append(name, locale);
+
+    const right = document.createElement('div');
+    right.className = 'lang-item-right';
+    const mismatch = popupVersion && meta.version && majorMinor(popupVersion) !== majorMinor(meta.version);
+    if(mismatch){
+      const warn = document.createElement('span');
+      warn.className = 'lang-item-warn';
+      warn.textContent = '⚠';
+      warn.title = mismatchTip;
+      right.appendChild(warn);
+    }
+    const translator = document.createElement('span');
+    translator.textContent = meta.translator || t('unknown');
+    right.appendChild(translator);
+
+    row.append(left, right);
+    listEl.appendChild(row);
+  }
+}
+
 function setLanguage(next){
-  uiLanguage = next === 'zh' ? 'zh' : 'en';
-  document.documentElement.lang = uiLanguage === 'zh' ? 'zh-CN' : 'en';
+  uiLanguage = resolveLocaleId(next);
+  document.documentElement.lang = uiLanguage;
   byId('btnLang').textContent = t('btnLangText');
   browser.storage.local.set({ uiLanguage });
   applyStaticTranslations();
@@ -501,8 +573,9 @@ function toDebugEnglishMessage(message){
   const raw = String(message == null ? '' : message);
   if(!raw) return raw;
   const langPack = I18N[uiLanguage] || {};
+  const basePack = I18N[DEFAULT_LOCALE_ID] || {};
   for(const [key, value] of Object.entries(langPack)){
-    if(String(value) === raw && I18N.en[key]) return String(I18N.en[key]);
+    if(String(value) === raw && basePack[key]) return String(basePack[key]);
   }
   return raw;
 }
@@ -850,7 +923,8 @@ async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
   await loadPopupLocales();
-  setLanguage(normalizeLanguage(prefs.uiLanguage));
+  const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
+  setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
   
   await refreshVaultStatus();
@@ -885,7 +959,9 @@ byId('btnAdd').addEventListener('click', () => {
 });
 byId('hdrLogo').addEventListener('click', handleDebugLogoTap);
 byId('btnTheme').addEventListener('click', () => setTheme((document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark'));
-byId('btnLang').addEventListener('click', () => setLanguage(uiLanguage === 'zh' ? 'en' : 'zh'));
+byId('btnLang').addEventListener('click', () => openD('drawLang'));
+byId('closeLang').addEventListener('click', () => closeD('drawLang'));
+byId('drawLang').addEventListener('click', function(e){ if(e.target===this) closeD('drawLang'); });
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
 byId('btnSync').addEventListener('click', () => {
