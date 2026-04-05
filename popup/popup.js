@@ -154,6 +154,7 @@ function applyStaticTranslations(){
   byId('btnExport').title = t('btnExportTitle');
   byId('btnSync').title = t('btnSyncTitle');
   byId('btnLang').title = t('btnLangTitle');
+  byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
   byId('btnTheme').title = t('themeToggleTitle');
   byId('search').placeholder = t('searchPlaceholder');
@@ -226,7 +227,7 @@ function renderLanguageDrawer(){
 function setLanguage(next){
   uiLanguage = resolveLocaleId(next);
   document.documentElement.lang = uiLanguage;
-  byId('btnLang').textContent = '🌐';
+  byId('btnLang').textContent = t('btnLangText');
   browser.storage.local.set({ uiLanguage });
   applyStaticTranslations();
   applyTheme();
