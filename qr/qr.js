@@ -8,18 +8,17 @@ const resultEl = document.getElementById('result');
 const nameEl   = document.getElementById('resultName');
 const errEl    = document.getElementById('err');
 
-const QR_I18N = { en: {} };
-
-let qrLang = 'en';
+const QR_I18N = {};
+const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+let qrLang = DEFAULT_LOCALE_ID;
 
 async function loadQrLocales(){
   if(!window.Vault2FALocales) return;
-  const [enSection, zhSection] = await Promise.all([
-    window.Vault2FALocales.getSection('qr-scanner', 'en'),
-    window.Vault2FALocales.getSection('qr-scanner', 'zh'),
-  ]);
-  QR_I18N.en = Object.assign({}, QR_I18N.en, enSection || {});
-  QR_I18N.zh = Object.assign({}, QR_I18N.zh || {}, zhSection || {});
+  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
+  for(const localeId of localeIds){
+    const section = await window.Vault2FALocales.getSection('qr-scanner', localeId);
+    QR_I18N[localeId] = Object.assign({}, QR_I18N[localeId] || {}, section || {});
+  }
 }
 
 
@@ -28,9 +27,16 @@ function applyTheme(){
   document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
 }
 
-function qrt(key){ return (QR_I18N[qrLang] && QR_I18N[qrLang][key]) || QR_I18N.en[key] || key; }
+function resolveLocaleId(value){
+  return window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(value) : DEFAULT_LOCALE_ID;
+}
+function qrt(key){
+  return (QR_I18N[qrLang] && QR_I18N[qrLang][key])
+    || (QR_I18N[DEFAULT_LOCALE_ID] && QR_I18N[DEFAULT_LOCALE_ID][key])
+    || key;
+}
 function applyQrI18n(){
-  document.documentElement.lang = qrLang === 'zh' ? 'zh-CN' : 'en';
+  document.documentElement.lang = qrLang;
   document.getElementById('qrTitle').innerHTML = qrt('title');
   document.getElementById('dzTitle').textContent = qrt('dzTitle');
   document.getElementById('dzSub').textContent = qrt('dzSub');
@@ -40,7 +46,7 @@ function applyQrI18n(){
 }
 
 browser.storage.local.get('uiLanguage').then(async (result) => {
-  qrLang = window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(result.uiLanguage) : (result.uiLanguage === 'zh' ? 'zh' : 'en');
+  qrLang = resolveLocaleId(result.uiLanguage);
   await loadQrLocales();
   applyQrI18n();
 });
@@ -340,8 +346,9 @@ function toDebugEnglishMessage(message){
   const raw = String(message == null ? '' : message);
   if(!raw) return raw;
   const langPack = QR_I18N[qrLang] || {};
+  const basePack = QR_I18N[DEFAULT_LOCALE_ID] || {};
   for(const [key, value] of Object.entries(langPack)){
-    if(String(value) === raw && QR_I18N.en[key]) return String(QR_I18N.en[key]);
+    if(String(value) === raw && basePack[key]) return String(basePack[key]);
   }
   return raw;
 }

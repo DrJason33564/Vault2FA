@@ -33,7 +33,8 @@ const KDF_ITERATIONS = 250000;
 const KDF_KEY_LENGTH = 256;
 const CIPHER_ALGO = 'AES-GCM';
 const ENCRYPTED_PAYLOAD_VERSION = 1;
-const MENU_I18N = { en: {} };
+const MENU_I18N = {};
+const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
 
 let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
@@ -150,34 +151,35 @@ async function refreshAutofillInjectionForOpenTabs(){
   }
 }
 const QR_CONTEXT_MENU_ID = 'vault2fa-scan-qr-image';
-function normalizeLanguage(value){
-  return window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(value) : (String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+function resolveLocaleId(value){
+  return window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(value) : DEFAULT_LOCALE_ID;
 }
 async function loadBackgroundLocales(){
   if(!window.Vault2FALocales) return;
-  const [enSection, zhSection] = await Promise.all([
-    window.Vault2FALocales.getSection('background', 'en'),
-    window.Vault2FALocales.getSection('background', 'zh'),
-  ]);
-  MENU_I18N.en = Object.assign({}, MENU_I18N.en, enSection || {});
-  MENU_I18N.zh = Object.assign({}, MENU_I18N.zh || {}, zhSection || {});
+  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
+  for(const localeId of localeIds){
+    const section = await window.Vault2FALocales.getSection('background', localeId);
+    MENU_I18N[localeId] = Object.assign({}, MENU_I18N[localeId] || {}, section || {});
+  }
 }
 
 function getContextMenuTitle(language){
-  const lang = normalizeLanguage(language);
-  return (MENU_I18N[lang] && MENU_I18N[lang].scanQrFromImage) || MENU_I18N.en.scanQrFromImage;
+  const localeId = resolveLocaleId(language);
+  return (MENU_I18N[localeId] && MENU_I18N[localeId].scanQrFromImage)
+    || (MENU_I18N[DEFAULT_LOCALE_ID] && MENU_I18N[DEFAULT_LOCALE_ID].scanQrFromImage)
+    || 'Scan QR code';
 }
 async function resolveContextMenuLanguage(){
   try {
     const settings = await browser.storage.local.get('uiLanguage');
-    if(settings && settings.uiLanguage) return normalizeLanguage(settings.uiLanguage);
+    if(settings && settings.uiLanguage) return resolveLocaleId(settings.uiLanguage);
   } catch (_) {}
   try {
     if(browser.i18n && typeof browser.i18n.getUILanguage === 'function'){
-      return normalizeLanguage(browser.i18n.getUILanguage());
+      return resolveLocaleId(browser.i18n.getUILanguage());
     }
   } catch (_) {}
-  return 'en';
+  return DEFAULT_LOCALE_ID;
 }
 async function setupContextMenus(){
   await loadBackgroundLocales();

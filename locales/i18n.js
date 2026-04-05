@@ -3,13 +3,18 @@
 
 (() => {
   const cache = new Map();
+  let localeIndexPromise = null;
+  const DEFAULT_LOCALE_ID = 'en-US';
+  const FALLBACK_LOCALE_IDS = ['en-US', 'zh-CN'];
 
   function normalizeLanguage(value){
     return String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
   }
 
   function localeIdFromLanguage(language){
-    return normalizeLanguage(language) === 'zh' ? 'zh-CN' : 'en-US';
+    const raw = String(language || '').trim();
+    if(raw.includes('-')) return raw;
+    return normalizeLanguage(raw) === 'zh' ? 'zh-CN' : DEFAULT_LOCALE_ID;
   }
 
   function decodeValue(raw){
@@ -42,6 +47,35 @@
     return sections;
   }
 
+  function parseDirectoryLocaleIds(html){
+    const ids = new Set();
+    const regex = /href\s*=\s*["']([^"']+\.lang)["']/ig;
+    let match;
+    while((match = regex.exec(String(html || '')))){
+      const href = decodeURIComponent(match[1] || '');
+      const fileName = href.split('/').pop() || '';
+      if(!/\.lang$/i.test(fileName)) continue;
+      ids.add(fileName.replace(/\.lang$/i, ''));
+    }
+    return Array.from(ids);
+  }
+
+  async function discoverLocaleIds(){
+    if(localeIndexPromise) return localeIndexPromise;
+    localeIndexPromise = (async () => {
+      try {
+        const url = browser.runtime.getURL('locales/');
+        const resp = await fetch(url);
+        if(!resp || !resp.ok) throw new Error('Cannot read locales directory.');
+        const html = await resp.text();
+        const listed = parseDirectoryLocaleIds(html);
+        if(listed.length) return listed;
+      } catch (_) {}
+      return FALLBACK_LOCALE_IDS.slice();
+    })();
+    return localeIndexPromise;
+  }
+
   async function loadLocaleById(localeId){
     if(cache.has(localeId)) return cache.get(localeId);
     const url = browser.runtime.getURL(`locales/${localeId}.lang`);
@@ -59,13 +93,40 @@
   async function getSection(sectionName, language){
     const localeId = localeIdFromLanguage(language);
     const data = await loadLocaleById(localeId);
-    return Object.assign({}, (data && data[sectionName]) || {});
+    const section = Object.assign({}, (data && data[sectionName]) || {});
+    if(Object.keys(section).length) return section;
+    if(localeId !== DEFAULT_LOCALE_ID){
+      const fallback = await loadLocaleById(DEFAULT_LOCALE_ID);
+      return Object.assign({}, (fallback && fallback[sectionName]) || {});
+    }
+    return section;
+  }
+
+  async function getAvailableLanguages(){
+    const localeIds = await discoverLocaleIds();
+    const list = [];
+    for(const localeId of localeIds){
+      const parsed = await loadLocaleById(localeId);
+      const info = (parsed && parsed.Information) || {};
+      const language = (parsed && parsed.Language) || {};
+      if(!language.LOCALE_ID && !localeId) continue;
+      list.push({
+        localeId: language.LOCALE_ID || localeId,
+        language: language.LANGUAGE || localeId,
+        translator: info.TRANSLATOR || '',
+        version: info.VERSION || '',
+      });
+    }
+    return list;
   }
 
   window.Vault2FALocales = {
+    DEFAULT_LOCALE_ID,
     normalizeLanguage,
     localeIdFromLanguage,
     loadLocaleById,
     getSection,
+    discoverLocaleIds,
+    getAvailableLanguages,
   };
 })();
