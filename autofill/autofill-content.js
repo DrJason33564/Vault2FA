@@ -25,14 +25,6 @@
       hotp: 'Counter-based (HOTP)',
       locked: '🔒Vault2FA is locked.',
     },
-    'zh-CN': {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: '选择验证码进行自动填充',
-      accountFallback: '账号',
-      hotp: '计数器模式（HOTP）',
-      locked: '🔒Vault2FA已锁定',
-    },
   };
 
   function byId(id){ return document.getElementById(id); }
@@ -58,17 +50,20 @@
     else el.setAttribute('class', value);
   }
   function resolveLocaleId(value){ return window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(value) : DEFAULT_LOCALE_ID; }
+  async function applyAutofillLocale(localeId){
+    if(!window.Vault2FALocales) return;
+    const target = String(localeId || '').trim() || DEFAULT_LOCALE_ID;
+    const section = await window.Vault2FALocales.getSection('autofill', target);
+    I18N[target] = Object.assign({}, I18N[target] || {}, section || {});
+  }
   async function loadPreferences(){
     try {
       const result = await browserApi.storage.local.get(['uiTheme', 'uiLanguage']);
       state.theme = result.uiTheme || 'auto';
       state.language = resolveLocaleId(result.uiLanguage);
       if(window.Vault2FALocales){
-        const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-        for(const localeId of localeIds){
-          const section = await window.Vault2FALocales.getSection('autofill', localeId);
-          I18N[localeId] = Object.assign({}, I18N[localeId] || {}, section || {});
-        }
+        await applyAutofillLocale(DEFAULT_LOCALE_ID);
+        if(state.language !== DEFAULT_LOCALE_ID) await applyAutofillLocale(state.language);
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
@@ -359,6 +354,7 @@
       }
       if(changes.uiLanguage){
         state.language = resolveLocaleId(changes.uiLanguage.newValue);
+        applyAutofillLocale(state.language).catch(() => {});
         changed = true;
       }
       if(changed && state.dropdown && state.dropdown.style.display === 'block') renderDropdown();
