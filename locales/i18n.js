@@ -12,7 +12,7 @@
 
   function localeIdFromLanguage(language){
     const raw = String(language || '').trim();
-    if(raw.includes('-')) return raw;
+    if(raw.includes('-')) return normalizeLocaleCandidate(raw);
     return normalizeLanguage(raw) === 'zh' ? 'zh-CN' : DEFAULT_LOCALE_ID;
   }
 
