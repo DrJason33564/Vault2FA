@@ -60,9 +60,61 @@
     return Array.from(ids);
   }
 
+  function readDirectoryEntries(dirEntry){
+    return new Promise((resolve, reject) => {
+      const reader = dirEntry.createReader();
+      const all = [];
+      function readBatch(){
+        reader.readEntries((entries) => {
+          if(!entries || !entries.length){
+            resolve(all);
+            return;
+          }
+          all.push(...entries);
+          readBatch();
+        }, reject);
+      }
+      readBatch();
+    });
+  }
+
+  async function listLocaleIdsViaPackageDirectory(){
+    if(!browser.runtime || typeof browser.runtime.getPackageDirectoryEntry !== 'function') return [];
+    const root = await new Promise((resolve, reject) => {
+      browser.runtime.getPackageDirectoryEntry((entry) => {
+        if(entry) resolve(entry);
+        else reject(new Error('Package directory entry unavailable.'));
+      });
+    });
+    const queue = [{ entry: root, path: '' }];
+    const localeIds = new Set();
+    while(queue.length){
+      const { entry, path } = queue.shift();
+      if(!entry || typeof entry.isDirectory !== 'boolean') continue;
+      if(entry.isDirectory){
+        const children = await readDirectoryEntries(entry);
+        for(const child of children){
+          const childPath = path ? `${path}/${child.name}` : child.name;
+          queue.push({ entry: child, path: childPath });
+        }
+        continue;
+      }
+      if(!entry.isFile) continue;
+      if(!/^locales\/.+\.lang$/i.test(path)) continue;
+      const name = path.split('/').pop() || '';
+      if(!name || name.toLowerCase() === 'i18n.js') continue;
+      localeIds.add(name.replace(/\.lang$/i, ''));
+    }
+    return Array.from(localeIds);
+  }
+
   async function discoverLocaleIds(){
     if(localeIndexPromise) return localeIndexPromise;
     localeIndexPromise = (async () => {
+      try {
+        const listedFromPackage = await listLocaleIdsViaPackageDirectory();
+        if(listedFromPackage.length) return listedFromPackage;
+      } catch (_) {}
       try {
         const url = browser.runtime.getURL('locales/');
         const resp = await fetch(url);
