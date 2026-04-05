@@ -5,12 +5,6 @@
   const cache = new Map();
   let localeIndexPromise = null;
   const DEFAULT_LOCALE_ID = 'en-US';
-  const FALLBACK_LOCALE_IDS = ['en-US', 'zh-CN'];
-  const COMMON_LOCALE_PROBES = [
-    'en-US','en-GB','zh-CN','zh-TW','ja-JP','ko-KR','fr-FR','de-DE','es-ES','es-MX','pt-BR','pt-PT',
-    'it-IT','ru-RU','uk-UA','tr-TR','pl-PL','nl-NL','cs-CZ','sv-SE','da-DK','fi-FI','nb-NO','ar-SA',
-    'he-IL','th-TH','vi-VN','id-ID','ms-MY','hi-IN',
-  ];
 
   function normalizeLanguage(value){
     return String(value || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
@@ -125,53 +119,6 @@
     return Array.from(localeIds);
   }
 
-  async function collectProbeCandidates(){
-    const out = new Set(COMMON_LOCALE_PROBES.map(normalizeLocaleCandidate));
-    try {
-      if(browser.i18n && typeof browser.i18n.getUILanguage === 'function'){
-        out.add(normalizeLocaleCandidate(browser.i18n.getUILanguage()));
-      }
-    } catch (_) {}
-    try {
-      if(Array.isArray(navigator.languages)){
-        for(const item of navigator.languages){
-          out.add(normalizeLocaleCandidate(item));
-        }
-      }
-    } catch (_) {}
-    try {
-      if(browser.i18n && typeof browser.i18n.getAcceptLanguages === 'function'){
-        const accepted = await browser.i18n.getAcceptLanguages();
-        for(const item of (accepted || [])){
-          out.add(normalizeLocaleCandidate(item));
-        }
-      }
-    } catch (_) {}
-
-    const expanded = new Set();
-    for(const item of out){
-      if(!item) continue;
-      expanded.add(item);
-      if(!item.includes('-')){
-        expanded.add(`${item}-US`);
-      }
-    }
-    return Array.from(expanded).filter(Boolean);
-  }
-
-  async function probeLocaleIdsByFetch(candidates){
-    const found = [];
-    const unique = Array.from(new Set((candidates || []).map(normalizeLocaleCandidate).filter(Boolean)));
-    await Promise.all(unique.map(async (localeId) => {
-      try {
-        const url = browser.runtime.getURL(`locales/${localeId}.lang`);
-        const resp = await fetch(url, { method: 'GET' });
-        if(resp && resp.ok) found.push(localeId);
-      } catch (_) {}
-    }));
-    return found;
-  }
-
   async function discoverLocaleIds(){
     if(localeIndexPromise) return localeIndexPromise;
     localeIndexPromise = (async () => {
@@ -188,14 +135,6 @@
         const listed = parseDirectoryLocaleIds(html);
         for(const localeId of listed) result.add(normalizeLocaleCandidate(localeId));
       } catch (_) {}
-      try {
-        const candidates = await collectProbeCandidates();
-        const probed = await probeLocaleIdsByFetch(candidates);
-        for(const localeId of probed) result.add(normalizeLocaleCandidate(localeId));
-      } catch (_) {}
-      if(!result.size){
-        for(const localeId of FALLBACK_LOCALE_IDS) result.add(normalizeLocaleCandidate(localeId));
-      }
       const finalList = Array.from(result);
       try {
         console.info('[Vault2FA][i18n] discovered locale ids:', finalList);
