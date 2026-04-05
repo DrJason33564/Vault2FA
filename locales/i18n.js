@@ -59,6 +59,29 @@
     return Array.from(ids);
   }
 
+  function parseLangConfigText(text){
+    const ids = [];
+    for(const rawLine of String(text || '').split(/\r?\n/)){
+      const line = rawLine.trim();
+      if(!line || line.startsWith('#') || line.startsWith(';')) continue;
+      const localeId = normalizeLocaleCandidate(line.replace(/\.lang$/i, ''));
+      if(localeId) ids.push(localeId);
+    }
+    return Array.from(new Set(ids));
+  }
+
+  async function listLocaleIdsViaConfig(){
+    try {
+      const url = browser.runtime.getURL('locales/lang.conf');
+      const resp = await fetch(url);
+      if(!resp || !resp.ok) return [];
+      const text = await resp.text();
+      return parseLangConfigText(text);
+    } catch (_) {
+      return [];
+    }
+  }
+
   function normalizeLocaleCandidate(value){
     const raw = String(value || '').trim();
     if(!raw) return '';
@@ -123,6 +146,17 @@
     if(localeIndexPromise) return localeIndexPromise;
     localeIndexPromise = (async () => {
       const result = new Set();
+      try {
+        const configIds = await listLocaleIdsViaConfig();
+        if(configIds.length){
+          for(const localeId of configIds) result.add(localeId);
+          const finalFromConfig = Array.from(result);
+          try {
+            console.info('[Vault2FA][i18n] discovered locale ids from lang.conf:', finalFromConfig);
+          } catch (_) {}
+          return finalFromConfig;
+        }
+      } catch (_) {}
       try {
         const listedFromPackage = await listLocaleIdsViaPackageDirectory();
         for(const localeId of listedFromPackage) result.add(normalizeLocaleCandidate(localeId));
