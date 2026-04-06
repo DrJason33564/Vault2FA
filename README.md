@@ -50,10 +50,11 @@
    Click the add-on icon and choose **Add Account**
 2. 通过 **手动录入** 或 **扫描二维码** 添加账户  
    Add an account via **Manual** or **Scan QR**
-3. 在 **设置** 中可启用：  
-   In **Setting**, you can enable:
+3. 在 **设置** 中有：  
+   In **Setting**, you have:
    - Firefox Sync 上传 / Firefox Sync upload
    - 本地加密与锁定 / Local encryption and vault lock
+   - 权限设置 / Permission Setting
    - Debug模式开关和日志下载 / Debug mode setting and log downloading
 
 ### 安全提示 / Security Notes
@@ -62,7 +63,7 @@
   Keep exported URIs, sync session IDs, and vault passphrases secure
 - 丢失口令可能导致无法解密本地数据  
   Losing your passphrase may make local data unrecoverable
-- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题 
+- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题  
   It is strongly recommended to keep a local backup of your vault since Firefox Sync is not designed for syncing secrets. Cloud sync
   therefore may have potential bugs
 
