@@ -238,9 +238,32 @@
 <div class="drawer-bg" id="drawSync">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title" id="syncDrawerTitle">Sync & Security</div>
+      <div class="drw-title-wrap">
+        <div class="drw-title drw-title-major" id="settingDrawerTitle">Settings</div>
+        <div class="drw-title" id="settingSecurityTitle">Sync & Security</div>
+      </div>
       <button class="ibtn" id="closeSync">&#x2715;</button>
     </div>
+    <div class="drw-title section-title" id="settingPermissionTitle">Permissions</div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="autofillEnabled" />
+        <span id="autofillEnableText">Enable autofill feature</span>
+      </label>
+      <div class="fhint" id="autofillEnableHint">Automatically inject autofill on matched websites.</div>
+    </div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="rightclickEnabled" />
+        <span id="rightclickEnableText">Enable right-click QR scan option</span>
+      </label>
+      <div class="fhint" id="rightclickEnableHint">Show a QR scanning action in the browser image context menu.</div>
+    </div>
+    <div class="sync-actions">
+      <button class="btn-secondary" id="btnSavePermission">Save Permission Settings</button>
+    </div>
+    <div class="err" id="permissionErr"></div>
+    <hr class="sep" />
     <div class="fg sync-toggle-row">
       <label class="toggle-wrap">
         <input type="checkbox" id="syncEnabled" />

@@ -196,6 +196,9 @@ html, body {
 @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
 .drw-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .drw-title { font-size:14px; font-weight:600; }
+.drw-title-wrap { display:flex; flex-direction:column; gap:4px; }
+.drw-title-major { font-size:15px; }
+.section-title { margin-bottom:8px; }
 
 .lang-drawer { max-height:420px; }
 .lang-list {
