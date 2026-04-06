@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.4.0
+VERSION=2.4.1
 
 [Language]
 LANGUAGE=Español
@@ -76,7 +76,8 @@ editSaveBtn=Guardar cambios
 deleteConfirm=¿Eliminar esta cuenta?
 editBtnTitle=Editar
 saveEditSuccess=Cuenta actualizada
-syncDrawerTitle=Sincronización y seguridad
+settingDrawerTitle=Configuración
+settingSecurityTitle=Sincronización y seguridad
 vaultEnableText=Activar cifrado local
 vaultEnableHint=Cuando está activado, las cuentas locales se almacenan cifradas en reposo. Se requiere desbloqueo una vez por sesión del navegador.
 labelVaultPassphrase=Contraseña de la bóveda
@@ -137,8 +138,8 @@ needOtpAuthUri=Introduce un URI otpauth://.
 useOpenQrTabBtn=Usa el botón "Abrir pestaña del escáner QR" de arriba.
 secretRequired=La clave secreta es obligatoria.
 accountNameRequired=El nombre de la cuenta es obligatorio.
-accountAdded=¡Cuenta añadida!
-accountSaved=¡Cuenta guardada!
+accountAdded=Cuenta añadida
+accountSaved=Cuenta guardada
 noEditAccountSelected=No hay ninguna cuenta seleccionada para editar.
 accountNotExists=La cuenta ya no existe.
 confirmCloudOverwrite=Los datos de la nube sobrescribirán tus cuentas locales actuales. ¿Continuar?
@@ -155,6 +156,12 @@ syncUseEncryptedPayloadText=Subir la bóveda cifrada
 syncUseEncryptedPayloadHint=Después de activar el cifrado local de la bóveda, subir a Firefox Sync el contenido ya cifrado, en lugar de subirlo en texto plano
 confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda cifrada. ¿Confirmas la descarga, la sobrescritura y el bloqueo de la bóveda?
 downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
+permissionAutofillEnableText=Activar la función de autocompletado
+permissionAutofillEnableHint=Rellenar los campos de entrada relacionados con 2FA en los sitios web.
+permissionRightclickEnableText=Activar el escaneo de QR con clic derecho
+permissionRightclickEnableHint=Mostrar una acción para escanear códigos QR en el menú contextual al hacer clic derecho sobre
+permissionSaveBtn=Guardar la configuración de permisos
+permissionSavedToast=Configuración de permisos guardada
 
 [qr-scanner]
 title=Vault <em>2FA</em> — Escáner QR
