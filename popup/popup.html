@@ -59,6 +59,16 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="drawer-bg" id="drawLang">
+  <div class="drawer lang-drawer">
+    <div class="drw-hdr">
+      <div class="drw-title" id="langDrawerTitle">Language</div>
+      <button class="ibtn" id="closeLang">&#x2715;</button>
+    </div>
+    <div class="lang-list" id="langList"></div>
+  </div>
+</div>
+
 <div class="ftr">
   <div class="sync-badge" id="syncBadge"><div class="sync-dot" id="syncDot"></div><span id="syncBadgeText">Local only</span></div>
   <div class="vault-pill" id="vaultLockedPill" style="display:none">Locked</div><button class="add-btn" id="btnAdd">&#xff0b; Add Account</button>
@@ -228,7 +238,11 @@
 <div class="drawer-bg" id="drawSync">
   <div class="drawer">
     <div class="drw-hdr">
-      <div class="drw-title" id="syncDrawerTitle">Sync & Security</div>
+      <div class="drw-title-wrap">
+        <div class="drw-title drw-title-major" id="settingDrawerTitle">Settings</div>
+        <br>
+        <div class="drw-title" id="settingSecurityTitle">Sync & Security</div>
+      </div>
       <button class="ibtn" id="closeSync">&#x2715;</button>
     </div>
     <div class="fg sync-toggle-row">
@@ -237,6 +251,13 @@
         <span id="syncEnableText">Enable Firefox Sync upload</span>
       </label>
       <div class="fhint" id="syncEnabledHint">Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.</div>
+    </div>
+    <div class="fg sync-toggle-row" id="syncEncryptedUploadRow" style="display:none">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="syncUseEncryptedPayload" />
+        <span id="syncUseEncryptedPayloadText">Upload encrypted local vault payload directly</span>
+      </label>
+      <div class="fhint" id="syncUseEncryptedPayloadHint">When local encryption is enabled, upload encrypted storage payload from this browser instead of plaintext account data.</div>
     </div>
     <div class="fg">
       <label class="fl" id="labelSyncSession">Sync Session ID</label>
@@ -286,6 +307,26 @@
       </div>
       <div class="err" id="debugErr"></div>
     </div>
+    <hr class="sep" />
+    <div class="drw-title section-title" id="settingPermissionTitle">Permissions</div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="autofillEnabled" />
+        <span id="permissionAutofillEnableText">Enable autofill feature</span>
+      </label>
+      <div class="fhint" id="permissionAutofillEnableHint">Automatically inject autofill on matched websites.</div>
+    </div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="rightclickEnabled" />
+        <span id="permissionRightclickEnableText">Enable right-click QR scan option</span>
+      </label>
+      <div class="fhint" id="permissionRightclickEnableHint">Show a QR scanning action in the browser image context menu.</div>
+    </div>
+    <div class="sync-actions">
+      <button class="btn-secondary" id="btnSavePermission">Save Permission Settings</button>
+    </div>
+    <div class="err" id="permissionErr"></div>
 
   </div>
 </div>

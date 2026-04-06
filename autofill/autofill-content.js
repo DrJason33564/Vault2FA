@@ -11,12 +11,13 @@
     accounts: [],
     timer: null,
     theme: 'auto',
-    language: 'en',
+    language: window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US',
     locked: false,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
+  const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
   const I18N = {
-    en: {
+    'en-US': {
       titleMain: 'Vault',
       titleAccent: '2FA',
       subtitle: 'Select a code to autofill',
@@ -24,18 +25,14 @@
       hotp: 'Counter-based (HOTP)',
       locked: '🔒Vault2FA is locked.',
     },
-    zh: {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: '选择验证码进行自动填充',
-      accountFallback: '账号',
-      hotp: '计数器模式（HOTP）',
-      locked: '🔒Vault2FA已锁定',
-    },
   };
 
   function byId(id){ return document.getElementById(id); }
-  function t(key){ return (I18N[state.language] && I18N[state.language][key]) || I18N.en[key] || key; }
+  function t(key){
+    return (I18N[state.language] && I18N[state.language][key])
+      || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+      || key;
+  }
   function currentTheme(){
     if(state.theme === 'light' || state.theme === 'dark') return state.theme;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
@@ -52,19 +49,21 @@
     if(typeof el.className === 'string') el.className = value;
     else el.setAttribute('class', value);
   }
-  function normalizeLanguage(value){ return window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(value) : (value === 'zh' ? 'zh' : 'en'); }
+  function resolveLocaleId(value){ return window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(value) : DEFAULT_LOCALE_ID; }
+  async function applyAutofillLocale(localeId){
+    if(!window.Vault2FALocales) return;
+    const target = String(localeId || '').trim() || DEFAULT_LOCALE_ID;
+    const section = await window.Vault2FALocales.getSection('autofill', target);
+    I18N[target] = Object.assign({}, I18N[target] || {}, section || {});
+  }
   async function loadPreferences(){
     try {
       const result = await browserApi.storage.local.get(['uiTheme', 'uiLanguage']);
       state.theme = result.uiTheme || 'auto';
-      state.language = normalizeLanguage(result.uiLanguage);
+      state.language = resolveLocaleId(result.uiLanguage);
       if(window.Vault2FALocales){
-        const [enSection, zhSection] = await Promise.all([
-          window.Vault2FALocales.getSection('autofill', 'en'),
-          window.Vault2FALocales.getSection('autofill', 'zh'),
-        ]);
-        I18N.en = Object.assign({}, I18N.en, enSection || {});
-        I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+        await applyAutofillLocale(DEFAULT_LOCALE_ID);
+        if(state.language !== DEFAULT_LOCALE_ID) await applyAutofillLocale(state.language);
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
@@ -354,7 +353,8 @@
         changed = true;
       }
       if(changes.uiLanguage){
-        state.language = normalizeLanguage(changes.uiLanguage.newValue);
+        state.language = resolveLocaleId(changes.uiLanguage.newValue);
+        applyAutofillLocale(state.language).catch(() => {});
         changed = true;
       }
       if(changed && state.dropdown && state.dropdown.style.display === 'block') renderDropdown();

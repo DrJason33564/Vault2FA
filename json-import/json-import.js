@@ -8,21 +8,24 @@ const resultEl = document.getElementById('result');
 const resultNameEl = document.getElementById('resultName');
 const errEl = document.getElementById('err');
 
-const I18N = { en: {} };
-
-let lang = 'en';
+const I18N = {};
+const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+let lang = DEFAULT_LOCALE_ID;
 
 async function loadJsonImportLocales(){
   if(!window.Vault2FALocales) return;
-  const [enSection, zhSection] = await Promise.all([
-    window.Vault2FALocales.getSection('json-import', 'en'),
-    window.Vault2FALocales.getSection('json-import', 'zh'),
-  ]);
-  I18N.en = Object.assign({}, I18N.en, enSection || {});
-  I18N.zh = Object.assign({}, I18N.zh || {}, zhSection || {});
+  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
+  for(const localeId of localeIds){
+    const section = await window.Vault2FALocales.getSection('json-import', localeId);
+    I18N[localeId] = Object.assign({}, I18N[localeId] || {}, section || {});
+  }
 }
 
-function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key; }
+function t(key){
+  return (I18N[lang] && I18N[lang][key])
+    || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || key;
+}
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
 }
@@ -33,7 +36,7 @@ function applyTheme(){
 }
 
 function applyI18n(){
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.documentElement.lang = lang;
   const pageTitle = document.getElementById('pageTitle');
   if(pageTitle){
     pageTitle.replaceChildren();
@@ -55,8 +58,9 @@ function toDebugEnglishMessage(message){
   const raw = String(message == null ? '' : message);
   if(!raw) return raw;
   const langPack = I18N[lang] || {};
+  const basePack = I18N[DEFAULT_LOCALE_ID] || {};
   for(const [key, value] of Object.entries(langPack)){
-    if(String(value) === raw && I18N.en[key]) return String(I18N.en[key]);
+    if(String(value) === raw && basePack[key]) return String(basePack[key]);
   }
   return raw;
 }
@@ -147,7 +151,7 @@ fileInput.addEventListener('change', async (e) => {
 });
 
 browser.storage.local.get('uiLanguage').then(async (result) => {
-  lang = window.Vault2FALocales ? window.Vault2FALocales.normalizeLanguage(result.uiLanguage) : (result.uiLanguage === 'zh' ? 'zh' : 'en');
+  lang = window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(result.uiLanguage) : DEFAULT_LOCALE_ID;
   await loadJsonImportLocales();
   applyI18n();
 });

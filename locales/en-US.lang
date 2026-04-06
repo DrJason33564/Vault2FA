@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=1.1.0
+VERSION=2.4.1
 
 [Language]
 LANGUAGE=English
@@ -19,11 +19,11 @@ syncSaved=Sync settings saved
 syncDisabled=Auto upload disabled
 needSession=Please enter a sync session ID first.
 needSessionEnable=Please enter a sync session ID before enabling sync.
-noAccountsToExport=No accounts to export
+noAccountsToExport=No account to export
 copied=Copied!
 addAccount=Add Account
 editAccount=Edit Account
-noAccountsYet=No accounts yet
+noAccountsYet=No account yet
 emptySub=Add your first account using the\n+ button below.
 vaultLocked=Vault Locked
 vaultLockSub=Local vault is locked. Enter your passphrase to unlock this browser session.
@@ -76,7 +76,9 @@ editSaveBtn=Save Changes
 deleteConfirm=Delete this account?
 editBtnTitle=Edit
 saveEditSuccess=Account updated
-syncDrawerTitle=Sync & Security
+settingDrawerTitle=Setting
+settingSecurityTitle=Sync & Security
+settingPermissionTitle=Permission
 vaultEnableText=Enable local encryption
 vaultEnableHint=When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.
 labelVaultPassphrase=Vault Passphrase
@@ -117,7 +119,7 @@ unlockPassphrasePlaceholder=Passphrase
 vaultPassphrasePlaceholder=At least 6 characters
 secretFormatUtf8=String (UTF-8)
 secretFormatLatin1=String (Latin-1)
-btnLangText=EN/中
+btnLangText=🌐
 jsonMissingAccounts=Invalid JSON format: missing accounts array.
 jsonMissingSecretOrLabel=JSON contains item(s) without secret or account label.
 duplicateHint=Warning: found {count} similar account name{suffix}. You will be asked to confirm before adding.
@@ -137,8 +139,8 @@ needOtpAuthUri=Please enter an otpauth:// URI.
 useOpenQrTabBtn=Use the "Open QR Scanner Tab" button above.
 secretRequired=Secret key is required.
 accountNameRequired=Account name is required.
-accountAdded=Account added!
-accountSaved=Account saved!
+accountAdded=Account added
+accountSaved=Account saved
 noEditAccountSelected=No account selected for editing.
 accountNotExists=Account no longer exists.
 confirmCloudOverwrite=Cloud data will overwrite your current local accounts. Continue?
@@ -150,6 +152,17 @@ noSecurityChangeNeeded=No security change needed
 vaultLockedToast=Vault locked
 popupLoadFailed=Failed to load popup
 migrationAccountsImported=Account imported from third-party source!
+langVersionMismatch=Language file version mismatches with add-on version
+syncUseEncryptedPayloadText=Upload encrypted local vault directlly
+syncUseEncryptedPayloadHint=When local encryption is enabled, upload the encrypted payload to Firefox Sync instead of plaintext data.
+confirmCloudEncryptedOverwrite=The downloaded sync data is encrypted and needs decryption. Overwrite local data with encrypted payload and lock vault now?
+downloadedEncryptedCloudData=Encrypted cloud data downloaded. Vault is locked.
+permissionAutofillEnableText=Enable autofill feature
+permissionAutofillEnableHint=Fill in 2FA related input fields in websites.
+permissionRightclickEnableText=Enable right-click QR scan
+permissionRightclickEnableHint=Show a QR scanning action in the right-click image context menu.
+permissionSaveBtn=Save Permission Settings
+permissionSavedToast=Permission Settings saved
 
 [qr-scanner]
 title=Vault <em>2FA</em> — QR Scanner
@@ -170,6 +183,10 @@ addFail=Could not add account:
 loadingFromImage=Loading image from web page…
 loadImageFail=Could not load the selected image: 
 migrationAccountsAdded=Account imported from third-party source - you can close this tab.
+permissionAutofillEnableText=Enable autofill feature
+permissionAutofillEnableHint=Fill in 2fa related input fields in websites.
+permissionRightclickEnableText=Enable right-click QR scan
+permissionRightclickEnableHint=Show a QR scanning action in the right-click image context menu.
 
 [json-import]
 title=Vault <em>2FA</em> — JSON Import

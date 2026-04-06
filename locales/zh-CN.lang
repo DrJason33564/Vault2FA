@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=1.1.0
+VERSION=2.4.1
 
 [Language]
 LANGUAGE=简体中文
@@ -76,14 +76,16 @@ editSaveBtn=保存修改
 deleteConfirm=确认删除该账号吗？
 editBtnTitle=修改
 saveEditSuccess=账号信息已更新
-syncDrawerTitle=同步与安全
+settingDrawerTitle=设置
+settingSecurityTitle=同步与安全
+settingPermissionTitle=权限
 vaultEnableText=启用本地加密
 vaultEnableHint=启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次
 labelVaultPassphrase=保险库口令
 applyVaultBtn=应用安全设置
 lockVaultBtn=立即锁定保险库
 vaultLockedPill=已锁定
-needEncryptBeforeLock=你需要先加密密码库
+needEncryptBeforeLock=你需要先加密保险库
 themeToggleTitle=切换深浅色主题
 themeLight=浅色模式
 themeDark=深色模式
@@ -117,7 +119,7 @@ unlockPassphrasePlaceholder=口令
 vaultPassphrasePlaceholder=至少 6 个字符
 secretFormatUtf8=字符串（UTF-8）
 secretFormatLatin1=字符串（Latin-1）
-btnLangText=中/EN
+btnLangText=🌐
 jsonMissingAccounts=JSON 格式不正确，缺少 accounts 数组。
 jsonMissingSecretOrLabel=JSON 中存在缺少密钥或账号名称的条目。
 duplicateHint=警告：发现 {count} 个相似账号名称。添加前会要求确认。
@@ -137,8 +139,8 @@ needOtpAuthUri=请输入 otpauth:// 或 otpauth-migration:// URI
 useOpenQrTabBtn=请使用上方“打开二维码扫描页”按钮
 secretRequired=密钥不能为空
 accountNameRequired=账号名称不能为空
-accountAdded=账号已添加！
-accountSaved=账号已保存！
+accountAdded=账号已添加
+accountSaved=账号已保存
 noEditAccountSelected=未找到要编辑的账号。
 accountNotExists=账号不存在或已被删除。
 confirmCloudOverwrite=云端数据将覆盖当前本地账号，是否继续？
@@ -150,6 +152,17 @@ noSecurityChangeNeeded=无需安全设置变更
 vaultLockedToast=保险库已锁定
 popupLoadFailed=弹窗加载失败
 migrationAccountsImported=已导入第三方账号数据
+langVersionMismatch=语言文件版本与插件版本不一致
+syncUseEncryptedPayloadText=上传加密后的保险库
+syncUseEncryptedPayloadHint=在开启本地保险库加密后，将加密后内容上传至Firefox Sync，而非明文上传
+confirmCloudEncryptedOverwrite=下载的云端数据是加密过的保险库，确认下载、覆盖并锁定保险库吗？
+downloadedEncryptedCloudData=已下载云端加密数据并锁定保险库
+permissionAutofillEnableText=启用自动填充
+permissionAutofillEnableHint=自动填充网页中二部验证相关输入框
+permissionRightclickEnableText=启用右键二维码扫描
+permissionRightclickEnableHint=在图片内容的右键菜单中增加二维码扫描选项
+permissionSaveBtn=保存权限设置
+permissionSavedToast=权限设置已保存
 
 [qr-scanner]
 title=Vault <em>2FA</em> — 二维码扫描
