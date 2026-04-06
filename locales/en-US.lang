@@ -151,6 +151,10 @@ vaultLockedToast=Vault locked
 popupLoadFailed=Failed to load popup
 migrationAccountsImported=Account imported from third-party source!
 langVersionMismatch=Language file version mismatches with add-on version
+syncUseEncryptedPayloadText=Upload encrypted local vault directlly
+syncUseEncryptedPayloadHint=When local encryption is enabled, upload the encrypted payload to Firefox Sync instead of plaintext data.
+confirmCloudEncryptedOverwrite=The downloaded sync data is encrypted and needs decryption. Overwrite local data with encrypted payload and lock vault now?
+downloadedEncryptedCloudData=Encrypted cloud data downloaded. Vault is locked.
 
 [qr-scanner]
 title=Vault <em>2FA</em> — QR Scanner

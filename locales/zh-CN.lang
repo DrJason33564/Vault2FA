@@ -151,6 +151,10 @@ vaultLockedToast=保险库已锁定
 popupLoadFailed=弹窗加载失败
 migrationAccountsImported=已导入第三方账号数据
 langVersionMismatch=语言文件版本与插件版本不一致
+syncUseEncryptedPayloadText=上传加密后的保险库
+syncUseEncryptedPayloadHint=在开启本地保险库加密后，将加密后内容上传至Firefox Sync，而非明文上传
+confirmCloudEncryptedOverwrite=下载的云端数据是加密过的保险库，确认下载、覆盖并锁定保险库吗？
+downloadedEncryptedCloudData=已下载云端加密数据并锁定保险库
 
 [qr-scanner]
 title=Vault <em>2FA</em> — 二维码扫描

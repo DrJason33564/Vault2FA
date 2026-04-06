@@ -151,6 +151,10 @@ vaultLockedToast=Bóveda bloqueada
 popupLoadFailed=No se pudo cargar la ventana emergente
 migrationAccountsImported=¡Cuenta importada desde una fuente de terceros!
 langVersionMismatch=La versión del archivo de idioma no coincide con la versión del complemento
+syncUseEncryptedPayloadText=Subir la bóveda cifrada
+syncUseEncryptedPayloadHint=Después de activar el cifrado local de la bóveda, subir a Firefox Sync el contenido ya cifrado, en lugar de subirlo en texto plano
+confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda cifrada. ¿Confirmas la descarga, la sobrescritura y el bloqueo de la bóveda?
+downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
 
 [qr-scanner]
 title=Vault <em>2FA</em> — Escáner QR
@@ -171,6 +175,10 @@ addFail=No se pudo añadir la cuenta:
 loadingFromImage=Cargando imagen desde la página web…
 loadImageFail=No se pudo cargar la imagen seleccionada: 
 migrationAccountsAdded=Cuenta importada desde una fuente de terceros; ya puedes cerrar esta pestaña.
+syncUseEncryptedPayloadText=Subir la bóveda cifrada
+syncUseEncryptedPayloadHint=Después de activar el cifrado local de la bóveda, subir a Firefox Sync el contenido ya cifrado, en lugar de subirlo en texto plano
+confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda cifrada. ¿Confirmas la descarga, la sobrescritura y el bloqueo de la bóveda?
+downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
 
 [json-import]
 title=Vault <em>2FA</em> — Importación JSON
