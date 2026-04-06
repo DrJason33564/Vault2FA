@@ -15,6 +15,7 @@ const defaultSyncSettings = {
   intervalMinutes: 5,
   lastUploadedAt: null,
   lastDownloadedAt: null,
+  useEncryptedPayload: false,
 };
 
 const defaultVaultSettings = {
@@ -411,6 +412,27 @@ function splitAccountsForSync(accounts, baseKey){
   return chunks;
 }
 
+function splitStringForSync(value, baseKey){
+  const source = String(value || '');
+  if(!source) return [''];
+  const chunks = [];
+  let cursor = 0;
+  while(cursor < source.length){
+    let nextCursor = Math.min(source.length, cursor + SYNC_SAFE_ITEM_BYTES);
+    let candidate = source.slice(cursor, nextCursor);
+    while(candidate && estimateSyncItemBytes(getSyncChunkKey(baseKey, chunks.length), candidate) > SYNC_SAFE_ITEM_BYTES){
+      nextCursor -= 1;
+      candidate = source.slice(cursor, nextCursor);
+    }
+    if(!candidate){
+      throw new Error('Encrypted payload is too large to sync.');
+    }
+    chunks.push(candidate);
+    cursor = nextCursor;
+  }
+  return chunks;
+}
+
 async function deriveKey(passphrase, saltB64){
   const salt = bytesFromB64(saltB64);
   const baseKey = await crypto.subtle.importKey('raw', enc(passphrase), 'PBKDF2', false, ['deriveKey']);
@@ -582,22 +604,43 @@ async function setLocalAccounts(accounts){
   await refreshAutofillInjectionForOpenTabs();
 }
 
-async function uploadToSync(accounts, settings){
+async function uploadToSync(accounts, settings, options = {}){
+  const useEncryptedPayload = !!options.useEncryptedPayload;
   await appendDebugInfo('Sync upload requested', {
     sessionId: settings.sessionId,
     count: Array.isArray(accounts) ? accounts.length : 0,
     fullAccounts: Array.isArray(accounts) ? accounts : [],
     settings,
+    useEncryptedPayload,
   });
   if(!settings.sessionId) return { skipped: true };
   const baseKey = getSyncKey(settings.sessionId);
-  const chunkedAccounts = splitAccountsForSync(Array.isArray(accounts) ? accounts : [], baseKey);
+  let mode = 'plainAccounts';
+  let payloadCount = Array.isArray(accounts) ? accounts.length : 0;
+  let chunkedAccounts = [];
+  let chunkedEncryptedPayload = [];
+  if(useEncryptedPayload){
+    const vault = await getVaultSettings();
+    if(!vault.encryptionEnabled){
+      throw new Error('Enable local encryption before uploading encrypted payload.');
+    }
+    const encryptedPayload = await getEncryptedPayload();
+    if(!encryptedPayload){
+      throw new Error('Encrypted local payload was not found.');
+    }
+    mode = 'encryptedPayload';
+    payloadCount = 0;
+    chunkedEncryptedPayload = splitStringForSync(JSON.stringify(encryptedPayload), baseKey);
+  } else {
+    chunkedAccounts = splitAccountsForSync(Array.isArray(accounts) ? accounts : [], baseKey);
+  }
   const payload = {
-    version: 2,
+    version: 3,
     sessionId: settings.sessionId,
     updatedAt: Date.now(),
-    count: Array.isArray(accounts) ? accounts.length : 0,
-    chunkCount: chunkedAccounts.length,
+    count: payloadCount,
+    mode,
+    chunkCount: mode === 'encryptedPayload' ? chunkedEncryptedPayload.length : chunkedAccounts.length,
   };
   if(estimateSyncItemBytes(baseKey, payload) > SYNC_MAX_ITEM_BYTES){
     throw new Error('Sync metadata is too large.');
@@ -605,13 +648,14 @@ async function uploadToSync(accounts, settings){
   const previous = await browser.storage.sync.get(baseKey);
   await appendDebugInfo('Sync upload previous metadata loaded', { baseKey, previous });
   const previousPayload = previous[baseKey];
-  const previousChunkCount = previousPayload && previousPayload.version === 2
+  const previousChunkCount = previousPayload && (previousPayload.version === 2 || previousPayload.version === 3)
     ? Math.max(0, Number(previousPayload.chunkCount) || 0)
     : 0;
 
   const nextItems = { [baseKey]: payload };
   let totalBytes = estimateSyncItemBytes(baseKey, payload);
-  chunkedAccounts.forEach((chunk, idx) => {
+  const activeChunks = mode === 'encryptedPayload' ? chunkedEncryptedPayload : chunkedAccounts;
+  activeChunks.forEach((chunk, idx) => {
     const chunkKey = getSyncChunkKey(baseKey, idx);
     const itemBytes = estimateSyncItemBytes(chunkKey, chunk);
     if(itemBytes > SYNC_MAX_ITEM_BYTES){
@@ -628,6 +672,7 @@ async function uploadToSync(accounts, settings){
     baseKey,
     payload,
     chunkedAccounts,
+    chunkedEncryptedPayload,
     nextItems,
     totalBytes,
   });
@@ -637,7 +682,7 @@ async function uploadToSync(accounts, settings){
     await appendDebugInfo('Sync upload storage.sync.set success', {
       baseKey,
       itemKeys: Object.keys(nextItems),
-      chunkCount: chunkedAccounts.length,
+      chunkCount: activeChunks.length,
       totalBytes,
     });
   } catch (err) {
@@ -655,9 +700,9 @@ async function uploadToSync(accounts, settings){
     response: verify,
   });
 
-  if(previousChunkCount > chunkedAccounts.length){
+  if(previousChunkCount > activeChunks.length){
     const staleChunkKeys = [];
-    for(let i = chunkedAccounts.length; i < previousChunkCount; i += 1){
+    for(let i = activeChunks.length; i < previousChunkCount; i += 1){
       staleChunkKeys.push(getSyncChunkKey(baseKey, i));
     }
     if(staleChunkKeys.length){
@@ -666,7 +711,7 @@ async function uploadToSync(accounts, settings){
     }
   }
   await setSyncSettings({ lastUploadedAt: payload.updatedAt });
-  const result = { success: true, updatedAt: payload.updatedAt, count: payload.count };
+  const result = { success: true, updatedAt: payload.updatedAt, count: payload.count, mode };
   await appendDebugInfo('Sync upload completed', result);
   return result;
 }
@@ -683,14 +728,16 @@ async function runAutoUploadTick(force){
   const settings = await getSyncSettings();
   if(!settings.enabled || !settings.sessionId) return { skipped: true, reason: 'disabled' };
   if(!force && !shouldAutoUpload(settings)) return { skipped: true, reason: 'interval' };
-  let accounts;
-  try {
-    accounts = await getLocalAccounts();
-  } catch (err) {
-    if(err && err.code === 'NEED_UNLOCK') return { skipped: true, reason: 'vault_locked' };
-    throw err;
+  let accounts = [];
+  if(!settings.useEncryptedPayload){
+    try {
+      accounts = await getLocalAccounts();
+    } catch (err) {
+      if(err && err.code === 'NEED_UNLOCK') return { skipped: true, reason: 'vault_locked' };
+      throw err;
+    }
   }
-  return uploadToSync(accounts, settings);
+  return uploadToSync(accounts, settings, { useEncryptedPayload: !!settings.useEncryptedPayload });
 }
 
 function startAutoUploadScheduler(){
@@ -701,7 +748,9 @@ function startAutoUploadScheduler(){
   }, AUTO_UPLOAD_TICK_MS);
 }
 
-async function downloadFromSync(sessionId){
+async function downloadFromSync(sessionId, options = {}){
+  const apply = options.apply !== false;
+  const allowEncrypted = !!options.allowEncrypted;
   await appendDebugInfo('Sync download requested', { sessionId });
   const sid = String(sessionId || '').trim();
   if(!sid) throw new Error('Sync session ID is required.');
@@ -713,9 +762,46 @@ async function downloadFromSync(sessionId){
     throw new Error('No synced data was found for this session ID.');
   }
 
+  let mode = payload.version === 3 ? String(payload.mode || 'plainAccounts') : 'plainAccounts';
   let accounts = [];
-  if(payload.version === 2){
-    const chunkCount = Math.max(0, Number(payload.chunkCount) || 0);
+  let encryptedPayload = null;
+  const chunkCount = Math.max(0, Number(payload.chunkCount) || 0);
+  if(payload.version === 3){
+    const chunkKeys = [];
+    for(let i = 0; i < chunkCount; i += 1){
+      chunkKeys.push(getSyncChunkKey(baseKey, i));
+    }
+    const chunkData = chunkKeys.length ? await browser.storage.sync.get(chunkKeys) : {};
+    await appendDebugInfo('Sync download chunk response', { chunkKeys, chunkData, mode });
+    if(mode === 'encryptedPayload'){
+      const textChunks = [];
+      for(const key of chunkKeys){
+        const chunk = chunkData[key];
+        if(typeof chunk !== 'string'){
+          throw new Error('Synced encrypted payload is incomplete. Try uploading again from another device.');
+        }
+        textChunks.push(chunk);
+      }
+      const encryptedText = textChunks.join('');
+      if(!encryptedText){
+        throw new Error('Synced encrypted payload is empty.');
+      }
+      encryptedPayload = JSON.parse(encryptedText);
+      if(!encryptedPayload || typeof encryptedPayload !== 'object' || !encryptedPayload.iv || !encryptedPayload.data){
+        throw new Error('Synced encrypted payload is invalid.');
+      }
+    } else {
+      accounts = [];
+      for(const key of chunkKeys){
+        const chunk = chunkData[key];
+        if(!Array.isArray(chunk)){
+          throw new Error('Synced data is incomplete. Try uploading again from another device.');
+        }
+        accounts.push(...chunk);
+      }
+    }
+  } else if(payload.version === 2){
+    mode = 'plainAccounts';
     if(chunkCount === 0){
       accounts = [];
     } else {
@@ -724,7 +810,7 @@ async function downloadFromSync(sessionId){
         chunkKeys.push(getSyncChunkKey(baseKey, i));
       }
       const chunkData = await browser.storage.sync.get(chunkKeys);
-      await appendDebugInfo('Sync download chunk response', { chunkKeys, chunkData });
+      await appendDebugInfo('Sync download chunk response', { chunkKeys, chunkData, mode });
       accounts = [];
       for(const key of chunkKeys){
         const chunk = chunkData[key];
@@ -735,20 +821,55 @@ async function downloadFromSync(sessionId){
       }
     }
   } else if(Array.isArray(payload.accounts)) {
+    mode = 'plainAccounts';
     accounts = payload.accounts;
   } else {
     throw new Error('No synced data was found for this session ID.');
   }
 
-  await setLocalAccounts(accounts);
+  const containsEncryptedHeader = mode === 'encryptedPayload' && hasPayloadHeaderFields(encryptedPayload);
+  if(!apply){
+    return {
+      success: true,
+      updatedAt: payload.updatedAt || null,
+      count: mode === 'plainAccounts' ? accounts.length : 0,
+      mode,
+      containsEncryptedHeader,
+      requiresEncryptedConfirmation: containsEncryptedHeader,
+    };
+  }
+
+  if(mode === 'encryptedPayload'){
+    if(containsEncryptedHeader && !allowEncrypted){
+      const err = new Error('Synced cloud payload is encrypted. Confirm encrypted overwrite first.');
+      err.code = 'NEED_ENCRYPTED_CONFIRM';
+      throw err;
+    }
+    await setEncryptedPayload(encryptedPayload);
+    await clearPlainAccounts();
+    unlockedCrypto = null;
+    await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: null });
+  } else {
+    await setLocalAccounts(accounts);
+  }
   await setSyncSettings({ lastDownloadedAt: Date.now() });
   await appendDebugInfo('Sync download applied to local storage', {
     sessionId: sid,
     count: accounts.length,
     fullAccounts: accounts,
+    mode,
+    containsEncryptedHeader,
     sourcePayload: payload,
   });
-  const resultPayload = { success: true, accounts, updatedAt: payload.updatedAt || null, count: accounts.length };
+  const resultPayload = {
+    success: true,
+    accounts,
+    updatedAt: payload.updatedAt || null,
+    count: accounts.length,
+    mode,
+    containsEncryptedHeader,
+    appliedEncryptedPayload: mode === 'encryptedPayload',
+  };
   await appendDebugInfo('Sync download completed', resultPayload);
   return resultPayload;
 }
@@ -878,11 +999,13 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           enabled: !!incoming.enabled,
           sessionId: String(incoming.sessionId || '').trim(),
           intervalMinutes: Math.max(1, parseInt(incoming.intervalMinutes, 10) || 5),
+          useEncryptedPayload: !!incoming.useEncryptedPayload,
         });
         await appendDebugInfo('Sync settings updated', {
           enabled: settings.enabled,
           sessionId: settings.sessionId,
           intervalMinutes: settings.intervalMinutes,
+          useEncryptedPayload: settings.useEncryptedPayload,
         });
         sendResponse({ success: true, settings, upload: { skipped: true } });
         return;
@@ -891,8 +1014,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
         if(!sessionId) throw new Error('Set a sync session ID first.');
-        const accounts = await getLocalAccounts();
-        const upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }));
+        const useEncryptedPayload = message.useEncryptedPayload == null
+          ? !!settings.useEncryptedPayload
+          : !!message.useEncryptedPayload;
+        const accounts = useEncryptedPayload ? [] : await getLocalAccounts();
+        const upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }), { useEncryptedPayload });
         await appendDebugInfo('uploadSyncNow response', { upload });
         sendResponse({ success: true, upload, settings: await getSyncSettings() });
         return;
@@ -1062,7 +1188,10 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'downloadSyncToLocal': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
-        const data = await downloadFromSync(sessionId);
+        const data = await downloadFromSync(sessionId, {
+          apply: !message.dryRun,
+          allowEncrypted: !!message.allowEncrypted,
+        });
         await appendDebugInfo('downloadSyncToLocal response', { data });
         sendResponse(data);
         return;
