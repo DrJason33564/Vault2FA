@@ -6,6 +6,7 @@ const ENCRYPTED_ACCOUNTS_KEY = 'accountsEncrypted';
 const SYNC_SETTINGS_KEY = 'syncSettings';
 const VAULT_SETTINGS_KEY = 'vaultSettings';
 const DEBUG_SETTINGS_KEY = 'debugSettings';
+const FEATURE_SETTINGS_KEY = 'featureSettings';
 const DEBUG_LOG_KEY = 'debugInfoLog';
 const SYNC_PREFIX = 'session:';
 
@@ -25,6 +26,10 @@ const defaultVaultSettings = {
 };
 const defaultDebugSettings = {
   enabled: false,
+};
+const defaultFeatureSettings = {
+  autofillEnabled: true,
+  rightclickEnabled: true,
 };
 const SYNC_MAX_ITEM_BYTES = 8192;
 const SYNC_SAFE_ITEM_BYTES = 7000;
@@ -133,6 +138,8 @@ async function maybeInjectAutofillForTab(tabId, url){
   if(typeof browser.scripting === 'undefined' || !browser.scripting || typeof browser.scripting.executeScript !== 'function'){
     return;
   }
+  const featureSettings = await getFeatureSettings();
+  if(featureSettings.autofillEnabled === false) return;
   if(shouldSkipInjectionUrl(url)) return;
   const hostname = extractHostnameFromUrl(url);
   if(!hostname) return;
@@ -185,10 +192,12 @@ async function resolveContextMenuLanguage(){
 async function setupContextMenus(){
   await loadBackgroundLocales();
   if(!browser.contextMenus || typeof browser.contextMenus.create !== 'function') return;
+  const featureSettings = await getFeatureSettings();
   const language = await resolveContextMenuLanguage();
   try {
     await browser.contextMenus.remove(QR_CONTEXT_MENU_ID);
   } catch (_) {}
+  if(featureSettings.rightclickEnabled === false) return;
   try {
     browser.contextMenus.create({
       id: QR_CONTEXT_MENU_ID,
@@ -316,6 +325,15 @@ async function getDebugSettings(){
 async function setDebugSettings(next){
   const merged = Object.assign({}, await getDebugSettings(), next || {});
   await browser.storage.local.set({ [DEBUG_SETTINGS_KEY]: merged });
+  return merged;
+}
+async function getFeatureSettings(){
+  const result = await browser.storage.local.get(FEATURE_SETTINGS_KEY);
+  return Object.assign({}, defaultFeatureSettings, result[FEATURE_SETTINGS_KEY] || {});
+}
+async function setFeatureSettings(next){
+  const merged = Object.assign({}, await getFeatureSettings(), next || {});
+  await browser.storage.local.set({ [FEATURE_SETTINGS_KEY]: merged });
   return merged;
 }
 function maskSecretValue(value){
@@ -1010,6 +1028,19 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, settings, upload: { skipped: true } });
         return;
       }
+      case 'getFeatureSettings': {
+        sendResponse({ success: true, settings: await getFeatureSettings() });
+        return;
+      }
+      case 'saveFeatureSettings': {
+        const incoming = message.settings || {};
+        const settings = await setFeatureSettings({
+          autofillEnabled: incoming.autofillEnabled !== false,
+          rightclickEnabled: incoming.rightclickEnabled !== false,
+        });
+        sendResponse({ success: true, settings });
+        return;
+      }
       case 'uploadSyncNow': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
@@ -1278,8 +1309,13 @@ if(browser.contextMenus && browser.contextMenus.onClicked){
 if(browser.storage && browser.storage.onChanged){
   browser.storage.onChanged.addListener((changes, areaName) => {
     if(areaName !== 'local') return;
-    if(!changes || !changes.uiLanguage) return;
-    setupContextMenus().catch(() => {});
+    if(!changes) return;
+    if(changes.uiLanguage || changes[FEATURE_SETTINGS_KEY]){
+      setupContextMenus().catch(() => {});
+    }
+    if(changes[FEATURE_SETTINGS_KEY]){
+      refreshAutofillInjectionForOpenTabs().catch(() => {});
+    }
   });
 }
 

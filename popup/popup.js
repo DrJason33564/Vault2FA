@@ -17,6 +17,7 @@ let syncSettings = {
 };
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let debugState = { enabled:false };
+let featureSettings = { autofillEnabled:true, rightclickEnabled:true };
 let debugUiUnlocked = false;
 let uiLanguage = 'en-US';
 let uiTheme = 'auto';
@@ -68,7 +69,11 @@ const STATIC_TEXT_MAP = {
   btnOpenQrTab: 'openQrTab', labelUri: 'labelUri', hintUri: 'hintUri', btnSave: 'saveAccountBtn', exportDrawerTitle: 'exportDrawerTitle',
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
-  syncDrawerTitle: 'syncDrawerTitle', syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
+  settingDrawerTitle: 'settingDrawerTitle', settingSecurityTitle: 'settingSecurityTitle', settingPermissionTitle: 'settingPermissionTitle',
+  permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
+  permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
+  btnSavePermission: 'permissionSaveBtn',
+  syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
   vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase', btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
@@ -160,6 +165,23 @@ function applyStaticTranslations(){
       continue;
     }
     el.textContent = t(key);
+  }
+  const popupFallbackText = {
+    settingDrawerTitle: 'Settings',
+    settingSecurityTitle: 'Sync & Security',
+    settingPermissionTitle: 'Permissions',
+    permissionAutofillEnableText: 'Enable autofill feature',
+    permissionAutofillEnableHint: 'Automatically inject autofill on matched websites.',
+    permissionRightclickEnableText: 'Enable right-click QR scan option',
+    permissionRightclickEnableHint: 'Show a QR scanning action in the browser image context menu.',
+    btnSavePermission: 'Save Permission Settings',
+  };
+  for(const [id, fallback] of Object.entries(popupFallbackText)){
+    const el = byId(id);
+    if(!el) continue;
+    const key = STATIC_TEXT_MAP[id];
+    if(!key) continue;
+    el.textContent = tf(key, fallback);
   }
   byId('btnImport').title = t('btnImportTitle');
   byId('btnExport').title = t('btnExportTitle');
@@ -841,6 +863,8 @@ async function loadAccounts(){
 function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : t('never'); }
 
 function updateSyncUi(){
+  byId('autofillEnabled').checked = featureSettings.autofillEnabled !== false;
+  byId('rightclickEnabled').checked = featureSettings.rightclickEnabled !== false;
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
@@ -891,6 +915,11 @@ function updateDebugUi(){
 async function loadSyncSettings(){
   const resp = await sendMessage({ action:'getSyncSettings' });
   if(resp.settings) syncSettings = Object.assign({}, syncSettings, resp.settings);
+  updateSyncUi();
+}
+async function loadFeatureSettings(){
+  const resp = await sendMessage({ action:'getFeatureSettings' });
+  if(resp.settings) featureSettings = Object.assign({}, featureSettings, resp.settings);
   updateSyncUi();
 }
 async function loadDebugState(){
@@ -956,6 +985,7 @@ async function boot(){
   applyTheme();
   
   await refreshVaultStatus();
+  await loadFeatureSettings();
   await loadSyncSettings();
   await loadDebugState();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
@@ -1290,6 +1320,23 @@ byId('btnSaveSync').addEventListener('click', async () => {
     updateSyncBadgeFromResponse(resp);
     toast(enabled ? t('syncSaved') : t('syncDisabled'));
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }
+});
+
+byId('btnSavePermission').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
+  const errEl = byId('permissionErr');
+  errEl.style.display = 'none';
+  const autofillEnabled = byId('autofillEnabled').checked;
+  const rightclickEnabled = byId('rightclickEnabled').checked;
+  try {
+    const resp = await sendMessage({ action:'saveFeatureSettings', settings:{ autofillEnabled, rightclickEnabled } });
+    if(resp.settings) featureSettings = Object.assign({}, featureSettings, resp.settings);
+    updateSyncUi();
+    toast(tf('permissionSavedToast', 'Permission settings saved'));
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
 });
 
 byId('btnUploadSync').addEventListener('click', async () => {
