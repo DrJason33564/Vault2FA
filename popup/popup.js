@@ -70,6 +70,7 @@ const STATIC_TEXT_MAP = {
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   settingDrawerTitle: 'settingDrawerTitle', settingSecurityTitle: 'settingSecurityTitle', settingPermissionTitle: 'settingPermissionTitle',
+  settingDebugTitle: 'settingDebugTitle',
   permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
   permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
   btnSavePermission: 'permissionSaveBtn',
@@ -170,6 +171,7 @@ function applyStaticTranslations(){
     settingDrawerTitle: 'Settings',
     settingSecurityTitle: 'Sync & Security',
     settingPermissionTitle: 'Permissions',
+    settingDebugTitle: 'Debugging',
     permissionAutofillEnableText: 'Enable autofill feature',
     permissionAutofillEnableHint: 'Automatically inject autofill on matched websites.',
     permissionRightclickEnableText: 'Enable right-click QR scan option',
@@ -915,6 +917,7 @@ function updateSyncBadgeFromResponse(resp){
 
 function updateDebugUi(){
   const shouldShow = debugState.enabled || debugUiUnlocked;
+  byId('settingDebugTitle').style.display = shouldShow ? 'block' : 'none';
   byId('debugPanel').style.display = shouldShow ? 'block' : 'none';
   byId('debugSep').style.display = shouldShow ? 'block' : 'none';
   byId('debugEnabled').checked = !!debugState.enabled;
