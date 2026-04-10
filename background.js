@@ -1101,6 +1101,25 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'importAccountsFromJson': {
+        const encryptedPayload = message && message.encryptedPayload;
+        if(hasPayloadHeaderFields(encryptedPayload) && typeof encryptedPayload.data === 'string' && encryptedPayload.data){
+          await setEncryptedPayload(encryptedPayload);
+          await clearPlainAccounts();
+          unlockedCrypto = null;
+          await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: null });
+          await refreshAutofillInjectionForOpenTabs();
+          await appendDebugInfo('importAccountsFromJson stored encrypted payload and locked vault', {
+            header: getPayloadHeaderForLog(encryptedPayload),
+          });
+          sendResponse({
+            success: true,
+            importedEncrypted: true,
+            importedCount: 0,
+            totalAccounts: 0,
+            settings: await getSyncSettings(),
+          });
+          return;
+        }
         const source = Array.isArray(message.accounts) ? message.accounts : [];
         if(!source.length) throw new Error('No accounts provided.');
         const normalized = source.map(normalizeImportedAccountRecord);
@@ -1111,7 +1130,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           importedCount: normalized.length,
           totalAccounts: merged.length,
         });
-        sendResponse({ success: true, importedCount: normalized.length, totalAccounts: merged.length, settings: await getSyncSettings() });
+        sendResponse({ success: true, importedEncrypted: false, importedCount: normalized.length, totalAccounts: merged.length, settings: await getSyncSettings() });
+        return;
+      }
+      case 'getEncryptedPayloadForExport': {
+        const payload = await getEncryptedPayload();
+        await appendDebugInfo('getEncryptedPayloadForExport requested', {
+          hasPayload: !!payload,
+          header: getPayloadHeaderForLog(payload),
+        });
+        sendResponse({ success: true, payload });
         return;
       }
 
