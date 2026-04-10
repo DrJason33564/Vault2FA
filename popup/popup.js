@@ -70,6 +70,7 @@ const STATIC_TEXT_MAP = {
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   settingDrawerTitle: 'settingDrawerTitle', settingSecurityTitle: 'settingSecurityTitle', settingPermissionTitle: 'settingPermissionTitle',
+  settingDebugTitle: 'settingDebugTitle',
   permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
   permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
   btnSavePermission: 'permissionSaveBtn',
@@ -170,6 +171,7 @@ function applyStaticTranslations(){
     settingDrawerTitle: 'Settings',
     settingSecurityTitle: 'Sync & Security',
     settingPermissionTitle: 'Permissions',
+    settingDebugTitle: 'Debugging',
     permissionAutofillEnableText: 'Enable autofill feature',
     permissionAutofillEnableHint: 'Automatically inject autofill on matched websites.',
     permissionRightclickEnableText: 'Enable right-click QR scan option',
@@ -690,6 +692,20 @@ function buildJsonExportPayload(){
   };
 }
 
+function hasEncryptedPayloadHeader(payload){
+  if(!payload || typeof payload !== 'object') return false;
+  return (
+    typeof payload.kdf === 'string' &&
+    Number.isFinite(Number(payload.iterations)) &&
+    typeof payload.salt === 'string' && !!payload.salt &&
+    Number.isFinite(Number(payload.keyLength)) &&
+    typeof payload.cipher === 'string' &&
+    Number.isFinite(Number(payload.version)) &&
+    typeof payload.iv === 'string' && !!payload.iv &&
+    typeof payload.data === 'string' && !!payload.data
+  );
+}
+
 function buildImportSummaryText(parsedCount, failCount, duplicateCount){
   const failPart = failCount ? tFmt('importFailPart', { count: failCount }) : '';
   const dupPart = duplicateCount ? tFmt('importDupPart', { count: duplicateCount }) : '';
@@ -901,6 +917,7 @@ function updateSyncBadgeFromResponse(resp){
 
 function updateDebugUi(){
   const shouldShow = debugState.enabled || debugUiUnlocked;
+  byId('settingDebugTitle').style.display = shouldShow ? 'block' : 'none';
   byId('debugPanel').style.display = shouldShow ? 'block' : 'none';
   byId('debugSep').style.display = shouldShow ? 'block' : 'none';
   byId('debugEnabled').checked = !!debugState.enabled;
@@ -1172,13 +1189,41 @@ byId('btnCopyExport').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   navigator.clipboard.writeText(byId('exportData').value).then(() => toast(t('copied')));
 });
-byId('btnDownloadExportJson').addEventListener('click', () => {
+byId('btnDownloadExportJson').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
-  const payload = buildJsonExportPayload();
+  let payload = buildJsonExportPayload();
+  let exportedMode = 'plaintext';
+  if(vaultStatus.encryptionEnabled){
+    try {
+      const vaultExport = await sendMessage({ action:'getEncryptedPayloadForExport' });
+      const encryptedPayload = vaultExport && vaultExport.payload;
+      const hasEncryptedPayload = hasEncryptedPayloadHeader(encryptedPayload);
+      await debugInfo('Popup JSON export encryption status checked', {
+        encryptionEnabled: !!vaultStatus.encryptionEnabled,
+        hasEncryptedPayload,
+      });
+      if(hasEncryptedPayload){
+        const confirmText = tf('exportJsonEncrypted', 'Local vault is encrypted. Export as encrypted?');
+        const shouldExportEncrypted = window.confirm(confirmText);
+        await debugInfo('Popup JSON export mode confirmed', {
+          shouldExportEncrypted,
+        });
+        if(shouldExportEncrypted){
+          payload = encryptedPayload;
+          exportedMode = 'encrypted';
+        }
+      }
+    } catch (err){
+      await debugInfo('Popup JSON export encryption check failed', {
+        error: toDebugEnglishMessage(err && err.message ? err.message : String(err)),
+      });
+    }
+  }
   debugInfo('Popup JSON export requested', {
-    accountCount: payload.accounts.length,
-    fields: ['id','type','issuer','label','secret','algorithm','digits','period','counter','autofillPatterns'],
+    mode: exportedMode,
+    accountCount: exportedMode === 'plaintext' ? payload.accounts.length : null,
+    fields: exportedMode === 'plaintext' ? ['id','type','issuer','label','secret','algorithm','digits','period','counter','autofillPatterns'] : ['kdf','iterations','salt','keyLength','cipher','version','iv','data'],
   });
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -1191,7 +1236,8 @@ byId('btnDownloadExportJson').addEventListener('click', () => {
   a.remove();
   URL.revokeObjectURL(url);
   debugInfo('Popup JSON export download triggered', {
-    accountCount: payload.accounts.length,
+    mode: exportedMode,
+    accountCount: exportedMode === 'plaintext' ? payload.accounts.length : null,
     filename: a.download,
   });
 });

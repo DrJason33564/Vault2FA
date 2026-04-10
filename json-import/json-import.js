@@ -29,6 +29,10 @@ function t(key){
 function tFmt(key, values = {}){
   return String(t(key)).replace(/\{(\w+)\}/g, (_, name) => values[name] == null ? '' : String(values[name]));
 }
+function tf(key, fallback){
+  const value = t(key);
+  return value === key ? fallback : value;
+}
 
 function applyTheme(){
   const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -49,7 +53,7 @@ function applyI18n(){
   document.getElementById('dzTitle').textContent = t('dzTitle');
   document.getElementById('dzSub').textContent = t('dzSub');
   document.getElementById('status').textContent = t('waiting');
-  document.getElementById('resultSub').textContent = t('resultSub');
+  setResultSub(false);
   document.getElementById('pageHint').textContent = t('hint');
 }
 
@@ -68,6 +72,11 @@ function toDebugEnglishMessage(message){
 function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent = ''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent = msg; errEl.classList.add('show'); showStatus(''); }
+function setResultSub(isEncrypted){
+  const sub = document.getElementById('resultSub');
+  if(!sub) return;
+  sub.textContent = isEncrypted ? tf('resultEncryptedSub', 'Encrypted data imported. Vault is now locked.') : t('resultSub');
+}
 async function debugInfo(message, context){
   try {
     await browser.runtime.sendMessage({ action:'appendDebugInfo', message, context });
@@ -83,6 +92,17 @@ function parseJsonText(text){
   } catch(_) {
     throw new Error(t('invalidJson'));
   }
+  const hasEncryptedHeader = !!(parsed && typeof parsed === 'object'
+    && typeof parsed.kdf === 'string'
+    && Number.isFinite(Number(parsed.iterations))
+    && typeof parsed.salt === 'string' && parsed.salt
+    && Number.isFinite(Number(parsed.keyLength))
+    && typeof parsed.cipher === 'string'
+    && Number.isFinite(Number(parsed.version))
+    && typeof parsed.iv === 'string' && parsed.iv
+    && typeof parsed.data === 'string' && parsed.data);
+  if(hasEncryptedHeader) return { encryptedPayload: parsed, format: 'encrypted_payload' };
+
   const format = Array.isArray(parsed) ? 'array' : 'object_with_accounts';
   const accounts = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
   if(!accounts) throw new Error(t('missingAccounts'));
@@ -111,18 +131,25 @@ async function importFile(file){
     const text = await file.text();
     const parsed = parseJsonText(text);
     await debugInfo('JSON import parsed payload', {
-      accountCount: parsed.accounts.length,
+      accountCount: Array.isArray(parsed.accounts) ? parsed.accounts.length : null,
       format: parsed.format,
+      hasEncryptedHeader: !!parsed.encryptedPayload,
     });
-    const resp = await browser.runtime.sendMessage({ action:'importAccountsFromJson', accounts: parsed.accounts });
+    const resp = await browser.runtime.sendMessage({
+      action:'importAccountsFromJson',
+      accounts: parsed.accounts,
+      encryptedPayload: parsed.encryptedPayload || null,
+    });
     if(!resp || resp.success === false){
       throw new Error((resp && resp.error) || 'Unknown error');
     }
     await debugInfo('JSON import persisted via background', {
-      importedCount: resp.importedCount || parsed.accounts.length,
+      importedCount: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0),
       totalAccounts: resp.totalAccounts,
+      importedEncrypted: !!resp.importedEncrypted,
     });
-    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || parsed.accounts.length });
+    setResultSub(!!resp.importedEncrypted);
+    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0) });
     resultEl.classList.add('show');
     showStatus('');
   } catch(err){
