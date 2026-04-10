@@ -56,6 +56,34 @@
    - 本地加密与锁定 / Local encryption and vault lock
    - 权限设置 / Permission Setting
    - Debug模式开关和日志下载 / Debug mode setting and log downloading
+  
+### 迁移 / Migration
+
+#### 1.从 Vault2FA 迁移 / Migrating from Vault2FA
+Vault2FA支持导出标准的`otpauth://`URIs，几乎所有的二步验证器都支持这种链接  
+Vault2FA supports exporting standard `otpauth://` URIs, which almost all 2FA authenticators support  
+
+#### 2.从 Google Authenticator 迁移到 Vault2FA / Migrating from Google Authenticator to Vault2FA
+Google Authenticator使用Base64编码后protobuf结构的`otpauth-migration://`URI，Vault2FA支持解析此类链接。当单个`otpauth-migration://`URI包含多个账号时，Vault2FA也可识别并正确加载。然而，Google Authenticator并未在导出链接中给出TOTP验证码的period（单个验证码有效时长），Vault2FA会默认以30秒为period导入  
+Google Authenticator uses `otpauth-migration://` URIs with a Base64-encoded Protobuf structure, and Vault2FA supports parsing these links. When a single `otpauth-migration://` URI contains multiple accounts, Vault2FA can also recognize and load them correctly. However, Google Authenticator does not specify the period (the validity duration of a single code) for TOTP codes in the exported link; Vault2FA will import them with a default period of 30 seconds  
+
+#### 3.从 Microsoft Authenticator 迁移到 Vault2FA / Migrating from Microsoft Authenticator to Vault2FA
+从Microsoft Authenticator导出账户数据要麻烦些。因为其自身不支持导出，我们需要使用工具从其数据库文件中提取  
+Exporting account data from Microsoft Authenticator is a bit more troublesome. Since the app itself doesn't support exporting, we need to extract the data from its database file using some tool  
+**导出要求：安卓系统；能够访问`/data/data`目录（通常需要root权限）**  
+**Requirement: Android; Can access `/data/data` directory (usually means with root permission)**  
+1. 在安装了Microsoft Authenticator的手机上打开`/data/data/com.azure.authenticator/databases`目录  
+   With Microsoft Authenticator installed, navigate to `/data/data/com.azure.authenticator/databases`
+2. 将 `PhoneFactor`, `PhoneFactor.wal`, `PhoneFactor-shm` 三个文件复制至电脑上。若后二者不存在，仅复制`PhoneFactor`即可
+   Copy `PhoneFactor`, `PhoneFactor.wal`, `PhoneFactor-shm` to your PC. If the latter two don't exist, only copy `PhoneFactor`
+3. 打开 [DrJason33564/Microsoft-Authenticator-Export](https://github.com/DrJason33564/Microsoft-Authenticator-Export)。若您的PC是Windows x86-64bit系统，从[Release页](https://github.com/DrJason33564/Microsoft-Authenticator-Export/releases)下载最新的`Microsoft-Authenticator-Export.zip`文件并解压即可；若您的PC是其他系统，请自备Python环境，并从仓库下载`dump.py`
+   Open [DrJason33564/Microsoft-Authenticator-Export](https://github.com/DrJason33564/Microsoft-Authenticator-Export). If your PC runs Windows x86-64-bit, download the latest `Microsoft-Authenticator-Export.zip` file from the [Release page](https://github.com/DrJason33564/Microsoft-Authenticator-Export/releases) and extract it; if your PC runs a different operating system, please ensure you have a Python environment set up, and download `dump.py` from the repository
+4. 将`PhoneFactor`相关文件放在`dump.py`同级目录中  
+   Put `PhoneFactor` and its related files in the directory `dump.py` is in
+5. 使用`Microsoft-Authenticator-Export.zip`的，运行`dump.bat`；自备python环境的，执行`python dump.py`  
+   If using `Microsoft-Authenticator-Export.zip`, execute `dump.bat` ; if using local Python environment, run `python dump.py`
+6. 运行成功后，`output_[时间戳].json`文件将会在当前目录下生成。使用文本编辑器打开它，`otpauthstr`字段即是标准`otpauth://`URI链接，在Vault2FA中导入即可  
+   If executed successfully, `output_[timestamp].json` will appear in the current directory. Open it with a text editor. `otpauthstr` string is the standard `otpauth://` URI we need, just import it in Vault2FA
 
 ### 安全提示 / Security Notes
 
@@ -78,12 +106,13 @@
 
 - `manifest.json`: 扩展配置 / Extension manifest
 - `popup/popup.html`, `popup/popup.js`, `popup/popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
-- `qr/qr.html`, `qr/qr.js`, `qr/qr.css`: 二维码扫描页面 / QR scanning page
+- `qr/`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
-- `autofill/autofill-content.js`, `autofill/autofill.css`: 自动填充弹窗 / Autofill pop-up
-- `json-import/json-import.js`, `json-import/json-import.html`: 通过JSON文件导入账号页面 / Import account via json file page
+- `autofill/`: 自动填充弹窗 / Autofill pop-up
+- `json-import/`: 通过JSON文件导入账号页面 / Import account via json file page
 - `migration/`: 对第三方来源进行解码 / Decode third-party origins
 - `locales/`: 本地化文件 / Localization files
+- `third-party/`: 第三方库 / Third-party library
 
 ### 致谢 / Acknowledgements
 
@@ -91,4 +120,4 @@
 This repository uses code from the following open-source repositories
 
 - [hectorm/otpauth](https://github.com/hectorm/otpauth)
-- [nimiq/qr-scanner](https://github.com/nimiq/qr-scanner)
+- [cozmo/jsQR](https://github.com/cozmo/jsQR)
