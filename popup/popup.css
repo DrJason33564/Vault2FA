@@ -199,7 +199,8 @@ html, body {
 .drw-title-wrap { display:flex; flex-direction:column; gap:4px; }
 .drw-title-major { font-size:16px; }
 #settingSecurityTitle,
-#settingPermissionTitle { font-size:15px; }
+#settingPermissionTitle,
+#settingDebugTitle { font-size:15px; }
 .section-title { margin-bottom:8px; }
 
 .lang-drawer { max-height:420px; }
