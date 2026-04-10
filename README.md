@@ -74,7 +74,7 @@ Exporting account data from Microsoft Authenticator is a bit more troublesome. S
 **Requirement: Android; Can access `/data/data` directory (usually means with root permission)**  
 1. 在安装了Microsoft Authenticator的手机上打开`/data/data/com.azure.authenticator/databases`目录  
    With Microsoft Authenticator installed, navigate to `/data/data/com.azure.authenticator/databases`
-2. 将 `PhoneFactor`, `PhoneFactor.wal`, `PhoneFactor-shm` 三个文件复制至电脑上。若后二者不存在，仅复制`PhoneFactor`即可
+2. 将 `PhoneFactor`, `PhoneFactor.wal`, `PhoneFactor-shm` 三个文件复制至电脑上。若后二者不存在，仅复制`PhoneFactor`即可  
    Copy `PhoneFactor`, `PhoneFactor.wal`, `PhoneFactor-shm` to your PC. If the latter two don't exist, only copy `PhoneFactor`
 3. 打开 [DrJason33564/Microsoft-Authenticator-Export](https://github.com/DrJason33564/Microsoft-Authenticator-Export)。若您的PC是Windows x86-64bit系统，从[Release页](https://github.com/DrJason33564/Microsoft-Authenticator-Export/releases)下载最新的`Microsoft-Authenticator-Export.zip`文件并解压即可；若您的PC是其他系统，请自备Python环境，并从仓库下载`dump.py`
    Open [DrJason33564/Microsoft-Authenticator-Export](https://github.com/DrJason33564/Microsoft-Authenticator-Export). If your PC runs Windows x86-64-bit, download the latest `Microsoft-Authenticator-Export.zip` file from the [Release page](https://github.com/DrJason33564/Microsoft-Authenticator-Export/releases) and extract it; if your PC runs a different operating system, please ensure you have a Python environment set up, and download `dump.py` from the repository
