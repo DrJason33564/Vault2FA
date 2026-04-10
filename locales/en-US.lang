@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.4.1
+VERSION=2.5.0
 
 [Language]
 LANGUAGE=English
@@ -16,7 +16,7 @@ lastUpload=Last upload:
 lastDownload=Last local overwrite from cloud: 
 uploadSuccess=Uploaded local data
 syncSaved=Sync settings saved
-syncDisabled=Auto upload disabled
+syncDisabled=Sync settings saved
 needSession=Please enter a sync session ID first.
 needSessionEnable=Please enter a sync session ID before enabling sync.
 noAccountsToExport=No account to export
@@ -79,6 +79,7 @@ saveEditSuccess=Account updated
 settingDrawerTitle=Setting
 settingSecurityTitle=Sync & Security
 settingPermissionTitle=Permission
+settingDebugTitle=Debugging
 vaultEnableText=Enable local encryption
 vaultEnableHint=When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.
 labelVaultPassphrase=Vault Passphrase

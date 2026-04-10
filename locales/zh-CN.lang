@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.4.1
+VERSION=2.5.0
 
 [Language]
 LANGUAGE=简体中文
@@ -16,7 +16,7 @@ lastUpload=上次上传：
 lastDownload=上次从云端覆盖本地：
 uploadSuccess=已上传本地数据
 syncSaved=同步设置已保存
-syncDisabled=已关闭自动上传
+syncDisabled=同步设置已保存
 needSession=请先输入同步会话 ID
 needSessionEnable=启用自动上传前请先输入同步会话 ID
 noAccountsToExport=没有可导出的账号
@@ -79,6 +79,7 @@ saveEditSuccess=账号信息已更新
 settingDrawerTitle=设置
 settingSecurityTitle=同步与安全
 settingPermissionTitle=权限
+settingDebugTitle=调试
 vaultEnableText=启用本地加密
 vaultEnableHint=启用后，本地账号将以加密形式存储。每个浏览器会话需解锁一次
 labelVaultPassphrase=保险库口令

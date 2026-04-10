@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.4.1
+VERSION=2.5.0
 
 [Language]
 LANGUAGE=Español
@@ -16,7 +16,7 @@ lastUpload=Última subida:
 lastDownload=Última sobrescritura local desde la nube: 
 uploadSuccess=Datos locales subidos
 syncSaved=Configuración de sincronización guardada
-syncDisabled=Subida automática desactivada
+syncDisabled=Configuración de sincronización guardada
 needSession=Introduce primero un ID de sesión de sincronización.
 needSessionEnable=Introduce un ID de sesión de sincronización antes de activar la sincronización.
 noAccountsToExport=No hay cuentas para exportar
@@ -78,6 +78,8 @@ editBtnTitle=Editar
 saveEditSuccess=Cuenta actualizada
 settingDrawerTitle=Configuración
 settingSecurityTitle=Sincronización y seguridad
+settingPermissionTitle=Permiso
+settingDebugTitle=Depuración
 vaultEnableText=Activar cifrado local
 vaultEnableHint=Cuando está activado, las cuentas locales se almacenan cifradas en reposo. Se requiere desbloqueo una vez por sesión del navegador.
 labelVaultPassphrase=Contraseña de la bóveda
