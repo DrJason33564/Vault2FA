@@ -69,7 +69,7 @@ Google Authenticator uses `otpauth-migration://` URIs with a Base64-encoded Prot
 
 #### 3.从 Microsoft Authenticator 迁移到 Vault2FA / Migrating from Microsoft Authenticator to Vault2FA
 从Microsoft Authenticator导出账户数据要麻烦些。因为其自身不支持导出，我们需要使用工具从其数据库文件中提取  
-Exporting account data from Microsoft Authenticator is a bit more troublesome. Since the app itself doesn't support exporting, we need to extract the data from its database file using some tool  
+Exporting account data from Microsoft Authenticator is a bit more troublesome. Since the app itself doesn't support exporting, we need to extract the data from its database file using some tools  
 **导出要求：安卓系统；能够访问`/data/data`目录（通常需要root权限）**  
 **Requirement: Android; Can access `/data/data` directory (usually means with root permission)**  
 1. 在安装了Microsoft Authenticator的手机上打开`/data/data/com.azure.authenticator/databases`目录  
