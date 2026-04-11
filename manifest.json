@@ -21,6 +21,7 @@
     "scripts": [
       "third-party/otpauth.min.js",
       "locales/i18n.js",
+      "ntp/ntp-clock.js",
       "background.js"
     ]
   },

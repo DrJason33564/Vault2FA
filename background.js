@@ -7,6 +7,7 @@ const SYNC_SETTINGS_KEY = 'syncSettings';
 const VAULT_SETTINGS_KEY = 'vaultSettings';
 const DEBUG_SETTINGS_KEY = 'debugSettings';
 const FEATURE_SETTINGS_KEY = 'featureSettings';
+const NTP_SETTINGS_KEY = 'ntpSettings';
 const DEBUG_LOG_KEY = 'debugInfoLog';
 const SYNC_PREFIX = 'session:';
 
@@ -31,6 +32,10 @@ const defaultFeatureSettings = {
   autofillEnabled: true,
   rightclickEnabled: true,
 };
+const defaultNtpSettings = {
+  enabled: true,
+  server: 'pool.ntp.org',
+};
 const SYNC_MAX_ITEM_BYTES = 8192;
 const SYNC_SAFE_ITEM_BYTES = 7000;
 const SYNC_MAX_TOTAL_BYTES = 102400;
@@ -45,6 +50,8 @@ const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAUL
 let unlockedCrypto = null; // { salt, key }
 let autoUploadTimer = null;
 const AUTO_UPLOAD_TICK_MS = 60 * 1000;
+let ntpSettingsCache = Object.assign({}, defaultNtpSettings);
+let ntpInitPromise = null;
 
 function enc(str){ return new TextEncoder().encode(str); }
 function dec(buf){ return new TextDecoder().decode(buf); }
@@ -227,15 +234,16 @@ function buildAutofillCodeInfo(account){
   }
   const period = Math.max(1, Number((account && account.period) || 30));
   const otp = new OTPAuth.TOTP({ secret: otpSecret, algorithm, digits, period });
-  const code = otp.generate();
-  const nowSeconds = Date.now() / 1000;
+  const nowMs = nowForTotpMs();
+  const code = otp.generate({ timestamp: nowMs });
+  const nowSeconds = nowMs / 1000;
   const remaining = Math.max(0, Math.ceil(period - (nowSeconds % period)) % period || period);
   return { code, type, digits, algorithm, counter: null, period, remaining };
 }
 
 function buildDisplayCodeInfo(account){
   const id = String(account && account.id || '');
-  const generatedAt = Date.now();
+  const generatedAt = nowForTotpMs();
   try {
     const info = buildAutofillCodeInfo(account);
     return {
@@ -267,6 +275,58 @@ function buildDisplayCodeInfo(account){
       nextRefreshAt: isHotp ? null : generatedAt + fallbackPeriod * 1000,
     };
   }
+}
+
+function nowForTotpMs(){
+  if(ntpSettingsCache.enabled && window.Vault2FANtpClock && typeof window.Vault2FANtpClock.now === 'function'){
+    return window.Vault2FANtpClock.now();
+  }
+  return Date.now();
+}
+
+async function readRawNtpSettings(){
+  const result = await browser.storage.local.get(NTP_SETTINGS_KEY);
+  return result[NTP_SETTINGS_KEY] || null;
+}
+
+async function getNtpSettings(ensureInitialized = false){
+  const raw = await readRawNtpSettings();
+  let initializedDefaults = false;
+  if((!raw || typeof raw !== 'object') && ensureInitialized){
+    await browser.storage.local.set({ [NTP_SETTINGS_KEY]: Object.assign({}, defaultNtpSettings) });
+    initializedDefaults = true;
+  }
+  const nextRaw = initializedDefaults ? (await readRawNtpSettings()) : raw;
+  const merged = Object.assign({}, defaultNtpSettings, (nextRaw && typeof nextRaw === 'object') ? nextRaw : {});
+  ntpSettingsCache = merged;
+  return { settings: merged, initializedDefaults };
+}
+
+async function setNtpSettings(next){
+  const merged = Object.assign({}, (await getNtpSettings(true)).settings, next || {});
+  merged.server = String(merged.server || '').trim() || defaultNtpSettings.server;
+  merged.enabled = merged.enabled !== false;
+  await browser.storage.local.set({ [NTP_SETTINGS_KEY]: merged });
+  ntpSettingsCache = merged;
+  return merged;
+}
+
+async function syncNtpClockIfNeeded(){
+  const settings = ntpSettingsCache;
+  if(!settings.enabled) return;
+  if(!window.Vault2FANtpClock || typeof window.Vault2FANtpClock.sync !== 'function') return;
+  try {
+    await window.Vault2FANtpClock.sync(settings.server);
+  } catch (err) {
+    if(typeof window.Vault2FANtpClock.markError === 'function'){
+      window.Vault2FANtpClock.markError(err);
+    }
+  }
+}
+
+async function initNtpClockOnLoad(){
+  await getNtpSettings(false);
+  await syncNtpClockIfNeeded();
 }
 
 function normalizeImportedAccountRecord(incoming){
@@ -993,6 +1053,7 @@ async function lockVault(){
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    if(ntpInitPromise) await ntpInitPromise;
     switch(message.action){
       case 'getAccounts': {
         const accounts = await getLocalAccounts();
@@ -1038,6 +1099,21 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           autofillEnabled: incoming.autofillEnabled !== false,
           rightclickEnabled: incoming.rightclickEnabled !== false,
         });
+        sendResponse({ success: true, settings });
+        return;
+      }
+      case 'getNtpSettings': {
+        const ensured = await getNtpSettings(!!message.ensureInitialized);
+        sendResponse({ success: true, settings: ensured.settings, initializedDefaults: ensured.initializedDefaults });
+        return;
+      }
+      case 'saveNtpSettings': {
+        const incoming = message.settings || {};
+        const settings = await setNtpSettings({
+          enabled: incoming.enabled !== false,
+          server: String(incoming.server || '').trim() || defaultNtpSettings.server,
+        });
+        await syncNtpClockIfNeeded();
         sendResponse({ success: true, settings });
         return;
       }
@@ -1241,7 +1317,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           digits,
           period: Math.max(1, Number(message.period || 30)),
         });
-        sendResponse({ success: true, code: otp.generate() });
+        sendResponse({ success: true, code: otp.generate({ timestamp: nowForTotpMs() }) });
         return;
       }
       case 'downloadSyncToLocal': {
@@ -1319,12 +1395,14 @@ if(browser.tabs && typeof browser.tabs.onUpdated !== 'undefined'){
 setupContextMenus().catch(() => {});
 if(browser.runtime && browser.runtime.onInstalled){
   browser.runtime.onInstalled.addListener(() => {
+    ntpInitPromise = initNtpClockOnLoad();
     setupContextMenus().catch(() => {});
     refreshAutofillInjectionForOpenTabs().catch(() => {});
   });
 }
 if(browser.runtime && browser.runtime.onStartup){
   browser.runtime.onStartup.addListener(() => {
+    ntpInitPromise = initNtpClockOnLoad();
     refreshAutofillInjectionForOpenTabs().catch(() => {});
   });
 }
@@ -1344,8 +1422,12 @@ if(browser.storage && browser.storage.onChanged){
     if(changes[FEATURE_SETTINGS_KEY]){
       refreshAutofillInjectionForOpenTabs().catch(() => {});
     }
+    if(changes[NTP_SETTINGS_KEY]){
+      ntpInitPromise = initNtpClockOnLoad();
+    }
   });
 }
 
 startAutoUploadScheduler();
+ntpInitPromise = initNtpClockOnLoad();
 refreshAutofillInjectionForOpenTabs().catch(() => {});
