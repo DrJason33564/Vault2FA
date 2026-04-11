@@ -322,12 +322,7 @@
         <input type="checkbox" id="ntpEnabled" />
         <span id="ntpEnableText">Use extension clock synced from NTP server</span>
       </label>
-      <div class="fhint" id="ntpEnableHint">When enabled, TOTP generation uses extension clock synced from the configured NTP server.</div>
-    </div>
-    <div class="fg">
-      <label class="fl" id="ntpServerLabel">NTP Server Address</label>
-      <input class="fi mono" id="ntpServer" type="text" placeholder="pool.ntp.org" autocomplete="off" />
-      <div class="fhint" id="ntpServerHint">The extension will try to read server time from this host on startup and after saving this setting.</div>
+      <div class="fhint" id="ntpEnableHint">When enabled, TOTP generation uses extension clock synced from 0.pool.ntp.org.</div>
     </div>
     <div class="sync-actions">
       <button class="btn-secondary" id="btnSaveNtp">Save NTP Settings</button>

@@ -2,7 +2,8 @@
 'use strict';
 
 (() => {
-  const DEFAULT_SERVER = 'pool.ntp.org';
+  const DEFAULT_SERVER = '0.pool.ntp.org';
+  const REQUEST_TIMEOUT_MS = 3000;
   let offsetMs = 0;
   let lastSyncAt = null;
   let lastServer = DEFAULT_SERVER;
@@ -27,8 +28,14 @@
     let lastFailure = null;
     for(const url of candidates){
       const startedAt = Date.now();
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS) : null;
       try {
-        const resp = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+        const resp = await fetch(url, {
+          method: 'HEAD',
+          cache: 'no-store',
+          signal: controller ? controller.signal : undefined,
+        });
         if(!resp || !resp.ok) throw new Error(`HTTP ${resp ? resp.status : '0'}`);
         const dateHeader = resp.headers && resp.headers.get ? resp.headers.get('Date') : '';
         if(!dateHeader) throw new Error('Missing Date header.');
@@ -39,6 +46,8 @@
         return serverTime + Math.floor(latency / 2);
       } catch (err) {
         lastFailure = err;
+      } finally {
+        if(timeoutId) clearTimeout(timeoutId);
       }
     }
     throw lastFailure || new Error('Failed to sync server time.');

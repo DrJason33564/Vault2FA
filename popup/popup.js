@@ -18,7 +18,7 @@ let syncSettings = {
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let debugState = { enabled:false };
 let featureSettings = { autofillEnabled:true, rightclickEnabled:true };
-let ntpSettings = { enabled:true, server:'pool.ntp.org' };
+let ntpSettings = { enabled:true, server:'0.pool.ntp.org' };
 let debugUiUnlocked = false;
 let uiLanguage = 'en-US';
 let uiTheme = 'auto';
@@ -76,7 +76,7 @@ const STATIC_TEXT_MAP = {
   permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
   permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
   btnSavePermission: 'permissionSaveBtn',
-  ntpEnableText: 'ntpEnableText', ntpEnableHint: 'ntpEnableHint', ntpServerLabel: 'ntpServerLabel', ntpServerHint: 'ntpServerHint', btnSaveNtp: 'ntpSaveBtn',
+  ntpEnableText: 'ntpEnableText', ntpEnableHint: 'ntpEnableHint', btnSaveNtp: 'ntpSaveBtn',
   syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
@@ -171,7 +171,8 @@ async function syncPopupNtpClock(){
   if(!ntpSettings.enabled) return;
   if(!window.Vault2FANtpClock || typeof window.Vault2FANtpClock.sync !== 'function') return;
   try {
-    await window.Vault2FANtpClock.sync(ntpSettings.server);
+    const server = window.Vault2FANtpClock.DEFAULT_SERVER || '0.pool.ntp.org';
+    await window.Vault2FANtpClock.sync(server);
   } catch (err) {
     if(typeof window.Vault2FANtpClock.markError === 'function'){
       window.Vault2FANtpClock.markError(err);
@@ -201,9 +202,7 @@ function applyStaticTranslations(){
     permissionRightclickEnableHint: 'Show a QR scanning action in the browser image context menu.',
     btnSavePermission: 'Save Permission Settings',
     ntpEnableText: 'Use extension clock synced from NTP server',
-    ntpEnableHint: 'When enabled, TOTP generation uses extension clock synced from the configured NTP server.',
-    ntpServerLabel: 'NTP Server Address',
-    ntpServerHint: 'The extension will try to read server time from this host on startup and after saving this setting.',
+    ntpEnableHint: 'When enabled, TOTP generation uses extension clock synced from 0.pool.ntp.org.',
     btnSaveNtp: 'Save NTP Settings',
   };
   for(const [id, fallback] of Object.entries(popupFallbackText)){
@@ -910,7 +909,6 @@ function updateSyncUi(){
   byId('autofillEnabled').checked = featureSettings.autofillEnabled !== false;
   byId('rightclickEnabled').checked = featureSettings.rightclickEnabled !== false;
   byId('ntpEnabled').checked = ntpSettings.enabled !== false;
-  byId('ntpServer').value = ntpSettings.server || 'pool.ntp.org';
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
@@ -972,7 +970,7 @@ async function loadFeatureSettings(){
 async function loadNtpSettings(ensureInitialized = false){
   const resp = await sendMessage({ action:'getNtpSettings', ensureInitialized: !!ensureInitialized });
   if(resp.settings) ntpSettings = Object.assign({}, ntpSettings, resp.settings);
-  await syncPopupNtpClock();
+  syncPopupNtpClock();
   updateSyncUi();
   return resp;
 }
@@ -1436,9 +1434,8 @@ byId('btnSaveNtp').addEventListener('click', async () => {
   const errEl = byId('ntpErr');
   errEl.style.display = 'none';
   const enabled = byId('ntpEnabled').checked;
-  const server = byId('ntpServer').value.trim() || 'pool.ntp.org';
   try {
-    const resp = await sendMessage({ action:'saveNtpSettings', settings:{ enabled, server } });
+    const resp = await sendMessage({ action:'saveNtpSettings', settings:{ enabled } });
     if(resp.settings) ntpSettings = Object.assign({}, ntpSettings, resp.settings);
     await syncPopupNtpClock();
     updateSyncUi();
