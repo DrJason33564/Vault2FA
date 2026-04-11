@@ -34,8 +34,8 @@ const defaultFeatureSettings = {
 };
 const defaultNtpSettings = {
   enabled: true,
-  server: '0.pool.ntp.org',
 };
+const DEFAULT_NTP_SERVER = '0.pool.ntp.org';
 const SYNC_MAX_ITEM_BYTES = 8192;
 const SYNC_SAFE_ITEM_BYTES = 7000;
 const SYNC_MAX_TOTAL_BYTES = 102400;
@@ -298,7 +298,6 @@ async function getNtpSettings(ensureInitialized = false){
   }
   const nextRaw = initializedDefaults ? (await readRawNtpSettings()) : raw;
   const merged = Object.assign({}, defaultNtpSettings, (nextRaw && typeof nextRaw === 'object') ? nextRaw : {});
-  merged.server = defaultNtpSettings.server;
   merged.enabled = merged.enabled !== false;
   ntpSettingsCache = merged;
   return { settings: merged, initializedDefaults };
@@ -306,7 +305,6 @@ async function getNtpSettings(ensureInitialized = false){
 
 async function setNtpSettings(next){
   const merged = Object.assign({}, (await getNtpSettings(true)).settings, next || {});
-  merged.server = defaultNtpSettings.server;
   merged.enabled = merged.enabled !== false;
   await browser.storage.local.set({ [NTP_SETTINGS_KEY]: merged });
   ntpSettingsCache = merged;
@@ -318,7 +316,7 @@ async function syncNtpClockIfNeeded(){
   if(!settings.enabled) return;
   if(!window.Vault2FANtpClock || typeof window.Vault2FANtpClock.sync !== 'function') return;
   try {
-    const server = window.Vault2FANtpClock.DEFAULT_SERVER || defaultNtpSettings.server;
+    const server = window.Vault2FANtpClock.DEFAULT_SERVER || DEFAULT_NTP_SERVER;
     await window.Vault2FANtpClock.sync(server);
   } catch (err) {
     if(typeof window.Vault2FANtpClock.markError === 'function'){
