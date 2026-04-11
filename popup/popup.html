@@ -315,6 +315,24 @@
       <button class="btn-secondary" id="btnSavePermission">Save Permission Settings</button>
     </div>
     <div class="err" id="permissionErr"></div>
+    <hr class="sep" />
+    <div class="drw-title section-title" id="settingNtpTitle">NTP Clock</div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="ntpEnabled" />
+        <span id="ntpEnableText">Use extension clock synced from NTP server</span>
+      </label>
+      <div class="fhint" id="ntpEnableHint">When enabled, TOTP generation uses extension clock synced from the configured NTP server.</div>
+    </div>
+    <div class="fg">
+      <label class="fl" id="ntpServerLabel">NTP Server Address</label>
+      <input class="fi mono" id="ntpServer" type="text" placeholder="pool.ntp.org" autocomplete="off" />
+      <div class="fhint" id="ntpServerHint">The extension will try to read server time from this host on startup and after saving this setting.</div>
+    </div>
+    <div class="sync-actions">
+      <button class="btn-secondary" id="btnSaveNtp">Save NTP Settings</button>
+    </div>
+    <div class="err" id="ntpErr"></div>
     <hr class="sep" id="debugSep" style="display:none" />
     <div class="drw-title section-title" id="settingDebugTitle" style="display:none">Debugging</div>
     <div class="fg sync-toggle-row" id="debugPanel" style="display:none">
@@ -334,6 +352,7 @@
 
 <script src="../third-party/otpauth.min.js"></script>
 <script src="../locales/i18n.js"></script>
+<script src="../ntp/ntp-clock.js"></script>
 <script src="../migration/google.js"></script>
 <script src="popup.js"></script>
 </body>

@@ -18,6 +18,7 @@ let syncSettings = {
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let debugState = { enabled:false };
 let featureSettings = { autofillEnabled:true, rightclickEnabled:true };
+let ntpSettings = { enabled:true, server:'pool.ntp.org' };
 let debugUiUnlocked = false;
 let uiLanguage = 'en-US';
 let uiTheme = 'auto';
@@ -70,10 +71,12 @@ const STATIC_TEXT_MAP = {
   exportHint: 'exportHint', btnCopyExport: 'copyExportBtn', btnDownloadExportJson: 'exportJsonBtn', exportUriLabel: 'exportUriLabel', importDrawerTitle: 'importDrawerTitle', importInputLabel: 'importInputLabel', importFileHint: 'importFileHint', btnOpenJsonImportTab: 'openJsonImportTabBtn', btnDoImport: 'importBtn',
   editDrawerTitle: 'editDrawerTitle', editLabelIssuer: 'labelIssuer', editLabelAccount: 'labelAccount', btnSaveEdit: 'editSaveBtn',
   settingDrawerTitle: 'settingDrawerTitle', settingSecurityTitle: 'settingSecurityTitle', settingPermissionTitle: 'settingPermissionTitle',
+  settingNtpTitle: 'settingNtpTitle',
   settingDebugTitle: 'settingDebugTitle',
   permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
   permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
   btnSavePermission: 'permissionSaveBtn',
+  ntpEnableText: 'ntpEnableText', ntpEnableHint: 'ntpEnableHint', ntpServerLabel: 'ntpServerLabel', ntpServerHint: 'ntpServerHint', btnSaveNtp: 'ntpSaveBtn',
   syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
@@ -157,6 +160,25 @@ function setTheme(mode, persist = true){
   applyTheme();
 }
 
+function popupNowMs(){
+  if(ntpSettings.enabled && window.Vault2FANtpClock && typeof window.Vault2FANtpClock.now === 'function'){
+    return window.Vault2FANtpClock.now();
+  }
+  return Date.now();
+}
+
+async function syncPopupNtpClock(){
+  if(!ntpSettings.enabled) return;
+  if(!window.Vault2FANtpClock || typeof window.Vault2FANtpClock.sync !== 'function') return;
+  try {
+    await window.Vault2FANtpClock.sync(ntpSettings.server);
+  } catch (err) {
+    if(typeof window.Vault2FANtpClock.markError === 'function'){
+      window.Vault2FANtpClock.markError(err);
+    }
+  }
+}
+
 function applyStaticTranslations(){
   for(const [id, key] of Object.entries(STATIC_TEXT_MAP)){
     const el = byId(id);
@@ -171,12 +193,18 @@ function applyStaticTranslations(){
     settingDrawerTitle: 'Settings',
     settingSecurityTitle: 'Sync & Security',
     settingPermissionTitle: 'Permissions',
+    settingNtpTitle: 'NTP Clock',
     settingDebugTitle: 'Debugging',
     permissionAutofillEnableText: 'Enable autofill feature',
     permissionAutofillEnableHint: 'Automatically inject autofill on matched websites.',
     permissionRightclickEnableText: 'Enable right-click QR scan option',
     permissionRightclickEnableHint: 'Show a QR scanning action in the browser image context menu.',
     btnSavePermission: 'Save Permission Settings',
+    ntpEnableText: 'Use extension clock synced from NTP server',
+    ntpEnableHint: 'When enabled, TOTP generation uses extension clock synced from the configured NTP server.',
+    ntpServerLabel: 'NTP Server Address',
+    ntpServerHint: 'The extension will try to read server time from this host on startup and after saving this setting.',
+    btnSaveNtp: 'Save NTP Settings',
   };
   for(const [id, fallback] of Object.entries(popupFallbackText)){
     const el = byId(id);
@@ -379,7 +407,7 @@ function getDisplayCode(acc){
     if(!generatedAt){
       return Object.assign({}, info, { remaining: Math.max(0, baseRemaining) });
     }
-    const elapsed = Math.max(0, Math.floor((Date.now() - generatedAt) / 1000));
+    const elapsed = Math.max(0, Math.floor((popupNowMs() - generatedAt) / 1000));
     const remaining = Math.max(0, baseRemaining - elapsed);
     return Object.assign({}, info, { remaining, period });
   }
@@ -412,7 +440,7 @@ function updateVisibleCodes(){
 async function refreshDisplayCodes(){
   if(displayCodeRefreshInFlight) return;
   const ids = visibleAccounts.map(acc => String(acc.id || '')).filter(Boolean);
-  const now = Date.now();
+  const now = popupNowMs();
   if(!ids.length) return;
   const visibleById = new Map(visibleAccounts.map(acc => [String(acc.id || ''), acc]));
   const idsToFetch = ids.filter((id) => {
@@ -881,6 +909,8 @@ function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : t('never'); }
 function updateSyncUi(){
   byId('autofillEnabled').checked = featureSettings.autofillEnabled !== false;
   byId('rightclickEnabled').checked = featureSettings.rightclickEnabled !== false;
+  byId('ntpEnabled').checked = ntpSettings.enabled !== false;
+  byId('ntpServer').value = ntpSettings.server || 'pool.ntp.org';
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
@@ -938,6 +968,13 @@ async function loadFeatureSettings(){
   const resp = await sendMessage({ action:'getFeatureSettings' });
   if(resp.settings) featureSettings = Object.assign({}, featureSettings, resp.settings);
   updateSyncUi();
+}
+async function loadNtpSettings(ensureInitialized = false){
+  const resp = await sendMessage({ action:'getNtpSettings', ensureInitialized: !!ensureInitialized });
+  if(resp.settings) ntpSettings = Object.assign({}, ntpSettings, resp.settings);
+  await syncPopupNtpClock();
+  updateSyncUi();
+  return resp;
 }
 async function loadDebugState(){
   const resp = await sendMessage({ action:'getDebugState' });
@@ -1003,6 +1040,7 @@ async function boot(){
   
   await refreshVaultStatus();
   await loadFeatureSettings();
+  await loadNtpSettings();
   await loadSyncSettings();
   await loadDebugState();
   if(vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
@@ -1040,8 +1078,16 @@ byId('drawLang').addEventListener('click', function(e){ if(e.target===this) clos
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
 byId('btnSync').addEventListener('click', () => {
-  if(!guardVaultUnlocked()) return;
-  openD('drawSync');
+  (async () => {
+    if(!guardVaultUnlocked()) return;
+    const first = await loadNtpSettings(true);
+    if(first && first.initializedDefaults){
+      await loadNtpSettings(false);
+    }
+    openD('drawSync');
+  })().catch(() => {
+    openD('drawSync');
+  });
 });
 byId('closeSync').addEventListener('click', () => closeD('drawSync'));
 byId('drawSync').addEventListener('click', function(e){ if(e.target===this) closeD('drawSync'); });
@@ -1379,6 +1425,24 @@ byId('btnSavePermission').addEventListener('click', async () => {
     if(resp.settings) featureSettings = Object.assign({}, featureSettings, resp.settings);
     updateSyncUi();
     toast(tf('permissionSavedToast', 'Permission settings saved'));
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+});
+
+byId('btnSaveNtp').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
+  const errEl = byId('ntpErr');
+  errEl.style.display = 'none';
+  const enabled = byId('ntpEnabled').checked;
+  const server = byId('ntpServer').value.trim() || 'pool.ntp.org';
+  try {
+    const resp = await sendMessage({ action:'saveNtpSettings', settings:{ enabled, server } });
+    if(resp.settings) ntpSettings = Object.assign({}, ntpSettings, resp.settings);
+    await syncPopupNtpClock();
+    updateSyncUi();
+    toast(tf('ntpSavedToast', 'NTP settings saved'));
   } catch (err) {
     errEl.textContent = err.message;
     errEl.style.display = 'block';
