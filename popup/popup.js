@@ -88,6 +88,7 @@ const STATIC_TEXT_MAP = {
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
 function pal(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
 function byId(id){ return document.getElementById(id); }
+function settingButton(){ return byId('btnSetting') || byId('btnSync'); }
 function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.slice(0,3)+' '+code.slice(3); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
@@ -193,7 +194,8 @@ function applyStaticTranslations(){
   }
   byId('btnImport').title = t('btnImportTitle');
   byId('btnExport').title = t('btnExportTitle');
-  byId('btnSync').title = t('btnSyncTitle');
+  const syncBtn = settingButton();
+  if(syncBtn) syncBtn.title = t('btnSyncTitle');
   byId('btnLang').title = t('btnLangTitle');
   byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
@@ -968,7 +970,7 @@ function updateVaultUi(){
   }
 
   const locked = isVaultLocked();
-  const gatedIds = ['btnAdd','btnImport','btnExport','btnSync'];
+  const gatedIds = ['btnAdd','btnImport','btnExport','btnSetting'];
   for(const id of gatedIds){
     const el = byId(id);
     if(!el) continue;
@@ -1055,7 +1057,8 @@ byId('closeLang').addEventListener('click', () => closeD('drawLang'));
 byId('drawLang').addEventListener('click', function(e){ if(e.target===this) closeD('drawLang'); });
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
-byId('btnSync').addEventListener('click', () => {
+const syncEntryBtn = settingButton();
+if(syncEntryBtn) syncEntryBtn.addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   openD('drawSync');
 });
