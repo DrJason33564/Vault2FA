@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.5.0
+VERSION=2.5.1
 
 [Language]
 LANGUAGE=Español
@@ -147,10 +147,9 @@ noEditAccountSelected=No hay ninguna cuenta seleccionada para editar.
 accountNotExists=La cuenta ya no existe.
 confirmCloudOverwrite=Los datos de la nube sobrescribirán tus cuentas locales actuales. ¿Continuar?
 downloadedCloudData=Datos de la nube descargados
-localEncryptionEnabled=Cifrado local activado
 confirmDisableEncryption=¿Desactivar el cifrado local y almacenar los datos localmente sin cifrar?
-localEncryptionDisabled=Cifrado local desactivado
-noSecurityChangeNeeded=No se necesita ningún cambio de seguridad
+securitySettingChanged=Configuración de seguridad actualizada
+securitySettingUnchanged=Configuración de seguridad sin cambios
 vaultLockedToast=Bóveda bloqueada
 popupLoadFailed=No se pudo cargar la ventana emergente
 migrationAccountsImported=¡Cuenta importada desde una fuente de terceros!

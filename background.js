@@ -23,6 +23,8 @@ const defaultVaultSettings = {
   encryptionEnabled: false,
   salt: null,
   lastUnlockedAt: null,
+  autoLockEnabled: false,
+  autoLockMinutes: 15,
 };
 const defaultDebugSettings = {
   enabled: false,
@@ -43,8 +45,66 @@ const MENU_I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
 
 let unlockedCrypto = null; // { salt, key }
+const SESSION_UNLOCKED_CRYPTO_KEY = 'sessionUnlockedCrypto';
+const VAULT_AUTO_LOCK_ALARM = 'vaultAutoLock';
 let autoUploadTimer = null;
 const AUTO_UPLOAD_TICK_MS = 60 * 1000;
+
+async function loadSessionUnlockState(){
+  if(unlockedCrypto && unlockedCrypto.salt && unlockedCrypto.key) return unlockedCrypto;
+  if(!browser.storage || !browser.storage.session) return null;
+  const data = await browser.storage.session.get(SESSION_UNLOCKED_CRYPTO_KEY);
+  const state = data && data[SESSION_UNLOCKED_CRYPTO_KEY];
+  if(!state || !state.salt || !state.keyJwk) return null;
+  try {
+    const key = await crypto.subtle.importKey('jwk', state.keyJwk, { name: CIPHER_ALGO }, false, ['encrypt', 'decrypt']);
+    unlockedCrypto = { salt: state.salt, key };
+    return unlockedCrypto;
+  } catch (_) {
+    await browser.storage.session.remove(SESSION_UNLOCKED_CRYPTO_KEY);
+    return null;
+  }
+}
+
+async function persistSessionUnlockState(state){
+  unlockedCrypto = state && state.salt && state.key ? state : null;
+  if(!browser.storage || !browser.storage.session) return;
+  if(!unlockedCrypto){
+    await browser.storage.session.remove(SESSION_UNLOCKED_CRYPTO_KEY);
+    return;
+  }
+  const keyJwk = await crypto.subtle.exportKey('jwk', unlockedCrypto.key);
+  await browser.storage.session.set({ [SESSION_UNLOCKED_CRYPTO_KEY]: { salt: unlockedCrypto.salt, keyJwk } });
+}
+
+function normalizeAutoLockMinutes(value){
+  return Math.max(1, parseInt(value, 10) || 15);
+}
+
+async function clearVaultAutoLockAlarm(){
+  if(browser.alarms && typeof browser.alarms.clear === 'function') await browser.alarms.clear(VAULT_AUTO_LOCK_ALARM);
+}
+
+async function scheduleVaultAutoLock(){
+  const vault = await getVaultSettings();
+  const unlocked = await loadSessionUnlockState();
+  if(!vault.encryptionEnabled || !vault.autoLockEnabled || !unlocked){
+    await clearVaultAutoLockAlarm();
+    return;
+  }
+  const delayMinutes = normalizeAutoLockMinutes(vault.autoLockMinutes);
+  if(browser.alarms && typeof browser.alarms.create === 'function'){
+    browser.alarms.create(VAULT_AUTO_LOCK_ALARM, { delayInMinutes: delayMinutes });
+  }
+}
+
+async function touchVaultActivity(){
+  const vault = await getVaultSettings();
+  if(!vault.encryptionEnabled || !vault.autoLockEnabled) return;
+  const unlocked = await loadSessionUnlockState();
+  if(!unlocked) return;
+  await scheduleVaultAutoLock();
+}
 
 function enc(str){ return new TextEncoder().encode(str); }
 function dec(buf){ return new TextDecoder().decode(buf); }
@@ -458,7 +518,7 @@ async function deriveKey(passphrase, saltB64){
     { name: 'PBKDF2', salt, iterations: KDF_ITERATIONS, hash: 'SHA-256' },
     baseKey,
     { name: CIPHER_ALGO, length: KDF_KEY_LENGTH },
-    false,
+    true,
     ['encrypt', 'decrypt']
   );
 }
@@ -585,12 +645,13 @@ async function clearEncryptedPayload(){
 async function requireUnlockedCrypto(){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled) return null;
-  if(!unlockedCrypto || !unlockedCrypto.salt || !unlockedCrypto.key){
+  const activeUnlockedState = await loadSessionUnlockState();
+  if(!activeUnlockedState || !activeUnlockedState.salt || !activeUnlockedState.key){
     const err = new Error('Vault is locked. Unlock it first.');
     err.code = 'NEED_UNLOCK';
     throw err;
   }
-  return unlockedCrypto;
+  return activeUnlockedState;
 }
 
 async function getLocalAccounts(){
@@ -865,7 +926,8 @@ async function downloadFromSync(sessionId, options = {}){
     }
     await setEncryptedPayload(encryptedPayload);
     await clearPlainAccounts();
-    unlockedCrypto = null;
+    await persistSessionUnlockState(null);
+    await clearVaultAutoLockAlarm();
     await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: null });
   } else {
     await setLocalAccounts(accounts);
@@ -920,8 +982,9 @@ async function unlockVault(passphrase){
       });
     }
   }
-  unlockedCrypto = { salt: activeSalt, key };
+  await persistSessionUnlockState({ salt: activeSalt, key });
   await setVaultSettings({ lastUnlockedAt: Date.now() });
+  await scheduleVaultAutoLock();
   return { success: true, unlocked: true, encryptionEnabled: true };
 }
 
@@ -936,7 +999,7 @@ async function enableEncryption(passphrase){
   const accounts = await getPlainAccounts();
   const salt = b64FromBytes(randomBytes(16));
   const key = await deriveKey(passphrase, salt);
-  unlockedCrypto = { salt, key };
+  await persistSessionUnlockState({ salt, key });
   const payload = await encryptJson(accounts, key, salt);
   await setEncryptedPayload(payload);
   await appendDebugInfo('Vault encryption enabled and payload stored', {
@@ -947,6 +1010,7 @@ async function enableEncryption(passphrase){
   });
   await clearPlainAccounts();
   await setVaultSettings({ encryptionEnabled: true, salt: null, lastUnlockedAt: Date.now() });
+  await scheduleVaultAutoLock();
   return { success: true, encryptionEnabled: true, unlocked: true };
 }
 
@@ -961,7 +1025,8 @@ async function disableEncryption(passphrase){
   const accounts = await getLocalAccounts();
   await setPlainAccounts(accounts);
   await clearEncryptedPayload();
-  unlockedCrypto = null;
+  await persistSessionUnlockState(null);
+  await clearVaultAutoLockAlarm();
   await setVaultSettings({ encryptionEnabled: false, salt: null, lastUnlockedAt: null });
   return { success: true, encryptionEnabled: false, unlocked: true };
 }
@@ -971,14 +1036,15 @@ async function getVaultStatus(){
   return {
     success: true,
     encryptionEnabled: !!vault.encryptionEnabled,
-    unlocked: !vault.encryptionEnabled || !!(unlockedCrypto && unlockedCrypto.salt && unlockedCrypto.key),
+    unlocked: !vault.encryptionEnabled || !!(await loadSessionUnlockState()),
     lastUnlockedAt: vault.lastUnlockedAt || null,
   };
 }
 
-async function lockVault(){
+async function lockVault(trigger = 'manual'){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled){
+    await appendDebugInfo('Vault lock requested but encryption is disabled', { trigger });
     return {
       success: false,
       code: 'NEED_ENCRYPTION_FIRST',
@@ -987,7 +1053,9 @@ async function lockVault(){
       encryptionEnabled: false,
     };
   }
-  unlockedCrypto = null;
+  await persistSessionUnlockState(null);
+  await clearVaultAutoLockAlarm();
+  await appendDebugInfo('Vault locked', { trigger });
   return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
@@ -996,12 +1064,14 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch(message.action){
       case 'getAccounts': {
         const accounts = await getLocalAccounts();
+        await touchVaultActivity();
         sendResponse({ success: true, accounts });
         return;
       }
       case 'saveAccounts': {
         const accounts = Array.isArray(message.accounts) ? message.accounts : [];
         await setLocalAccounts(accounts);
+        await touchVaultActivity();
         await appendDebugInfo('Accounts saved locally', { count: accounts.length });
         const sync = { skipped: true, reason: 'timer_only' };
         sendResponse({ success: true, sync, settings: await getSyncSettings() });
@@ -1089,6 +1159,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const accounts = await getLocalAccounts();
         accounts.push(account);
         await setLocalAccounts(accounts);
+        await touchVaultActivity();
 
         const sync = { skipped: true, reason: 'timer_only' };
         await appendDebugInfo('addAccountFromQr stored successfully', {
@@ -1282,7 +1353,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'lockVault': {
-        sendResponse(await lockVault());
+        sendResponse(await lockVault('manual'));
         return;
       }
       case 'enableEncryption': {
@@ -1291,6 +1362,21 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case 'disableEncryption': {
         sendResponse(await disableEncryption(String(message.passphrase || '')));
+        return;
+      }
+      case 'getVaultTimerSettings': {
+        const vault = await getVaultSettings();
+        sendResponse({ success: true, settings: { autoLockEnabled: !!vault.autoLockEnabled, autoLockMinutes: normalizeAutoLockMinutes(vault.autoLockMinutes) } });
+        return;
+      }
+      case 'saveVaultTimerSettings': {
+        const incoming = message.settings || {};
+        const settings = await setVaultSettings({
+          autoLockEnabled: !!incoming.autoLockEnabled,
+          autoLockMinutes: normalizeAutoLockMinutes(incoming.autoLockMinutes),
+        });
+        await scheduleVaultAutoLock();
+        sendResponse({ success: true, settings: { autoLockEnabled: !!settings.autoLockEnabled, autoLockMinutes: normalizeAutoLockMinutes(settings.autoLockMinutes) } });
         return;
       }
       default:
@@ -1326,6 +1412,7 @@ if(browser.runtime && browser.runtime.onInstalled){
 if(browser.runtime && browser.runtime.onStartup){
   browser.runtime.onStartup.addListener(() => {
     refreshAutofillInjectionForOpenTabs().catch(() => {});
+    scheduleVaultAutoLock().catch(() => {});
   });
 }
 if(browser.contextMenus && browser.contextMenus.onClicked){
@@ -1334,6 +1421,13 @@ if(browser.contextMenus && browser.contextMenus.onClicked){
     openQrScannerForImageUrl(info.srcUrl).catch(() => {});
   });
 }
+if(browser.alarms && browser.alarms.onAlarm){
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if(!alarm || alarm.name !== VAULT_AUTO_LOCK_ALARM) return;
+    lockVault('auto_timer_expired').catch(() => {});
+  });
+}
+
 if(browser.storage && browser.storage.onChanged){
   browser.storage.onChanged.addListener((changes, areaName) => {
     if(areaName !== 'local') return;
@@ -1348,4 +1442,5 @@ if(browser.storage && browser.storage.onChanged){
 }
 
 startAutoUploadScheduler();
+scheduleVaultAutoLock().catch(() => {});
 refreshAutofillInjectionForOpenTabs().catch(() => {});

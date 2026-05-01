@@ -16,6 +16,7 @@ let syncSettings = {
   useEncryptedPayload:false,
 };
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
+let vaultTimerSettings = { autoLockEnabled:false, autoLockMinutes:15 };
 let debugState = { enabled:false };
 let featureSettings = { autofillEnabled:true, rightclickEnabled:true };
 let debugUiUnlocked = false;
@@ -77,7 +78,9 @@ const STATIC_TEXT_MAP = {
   syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
   btnDownloadSync: 'syncDownloadBtn', syncWarnOverwrite: 'syncWarnOverwrite', vaultEnableText: 'vaultEnableText',
-  vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase', btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
+  vaultEnableHint: 'vaultEnableHint', labelVaultPassphrase: 'labelVaultPassphrase',
+  vaultTimerEnableText: 'vaultTimerEnableText', vaultTimerEnableHint: 'vaultTimerEnableHint', labelVaultTimerPeriod: 'labelVaultTimerPeriod',
+  btnApplyVault: 'applyVaultBtn', btnLockVault: 'lockVaultBtn',
   vaultLockedPill: 'vaultLockedPill', btnAdd: 'addAccount', debugEnableText: 'debugEnableText',
   debugHint: 'debugHint', btnDownloadDebug: 'debugDownloadBtn'
 };
@@ -85,6 +88,7 @@ const STATIC_TEXT_MAP = {
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
 function pal(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
 function byId(id){ return document.getElementById(id); }
+function settingButton(){ return byId('btnSetting'); }
 function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.slice(0,3)+' '+code.slice(3); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
@@ -177,6 +181,9 @@ function applyStaticTranslations(){
     permissionRightclickEnableText: 'Enable right-click QR scan option',
     permissionRightclickEnableHint: 'Show a QR scanning action in the browser image context menu.',
     btnSavePermission: 'Save Permission Settings',
+    vaultTimerEnableText: 'Enable automatic vault lock',
+    vaultTimerEnableHint: 'Automatically lock the vault after inactivity.',
+    labelVaultTimerPeriod: 'Auto-lock period (minutes)',
   };
   for(const [id, fallback] of Object.entries(popupFallbackText)){
     const el = byId(id);
@@ -187,7 +194,8 @@ function applyStaticTranslations(){
   }
   byId('btnImport').title = t('btnImportTitle');
   byId('btnExport').title = t('btnExportTitle');
-  byId('btnSync').title = t('btnSyncTitle');
+  const syncBtn = settingButton();
+  if(syncBtn) syncBtn.title = tf('btnSettingTitle', tf('btnSyncTitle', 'Settings'));
   byId('btnLang').title = t('btnLangTitle');
   byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
@@ -962,7 +970,7 @@ function updateVaultUi(){
   }
 
   const locked = isVaultLocked();
-  const gatedIds = ['btnAdd','btnImport','btnExport','btnSync'];
+  const gatedIds = ['btnAdd','btnImport','btnExport','btnSetting'];
   for(const id of gatedIds){
     const el = byId(id);
     if(!el) continue;
@@ -970,6 +978,15 @@ function updateVaultUi(){
     el.classList.toggle('is-disabled', locked);
     el.setAttribute('aria-disabled', locked ? 'true' : 'false');
   }
+}
+
+async function refreshVaultTimerSettings(){
+  const resp = await sendMessage({ action:'getVaultTimerSettings' });
+  if(resp && resp.settings){
+    vaultTimerSettings = Object.assign({}, vaultTimerSettings, resp.settings);
+  }
+  byId('vaultTimerEnabled').checked = !!vaultTimerSettings.autoLockEnabled;
+  byId('vaultTimerPeriod').value = Number(vaultTimerSettings.autoLockMinutes || 15);
 }
 
 async function refreshVaultStatus(){
@@ -1002,6 +1019,7 @@ async function boot(){
   applyTheme();
   
   await refreshVaultStatus();
+  await refreshVaultTimerSettings();
   await loadFeatureSettings();
   await loadSyncSettings();
   await loadDebugState();
@@ -1039,7 +1057,8 @@ byId('closeLang').addEventListener('click', () => closeD('drawLang'));
 byId('drawLang').addEventListener('click', function(e){ if(e.target===this) closeD('drawLang'); });
 byId('closeAdd').addEventListener('click', () => { closeD('drawAdd'); resetForm(); });
 byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ closeD('drawAdd'); resetForm(); } });
-byId('btnSync').addEventListener('click', () => {
+const syncEntryBtn = settingButton();
+if(syncEntryBtn) syncEntryBtn.addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
   openD('drawSync');
 });
@@ -1428,21 +1447,31 @@ byId('btnApplyVault').addEventListener('click', async () => {
   const errEl = byId('vaultErr'); errEl.style.display = 'none';
   const wantEncrypt = byId('vaultEncryptionEnabled').checked;
   const passphrase = byId('vaultPassphrase').value;
+  const autoLockEnabled = byId('vaultTimerEnabled').checked;
+  const autoLockMinutes = Math.max(1, parseInt(byId('vaultTimerPeriod').value, 10) || 15);
   try {
+    let changed = false;
     if(wantEncrypt && !vaultStatus.encryptionEnabled){
       await sendMessage({ action:'enableEncryption', passphrase });
-      toast(t('localEncryptionEnabled'));
+      changed = true;
     } else if(!wantEncrypt && vaultStatus.encryptionEnabled){
       if(!window.confirm(t('confirmDisableEncryption'))) return;
       await sendMessage({ action:'disableEncryption', passphrase });
-      toast(t('localEncryptionDisabled'));
+      changed = true;
     } else if(wantEncrypt && vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
       await sendMessage({ action:'unlockVault', passphrase });
       toast(t('vaultUnlockedToast'));
-    } else {
-      toast(t('noSecurityChangeNeeded'));
     }
+    const timerChanged = (autoLockEnabled !== !!vaultTimerSettings.autoLockEnabled)
+      || (autoLockMinutes !== Math.max(1, parseInt(vaultTimerSettings.autoLockMinutes, 10) || 15));
+    const timerResp = await sendMessage({ action:'saveVaultTimerSettings', settings:{ autoLockEnabled, autoLockMinutes } });
+    if(timerResp && timerResp.settings){
+      vaultTimerSettings = Object.assign({}, vaultTimerSettings, timerResp.settings);
+    }
+    if(timerChanged) changed = true;
+    toast(tf(changed ? 'securitySettingChanged' : 'securitySettingUnchanged', changed ? 'Security settings updated' : 'Security settings unchanged'));
     await refreshVaultStatus();
+    await refreshVaultTimerSettings();
     accounts = await loadAccounts();
     render();
   } catch(err){ errEl.textContent = err.message; errEl.style.display = 'block'; }

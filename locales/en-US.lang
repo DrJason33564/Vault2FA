@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.5.0
+VERSION=2.6.0
 
 [Language]
 LANGUAGE=English
@@ -83,6 +83,9 @@ settingDebugTitle=Debugging
 vaultEnableText=Enable local encryption
 vaultEnableHint=When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.
 labelVaultPassphrase=Vault Passphrase
+vaultTimerEnableText=Enable automatic vault lock
+vaultTimerEnableHint=Automatically lock the vault after inactivity when encryption is enabled.
+labelVaultTimerPeriod=Auto-lock period (minutes)
 applyVaultBtn=Apply Security Setting
 lockVaultBtn=Lock Vault Now
 vaultLockedPill=Locked
@@ -147,10 +150,9 @@ noEditAccountSelected=No account selected for editing.
 accountNotExists=Account no longer exists.
 confirmCloudOverwrite=Cloud data will overwrite your current local accounts. Continue?
 downloadedCloudData=Downloaded cloud data
-localEncryptionEnabled=Local encryption enabled
 confirmDisableEncryption=Disable local encryption and store data locally without encryption?
-localEncryptionDisabled=Local encryption disabled
-noSecurityChangeNeeded=No security change needed
+securitySettingChanged=Security settings updated
+securitySettingUnchanged=Security settings unchanged
 vaultLockedToast=Vault locked
 popupLoadFailed=Failed to load popup
 migrationAccountsImported=Account imported from third-party source!
@@ -185,10 +187,6 @@ addFail=Could not add account:
 loadingFromImage=Loading image from web page…
 loadImageFail=Could not load the selected image: 
 migrationAccountsAdded=Account imported from third-party source - you can close this tab.
-permissionAutofillEnableText=Enable autofill feature
-permissionAutofillEnableHint=Fill in 2fa related input fields in websites.
-permissionRightclickEnableText=Enable right-click QR scan
-permissionRightclickEnableHint=Show a QR scanning action in the right-click image context menu.
 
 [json-import]
 title=Vault <em>2FA</em> — JSON Import

@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.5.0
+VERSION=2.5.1
 
 [Language]
 LANGUAGE=Русский
@@ -147,10 +147,9 @@ noEditAccountSelected=Не выбран аккаунт для редактиро
 accountNotExists=Аккаунт больше не существует.
 confirmCloudOverwrite=Облачные данные перезапишут ваши текущие локальные аккаунты. Продолжить?
 downloadedCloudData=Облачные данные загружены
-localEncryptionEnabled=Локальное шифрование включено
 confirmDisableEncryption=Отключить локальное шифрование и хранить данные локально без шифрования?
-localEncryptionDisabled=Локальное шифрование отключено
-noSecurityChangeNeeded=Изменения настроек безопасности не требуются
+securitySettingChanged=Настройки безопасности обновлены
+securitySettingUnchanged=Настройки безопасности не изменены
 vaultLockedToast=Хранилище заблокировано
 popupLoadFailed=Не удалось загрузить всплывающее окно
 migrationAccountsImported=Аккаунт импортирован из стороннего источника!

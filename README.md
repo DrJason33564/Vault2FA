@@ -105,7 +105,7 @@ Exporting account data from Microsoft Authenticator is a bit more troublesome. S
 ### 项目结构 / Project Structure
 
 - `manifest.json`: 扩展配置 / Extension manifest
-- `popup/popup.html`, `popup/popup.js`, `popup/popup.css`: 主弹窗界面与逻辑 / Main popup UI and logic
+- `popup/`: 主弹窗界面与逻辑 / Main popup UI and logic
 - `qr/`: 二维码扫描页面 / QR scanning page
 - `background.js`: 后台逻辑 / Background logic
 - `autofill/`: 自动填充弹窗 / Autofill pop-up
