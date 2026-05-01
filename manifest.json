@@ -32,8 +32,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "locales/*.lang",
-        "third-party/qr-scanner-worker.min.js"
+        "locales/*.lang"
       ],
       "matches": [
         "<all_urls>"
