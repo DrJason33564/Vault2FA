@@ -1452,16 +1452,16 @@ byId('btnApplyVault').addEventListener('click', async () => {
   try {
     if(wantEncrypt && !vaultStatus.encryptionEnabled){
       await sendMessage({ action:'enableEncryption', passphrase });
-      toast(t('localEncryptionEnabled'));
+      toast(tf('securitySettingChanged', 'Security settings updated'));
     } else if(!wantEncrypt && vaultStatus.encryptionEnabled){
       if(!window.confirm(t('confirmDisableEncryption'))) return;
       await sendMessage({ action:'disableEncryption', passphrase });
-      toast(t('localEncryptionDisabled'));
+      toast(tf('securitySettingChanged', 'Security settings updated'));
     } else if(wantEncrypt && vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
       await sendMessage({ action:'unlockVault', passphrase });
       toast(t('vaultUnlockedToast'));
     } else {
-      toast(t('noSecurityChangeNeeded'));
+      toast(tf('securitySettingUnchanged', 'Security settings unchanged'));
     }
     const timerResp = await sendMessage({ action:'saveVaultTimerSettings', settings:{ autoLockEnabled, autoLockMinutes } });
     if(timerResp && timerResp.settings){
