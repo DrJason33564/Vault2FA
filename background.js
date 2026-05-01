@@ -1041,9 +1041,10 @@ async function getVaultStatus(){
   };
 }
 
-async function lockVault(){
+async function lockVault(trigger = 'manual'){
   const vault = await getVaultSettings();
   if(!vault.encryptionEnabled){
+    await appendDebugInfo('Vault lock requested but encryption is disabled', { trigger });
     return {
       success: false,
       code: 'NEED_ENCRYPTION_FIRST',
@@ -1054,6 +1055,7 @@ async function lockVault(){
   }
   await persistSessionUnlockState(null);
   await clearVaultAutoLockAlarm();
+  await appendDebugInfo('Vault locked', { trigger });
   return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
@@ -1351,7 +1353,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'lockVault': {
-        sendResponse(await lockVault());
+        sendResponse(await lockVault('manual'));
         return;
       }
       case 'enableEncryption': {
@@ -1422,7 +1424,7 @@ if(browser.contextMenus && browser.contextMenus.onClicked){
 if(browser.alarms && browser.alarms.onAlarm){
   browser.alarms.onAlarm.addListener((alarm) => {
     if(!alarm || alarm.name !== VAULT_AUTO_LOCK_ALARM) return;
-    lockVault().catch(() => {});
+    lockVault('auto_timer_expired').catch(() => {});
   });
 }
 
