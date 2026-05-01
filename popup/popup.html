@@ -289,6 +289,17 @@
       <label class="fl" id="labelVaultPassphrase">Vault Passphrase</label>
       <input class="fi" id="vaultPassphrase" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
     </div>
+    <div class="fg sync-toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="vaultTimerEnabled" />
+        <span id="vaultTimerEnableText">Enable automatic vault lock</span>
+      </label>
+      <div class="fhint" id="vaultTimerEnableHint">Automatically lock the vault after inactivity.</div>
+    </div>
+    <div class="fg">
+      <label class="fl" id="labelVaultTimerPeriod">Auto-lock period (minutes)</label>
+      <input class="fi" id="vaultTimerPeriod" type="number" min="1" step="1" value="15" />
+    </div>
     <div class="sync-actions">
       <button class="btn-secondary" id="btnApplyVault">Apply Security Setting</button>
       <button class="btn-secondary" id="btnLockVault">Lock Vault Now</button>

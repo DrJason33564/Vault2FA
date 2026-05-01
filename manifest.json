@@ -15,7 +15,8 @@
     "storage",
     "clipboardWrite",
     "contextMenus",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "background": {
     "scripts": [
