@@ -1450,23 +1450,26 @@ byId('btnApplyVault').addEventListener('click', async () => {
   const autoLockEnabled = byId('vaultTimerEnabled').checked;
   const autoLockMinutes = Math.max(1, parseInt(byId('vaultTimerPeriod').value, 10) || 15);
   try {
+    let changed = false;
     if(wantEncrypt && !vaultStatus.encryptionEnabled){
       await sendMessage({ action:'enableEncryption', passphrase });
-      toast(tf('securitySettingChanged', 'Security settings updated'));
+      changed = true;
     } else if(!wantEncrypt && vaultStatus.encryptionEnabled){
       if(!window.confirm(t('confirmDisableEncryption'))) return;
       await sendMessage({ action:'disableEncryption', passphrase });
-      toast(tf('securitySettingChanged', 'Security settings updated'));
+      changed = true;
     } else if(wantEncrypt && vaultStatus.encryptionEnabled && !vaultStatus.unlocked){
       await sendMessage({ action:'unlockVault', passphrase });
       toast(t('vaultUnlockedToast'));
-    } else {
-      toast(tf('securitySettingUnchanged', 'Security settings unchanged'));
     }
+    const timerChanged = (autoLockEnabled !== !!vaultTimerSettings.autoLockEnabled)
+      || (autoLockMinutes !== Math.max(1, parseInt(vaultTimerSettings.autoLockMinutes, 10) || 15));
     const timerResp = await sendMessage({ action:'saveVaultTimerSettings', settings:{ autoLockEnabled, autoLockMinutes } });
     if(timerResp && timerResp.settings){
       vaultTimerSettings = Object.assign({}, vaultTimerSettings, timerResp.settings);
     }
+    if(timerChanged) changed = true;
+    toast(tf(changed ? 'securitySettingChanged' : 'securitySettingUnchanged', changed ? 'Security settings updated' : 'Security settings unchanged'));
     await refreshVaultStatus();
     await refreshVaultTimerSettings();
     accounts = await loadAccounts();
