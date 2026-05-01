@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vault2FA",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "A fine TOTP/HOTP 2FA extension for Firefox with optional sync and auto fill.",
   "icons": {
     "16": "icons/icon16.png",
