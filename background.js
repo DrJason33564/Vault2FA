@@ -518,7 +518,7 @@ async function deriveKey(passphrase, saltB64){
     { name: 'PBKDF2', salt, iterations: KDF_ITERATIONS, hash: 'SHA-256' },
     baseKey,
     { name: CIPHER_ALGO, length: KDF_KEY_LENGTH },
-    false,
+    true,
     ['encrypt', 'decrypt']
   );
 }

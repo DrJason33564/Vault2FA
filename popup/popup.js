@@ -88,7 +88,7 @@ const STATIC_TEXT_MAP = {
 const PAL = ['#58a6ff','#3fb950','#d29922','#f78166','#bc8cff','#39c5cf','#ff7b72','#79c0ff'];
 function pal(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
 function byId(id){ return document.getElementById(id); }
-function settingButton(){ return byId('btnSetting') || byId('btnSync'); }
+function settingButton(){ return byId('btnSetting'); }
 function fmt(code, d){ return d===8 ? code.slice(0,4)+' '+code.slice(4) : code.slice(0,3)+' '+code.slice(3); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
@@ -195,7 +195,7 @@ function applyStaticTranslations(){
   byId('btnImport').title = t('btnImportTitle');
   byId('btnExport').title = t('btnExportTitle');
   const syncBtn = settingButton();
-  if(syncBtn) syncBtn.title = t('btnSyncTitle');
+  if(syncBtn) syncBtn.title = tf('btnSettingTitle', tf('btnSyncTitle', 'Settings'));
   byId('btnLang').title = t('btnLangTitle');
   byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
