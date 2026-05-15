@@ -675,7 +675,7 @@ async function reorderAccount(dragId, dropId){
 
 
 async function openQrImageTabForOtpAuth(otpauth){
-  if(typeof QRCode !== 'function') throw new Error('QRCode library is not loaded.');
+  if(typeof QRCode !== 'function') throw new Error(tf('showQrCodeLibraryError', 'QRCode library is not loaded.'));
   const hostId = 'qrExportStaging';
   let host = document.getElementById(hostId);
   if(!host){
@@ -712,7 +712,7 @@ async function openQrImageTabForOtpAuth(otpauth){
       }
       tries += 1;
       if(tries >= maxTries){
-        reject(new Error('Failed to generate QR image.'));
+        reject(new Error(tf('showQrCodeGenerateError', 'Failed to generate QR image.')));
         return;
       }
       requestAnimationFrame(poll);
