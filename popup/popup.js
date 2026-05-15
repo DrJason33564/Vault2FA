@@ -719,7 +719,8 @@ async function openQrImageTabForOtpAuth(otpauth){
     };
     poll();
   });
-  await browser.tabs.create({ url: dataUrl });
+  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#img=' + encodeURIComponent(dataUrl);
+  await browser.tabs.create({ url: previewUrl });
 }
 
 function render(){
