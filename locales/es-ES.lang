@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.5.1
+VERSION=2.7.1
 
 [Language]
 LANGUAGE=Español
@@ -23,6 +23,12 @@ noAccountsToExport=No hay cuentas para exportar
 copied=¡Copiado!
 addAccount=Añadir cuenta
 editAccount=Editar cuenta
+showQrCode=Exportar mediante QR
+showQrCodeLibraryError=Error al cargar la biblioteca QR.
+showQrCodeGenerateError=No se pudo generar el código QR.
+showQrCodeSuccess=Código QR generado en una nueva pestaña.
+reorderAccount=Reordenar todas las cuentas por la primera letra del emisor
+reorderAccountSuccess=Cuentas reordenadas.
 noAccountsYet=Aún no hay cuentas
 emptySub=Añade tu primera cuenta usando el\nbotón + de abajo.
 vaultLocked=Bóveda bloqueada
@@ -83,6 +89,9 @@ settingDebugTitle=Depuración
 vaultEnableText=Activar cifrado local
 vaultEnableHint=Cuando está activado, las cuentas locales se almacenan cifradas en reposo. Se requiere desbloqueo una vez por sesión del navegador.
 labelVaultPassphrase=Contraseña de la bóveda
+vaultTimerEnableText=Activar bloqueo automático de la bóveda
+vaultTimerEnableHint=Bloquea automáticamente la bóveda tras un período de inactividad cuando el cifrado está activado.
+labelVaultTimerPeriod=Período de bloqueo automático (minutos)
 applyVaultBtn=Aplicar configuración de seguridad
 lockVaultBtn=Bloquear bóveda ahora
 vaultLockedPill=Bloqueada

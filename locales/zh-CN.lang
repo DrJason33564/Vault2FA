@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.6.0
+VERSION=2.7.1
 
 [Language]
 LANGUAGE=简体中文
@@ -23,6 +23,12 @@ noAccountsToExport=没有可导出的账号
 copied=已复制！
 addAccount=添加账号
 editAccount=编辑账号
+showQrCode=账号二维码
+showQrCodeLibraryError=二维码生成库加载失败
+showQrCodeGenerateError=二维码生成失败
+showQrCodeSuccess=二维码已在新标签页中显示
+reorderAccount=按发行方首字母顺序重新排列所有账号
+reorderAccountSuccess=账号已重排序
 noAccountsYet=还没有账号
 emptySub=点击下方 + 按钮\n添加第一个账号
 vaultLocked=保险库已锁定

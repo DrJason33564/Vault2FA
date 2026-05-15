@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.5.1
+VERSION=2.7.1
 
 [Language]
 LANGUAGE=Русский
@@ -23,6 +23,12 @@ noAccountsToExport=Нет аккаунтов для экспорта
 copied=Скопировано!
 addAccount=Добавить аккаунт
 editAccount=Редактировать аккаунт
+showQrCode=Экспортировать через QR
+showQrCodeLibraryError=Не удалось загрузить библиотеку QR.
+showQrCodeGenerateError=Не удалось создать QR-код.
+showQrCodeSuccess=QR-код создан в новой вкладке.
+reorderAccount=Пересортировать все аккаунты по первой букве издателя
+reorderAccountSuccess=Аккаунты пересортированы.
 noAccountsYet=Аккаунтов пока нет
 emptySub=Добавьте свой первый аккаунт,\nнажав кнопку + ниже.
 vaultLocked=Хранилище заблокировано
@@ -83,6 +89,9 @@ settingDebugTitle=Отладка
 vaultEnableText=Включить локальное шифрование
 vaultEnableHint=Если включено, локальные аккаунты будут храниться в зашифрованном виде. Разблокировка требуется один раз за сеанс браузера.
 labelVaultPassphrase=Парольная фраза хранилища
+vaultTimerEnableText=Включить автоматическую блокировку хранилища
+vaultTimerEnableHint=Автоматически блокировать хранилище после периода бездействия, когда шифрование включено.
+labelVaultTimerPeriod=Период автоблокировки (минуты)
 applyVaultBtn=Применить настройки безопасности
 lockVaultBtn=Заблокировать хранилище сейчас
 vaultLockedPill=Заблокировано
