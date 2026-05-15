@@ -27,7 +27,7 @@ const debugTapTimes = [];
 const DEBUG_TAP_WINDOW_MS = 1600;
 let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
-let accountSetings = { sequence: {} };
+let accountSettings = { sequence: {} };
 let dragAccountId = null;
 
 const I18N = {};
@@ -313,8 +313,8 @@ function formatAutofillPatterns(patterns){
   return (Array.isArray(patterns) ? patterns : []).map(normalizeAutofillPattern).filter(Boolean).join(', ');
 }
 
-const ACCOUNT_SETINGS_KEY = 'accountSetings';
-const ACCOUNT_SETTINGS_COMPAT_KEY = 'accountSettings';
+const ACCOUNT_SETTINGS_KEY = 'accountSettings';
+const ACCOUNT_SETTINGS_LEGACY_KEY = 'accountSetings';
 
 function normalizeSequence(raw){
   const normalized = {};
@@ -327,18 +327,17 @@ function normalizeSequence(raw){
   return normalized;
 }
 
-async function loadAccountSetings(){
-  const prefs = await browser.storage.local.get([ACCOUNT_SETINGS_KEY, ACCOUNT_SETTINGS_COMPAT_KEY]);
-  const primary = prefs && prefs[ACCOUNT_SETINGS_KEY];
-  const compat = prefs && prefs[ACCOUNT_SETTINGS_COMPAT_KEY];
-  const data = primary && typeof primary === 'object' ? primary : compat;
-  accountSetings = { sequence: normalizeSequence(data && data.sequence) };
+async function loadAccountSettings(){
+  const prefs = await browser.storage.local.get([ACCOUNT_SETTINGS_KEY, ACCOUNT_SETTINGS_LEGACY_KEY]);
+  const primary = prefs && prefs[ACCOUNT_SETTINGS_KEY];
+  const legacy = prefs && prefs[ACCOUNT_SETTINGS_LEGACY_KEY];
+  const data = primary && typeof primary === 'object' ? primary : legacy;
+  accountSettings = { sequence: normalizeSequence(data && data.sequence) };
 }
 
-async function persistAccountSetings(){
+async function persistAccountSettings(){
   await browser.storage.local.set({
-    [ACCOUNT_SETINGS_KEY]: accountSetings,
-    [ACCOUNT_SETTINGS_COMPAT_KEY]: accountSetings,
+    [ACCOUNT_SETTINGS_KEY]: accountSettings,
   });
 }
 
@@ -354,7 +353,7 @@ function normalizeAccountRecord(acc){
 }
 
 function compareAccountOrder(a, b){
-  const sequence = (accountSetings && accountSetings.sequence) || {};
+  const sequence = (accountSettings && accountSettings.sequence) || {};
   const posA = sequence[String(a.id || '')];
   const posB = sequence[String(b.id || '')];
   const hasA = Number.isFinite(posA);
@@ -664,7 +663,7 @@ function buildCard(acc){
 function persistSequenceFromCurrentOrder(){
   const next = {};
   accounts.forEach((acc, idx) => { next[String(acc.id)] = idx; });
-  accountSetings.sequence = next;
+  accountSettings.sequence = next;
 }
 
 async function reorderAccount(dragId, dropId){
@@ -854,13 +853,13 @@ async function saveAccounts(){
 
 async function persistAndRender(){
   const ids = new Set(accounts.map(acc => String(acc.id)));
-  const seq = (accountSetings && accountSetings.sequence) || {};
+  const seq = (accountSettings && accountSettings.sequence) || {};
   for(const id of Object.keys(seq)){
     if(!ids.has(id)) delete seq[id];
   }
-  accountSetings.sequence = normalizeSequence(seq);
+  accountSettings.sequence = normalizeSequence(seq);
   await saveAccounts();
-  await persistAccountSetings();
+  await persistAccountSettings();
   render();
 }
 
@@ -1095,7 +1094,7 @@ async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
   await loadPopupLocales();
-  await loadAccountSetings();
+  await loadAccountSettings();
   const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
   setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
