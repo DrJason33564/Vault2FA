@@ -168,6 +168,7 @@ html, body {
   display:flex; align-items:center; justify-content:space-between;
   font-size:11px; color:var(--dim); flex-shrink:0; background:var(--surf);
 }
+.ftr-actions { display:flex; align-items:center; gap:6px; margin-left:auto; }
 .sync-badge { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--green); }
 .sync-dot   { width:5px; height:5px; background:var(--green); border-radius:50%; }
 .add-btn {

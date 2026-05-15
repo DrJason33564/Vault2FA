@@ -1143,6 +1143,16 @@ async function unlockWithInput(inputId, errId){
   }
 }
 
+
+async function migrateAccountSequenceIfMissing(){
+  const prefs = await browser.storage.local.get(ACCOUNT_SETTINGS_KEY);
+  const raw = prefs && prefs[ACCOUNT_SETTINGS_KEY];
+  if(raw && typeof raw === 'object' && raw.sequence && typeof raw.sequence === 'object') return;
+  accounts = accounts.slice().sort(compareIssuerOrder);
+  persistSequenceFromCurrentOrder();
+  await persistAccountSettings();
+}
+
 async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
@@ -1163,6 +1173,7 @@ async function boot(){
     return;
   }
   accounts = await loadAccounts();
+  await migrateAccountSequenceIfMissing();
   render();
 }
 
@@ -1185,7 +1196,7 @@ byId('btnReorderAll').addEventListener('click', async () => {
   accounts = accounts.slice().sort(compareIssuerOrder);
   persistSequenceFromCurrentOrder();
   await persistAndRender();
-  toast(tf('reorderAccount', "Reorder all accounts by issuers' first letter."));
+  toast(tf('reorderAccountSuccess', 'Accounts reordered.'));
 });
 
 byId('btnAdd').addEventListener('click', () => {
