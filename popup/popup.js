@@ -198,6 +198,8 @@ function applyStaticTranslations(){
   byId('btnExport').title = t('btnExportTitle');
   const syncBtn = settingButton();
   if(syncBtn) syncBtn.title = tf('btnSettingTitle', tf('btnSyncTitle', 'Settings'));
+  const reorderBtn = byId('btnReorderAll');
+  if(reorderBtn) reorderBtn.title = tf('reorderAccount', "Reorder all accounts by issuers' first letter.");
   byId('btnLang').title = t('btnLangTitle');
   byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
@@ -349,15 +351,7 @@ function normalizeAccountRecord(acc){
   return next;
 }
 
-function compareAccountOrder(a, b){
-  const sequence = (accountSettings && accountSettings.sequence) || {};
-  const posA = sequence[String(a.id || '')];
-  const posB = sequence[String(b.id || '')];
-  const hasA = Number.isFinite(posA);
-  const hasB = Number.isFinite(posB);
-  if(hasA && hasB && posA !== posB) return posA - posB;
-  if(hasA !== hasB) return hasA ? -1 : 1;
-
+function compareIssuerOrder(a, b){
   const issuerA = String(a.issuer || '').trim();
   const issuerB = String(b.issuer || '').trim();
   const issuerCmp = issuerA.localeCompare(issuerB, 'en', { numeric: true, sensitivity: 'base' });
@@ -369,6 +363,18 @@ function compareAccountOrder(a, b){
   if(labelCmp !== 0) return labelCmp;
 
   return String(a.id || '').localeCompare(String(b.id || ''), 'en', { numeric: true, sensitivity: 'base' });
+}
+
+function compareAccountOrder(a, b){
+  const sequence = (accountSettings && accountSettings.sequence) || {};
+  const posA = sequence[String(a.id || '')];
+  const posB = sequence[String(b.id || '')];
+  const hasA = Number.isFinite(posA);
+  const hasB = Number.isFinite(posB);
+  if(hasA && hasB && posA !== posB) return posA - posB;
+  if(hasA !== hasB) return hasA ? -1 : 1;
+
+  return compareIssuerOrder(a, b);
 }
 
 function buildOtpAuthUriForAccount(acc){
@@ -1173,6 +1179,14 @@ function handleDebugLogoTap(){
     toast(t('debugUnlockedToast'));
   }
 }
+
+byId('btnReorderAll').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
+  accounts = accounts.slice().sort(compareIssuerOrder);
+  persistSequenceFromCurrentOrder();
+  await persistAndRender();
+  toast(tf('reorderAccount', "Reorder all accounts by issuers' first letter."));
+});
 
 byId('btnAdd').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
