@@ -128,6 +128,9 @@ html, body {
 .act-btn:hover { color:var(--text); border-color:var(--bhr); }
 .act-btn.edit:hover { color:var(--accent); border-color:var(--accent); }
 .act-btn.del:hover { color:var(--red); border-color:var(--red); }
+.act-btn.share:hover { color:var(--accent); border-color:var(--accent); }
+.card.dragging { opacity:.55; }
+.card.drag-over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
 .card-otp { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .otp-code {
   font-family: var(--mono);

@@ -27,6 +27,8 @@ const debugTapTimes = [];
 const DEBUG_TAP_WINDOW_MS = 1600;
 let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
+let accountSetings = { sequence: {} };
+let dragAccountId = null;
 
 const I18N = {};
 let availableLanguages = [];
@@ -311,6 +313,29 @@ function formatAutofillPatterns(patterns){
   return (Array.isArray(patterns) ? patterns : []).map(normalizeAutofillPattern).filter(Boolean).join(', ');
 }
 
+const ACCOUNT_SETINGS_KEY = 'accountSetings';
+
+function normalizeSequence(raw){
+  const normalized = {};
+  if(!raw || typeof raw !== 'object') return normalized;
+  for(const [id, value] of Object.entries(raw)){
+    const index = Number(value);
+    if(!id || !Number.isFinite(index) || index < 0) continue;
+    normalized[String(id)] = Math.floor(index);
+  }
+  return normalized;
+}
+
+async function loadAccountSetings(){
+  const prefs = await browser.storage.local.get(ACCOUNT_SETINGS_KEY);
+  const data = prefs && prefs[ACCOUNT_SETINGS_KEY];
+  accountSetings = { sequence: normalizeSequence(data && data.sequence) };
+}
+
+async function persistAccountSetings(){
+  await browser.storage.local.set({ [ACCOUNT_SETINGS_KEY]: accountSetings });
+}
+
 function normalizeAccountRecord(acc){
   const next = Object.assign({}, acc || {});
   next.autofillPatterns = Array.isArray(next.autofillPatterns)
@@ -323,6 +348,14 @@ function normalizeAccountRecord(acc){
 }
 
 function compareAccountOrder(a, b){
+  const sequence = (accountSetings && accountSetings.sequence) || {};
+  const posA = sequence[String(a.id || '')];
+  const posB = sequence[String(b.id || '')];
+  const hasA = Number.isFinite(posA);
+  const hasB = Number.isFinite(posB);
+  if(hasA && hasB && posA !== posB) return posA - posB;
+  if(hasA !== hasB) return hasA ? -1 : 1;
+
   const issuerA = String(a.issuer || '').trim();
   const issuerB = String(b.issuer || '').trim();
   const issuerCmp = issuerA.localeCompare(issuerB, 'en', { numeric: true, sensitivity: 'base' });
@@ -334,6 +367,15 @@ function compareAccountOrder(a, b){
   if(labelCmp !== 0) return labelCmp;
 
   return String(a.id || '').localeCompare(String(b.id || ''), 'en', { numeric: true, sensitivity: 'base' });
+}
+
+function buildOtpAuthUriForAccount(acc){
+  const secret = parseSecretByFormat(acc.secret, acc.secretFormat || 'base32');
+  const opts = { issuer:acc.issuer, label:acc.label, secret, algorithm:acc.algorithm||'SHA1', digits:acc.digits };
+  const otp = acc.type === 'hotp'
+    ? new OTPAuth.HOTP(Object.assign(opts, { counter:Math.max(0, Number(acc.counter || 0)) }))
+    : new OTPAuth.TOTP(Object.assign(opts, { period:Math.max(1, Number(acc.period || 30)) }));
+  return otp.toString();
 }
 
 async function sendMessage(payload){
@@ -463,6 +505,7 @@ function buildCard(acc){
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.id = String(acc.id);
+  card.draggable = true;
 
   const top = document.createElement('div');
   top.className = 'card-top';
@@ -512,6 +555,15 @@ function buildCard(acc){
     nextBtn.textContent = '↻';
     acts.appendChild(nextBtn);
   }
+
+  const shareBtn = document.createElement('button');
+  shareBtn.className = 'act-btn share';
+  shareBtn.dataset.a = 'share';
+  shareBtn.dataset.id = String(acc.id);
+  shareBtn.title = tf('showQrCode', 'Export via QR');
+  shareBtn.type = 'button';
+  shareBtn.textContent = '↗';
+  acts.appendChild(shareBtn);
 
   const editBtn = document.createElement('button');
   editBtn.className = 'act-btn edit';
@@ -601,6 +653,22 @@ function buildCard(acc){
   card.appendChild(otp);
 
   return card;
+}
+
+function persistSequenceFromCurrentOrder(){
+  const next = {};
+  accounts.forEach((acc, idx) => { next[String(acc.id)] = idx; });
+  accountSetings.sequence = next;
+}
+
+async function reorderAccount(dragId, dropId){
+  const from = accounts.findIndex(a => String(a.id) === String(dragId));
+  const to = accounts.findIndex(a => String(a.id) === String(dropId));
+  if(from < 0 || to < 0 || from === to) return;
+  const [moved] = accounts.splice(from, 1);
+  accounts.splice(to, 0, moved);
+  persistSequenceFromCurrentOrder();
+  await persistAndRender();
 }
 
 function render(){
@@ -779,7 +847,14 @@ async function saveAccounts(){
 }
 
 async function persistAndRender(){
+  const ids = new Set(accounts.map(acc => String(acc.id)));
+  const seq = (accountSetings && accountSetings.sequence) || {};
+  for(const id of Object.keys(seq)){
+    if(!ids.has(id)) delete seq[id];
+  }
+  accountSetings.sequence = normalizeSequence(seq);
   await saveAccounts();
+  await persistAccountSetings();
   render();
 }
 
@@ -1014,6 +1089,7 @@ async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
   await loadPopupLocales();
+  await loadAccountSetings();
   const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
   setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
@@ -1332,6 +1408,12 @@ byId('list').addEventListener('click', async e => {
     if(actionBtn.dataset.a === 'edit'){
       openEditDrawer(accounts[index]);
     }
+    if(actionBtn.dataset.a === 'share'){
+      const uri = buildOtpAuthUriForAccount(accounts[index]);
+      const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' + encodeURIComponent(uri);
+      browser.tabs.create({ url: qrUrl });
+      toast(tf('showQrCode', 'Export via QR'));
+    }
     return;
   }
   const codeEl = e.target.closest('.otp-code');
@@ -1345,6 +1427,41 @@ byId('list').addEventListener('click', async e => {
   }
 });
 
+
+byId('list').addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.card');
+  if(!card) return;
+  dragAccountId = String(card.dataset.id || '');
+  card.classList.add('dragging');
+  if(e.dataTransfer){
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragAccountId);
+  }
+});
+
+byId('list').addEventListener('dragend', (e) => {
+  const card = e.target.closest('.card');
+  if(card) card.classList.remove('dragging');
+  dragAccountId = null;
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+});
+
+byId('list').addEventListener('dragover', (e) => {
+  const target = e.target.closest('.card');
+  if(!target || !dragAccountId || String(target.dataset.id || '') === dragAccountId) return;
+  e.preventDefault();
+  if(e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+  target.classList.add('drag-over');
+});
+
+byId('list').addEventListener('drop', async (e) => {
+  const target = e.target.closest('.card');
+  if(!target || !dragAccountId) return;
+  e.preventDefault();
+  target.classList.remove('drag-over');
+  await reorderAccount(dragAccountId, String(target.dataset.id || ''));
+});
 byId('btnSaveEdit').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   const errEl = byId('editErr');
