@@ -314,6 +314,7 @@ function formatAutofillPatterns(patterns){
 }
 
 const ACCOUNT_SETINGS_KEY = 'accountSetings';
+const ACCOUNT_SETTINGS_COMPAT_KEY = 'accountSettings';
 
 function normalizeSequence(raw){
   const normalized = {};
@@ -327,13 +328,18 @@ function normalizeSequence(raw){
 }
 
 async function loadAccountSetings(){
-  const prefs = await browser.storage.local.get(ACCOUNT_SETINGS_KEY);
-  const data = prefs && prefs[ACCOUNT_SETINGS_KEY];
+  const prefs = await browser.storage.local.get([ACCOUNT_SETINGS_KEY, ACCOUNT_SETTINGS_COMPAT_KEY]);
+  const primary = prefs && prefs[ACCOUNT_SETINGS_KEY];
+  const compat = prefs && prefs[ACCOUNT_SETTINGS_COMPAT_KEY];
+  const data = primary && typeof primary === 'object' ? primary : compat;
   accountSetings = { sequence: normalizeSequence(data && data.sequence) };
 }
 
 async function persistAccountSetings(){
-  await browser.storage.local.set({ [ACCOUNT_SETINGS_KEY]: accountSetings });
+  await browser.storage.local.set({
+    [ACCOUNT_SETINGS_KEY]: accountSetings,
+    [ACCOUNT_SETTINGS_COMPAT_KEY]: accountSetings,
+  });
 }
 
 function normalizeAccountRecord(acc){
