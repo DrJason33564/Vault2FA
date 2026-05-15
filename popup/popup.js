@@ -29,6 +29,8 @@ let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
 let accountSettings = { sequence: {} };
 let dragAccountId = null;
+let touchDragState = null;
+const TOUCH_DRAG_HOLD_MS = 320;
 
 const I18N = {};
 let availableLanguages = [];
@@ -677,6 +679,75 @@ async function reorderAccount(dragId, dropId){
   accounts.splice(to, 0, moved);
   persistSequenceFromCurrentOrder();
   await persistAndRender();
+}
+
+function clearDragOverStyles(){
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+}
+
+function finishTouchDrag(){
+  if(!touchDragState) return;
+  if(touchDragState.timerId) clearTimeout(touchDragState.timerId);
+  if(touchDragState.card) touchDragState.card.classList.remove('dragging');
+  byId('list').classList.remove('touch-dragging');
+  touchDragState = null;
+  dragAccountId = null;
+  clearDragOverStyles();
+}
+
+function startTouchHoldDrag(e){
+  if(!guardVaultUnlocked()) return;
+  const card = e.target.closest('.card');
+  if(!card) return;
+  if(e.target.closest('[data-a], .otp-code')) return;
+  finishTouchDrag();
+  const touch = e.touches && e.touches[0];
+  if(!touch) return;
+  touchDragState = {
+    card,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    lastDropId: null,
+    dragging: false,
+    timerId: setTimeout(() => {
+      if(!touchDragState || touchDragState.card !== card) return;
+      touchDragState.dragging = true;
+      dragAccountId = String(card.dataset.id || '');
+      card.classList.add('dragging');
+      byId('list').classList.add('touch-dragging');
+    }, TOUCH_DRAG_HOLD_MS),
+  };
+}
+
+function moveTouchHoldDrag(e){
+  if(!touchDragState) return;
+  const touch = e.touches && e.touches[0];
+  if(!touch) return;
+  const dx = touch.clientX - touchDragState.startX;
+  const dy = touch.clientY - touchDragState.startY;
+  if(!touchDragState.dragging && Math.hypot(dx, dy) > 10){
+    finishTouchDrag();
+    return;
+  }
+  if(!touchDragState.dragging) return;
+  e.preventDefault();
+  const target = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.card');
+  clearDragOverStyles();
+  if(!target || String(target.dataset.id || '') === dragAccountId){
+    touchDragState.lastDropId = null;
+    return;
+  }
+  target.classList.add('drag-over');
+  touchDragState.lastDropId = String(target.dataset.id || '');
+}
+
+async function endTouchHoldDrag(){
+  if(!touchDragState) return;
+  const shouldReorder = touchDragState.dragging && dragAccountId && touchDragState.lastDropId;
+  const dragId = dragAccountId;
+  const dropId = touchDragState.lastDropId;
+  finishTouchDrag();
+  if(shouldReorder) await reorderAccount(dragId, dropId);
 }
 
 
@@ -1532,7 +1603,7 @@ byId('list').addEventListener('dragend', (e) => {
   const card = e.target.closest('.card');
   if(card) card.classList.remove('dragging');
   dragAccountId = null;
-  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+  clearDragOverStyles();
 });
 
 byId('list').addEventListener('dragover', (e) => {
@@ -1540,7 +1611,7 @@ byId('list').addEventListener('dragover', (e) => {
   if(!target || !dragAccountId || String(target.dataset.id || '') === dragAccountId) return;
   e.preventDefault();
   if(e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+  clearDragOverStyles();
   target.classList.add('drag-over');
 });
 
@@ -1551,6 +1622,10 @@ byId('list').addEventListener('drop', async (e) => {
   target.classList.remove('drag-over');
   await reorderAccount(dragAccountId, String(target.dataset.id || ''));
 });
+byId('list').addEventListener('touchstart', startTouchHoldDrag, { passive:true });
+byId('list').addEventListener('touchmove', moveTouchHoldDrag, { passive:false });
+byId('list').addEventListener('touchend', () => { endTouchHoldDrag().catch(() => {}); });
+byId('list').addEventListener('touchcancel', finishTouchDrag);
 byId('btnSaveEdit').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   const errEl = byId('editErr');
