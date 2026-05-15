@@ -1412,7 +1412,7 @@ byId('list').addEventListener('click', async e => {
     }
     if(actionBtn.dataset.a === 'share'){
       const uri = buildOtpAuthUriForAccount(accounts[index]);
-      const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' + encodeURIComponent(uri);
+      const qrUrl = browser.runtime.getURL('qr/export.html') + '?otpauth=' + encodeURIComponent(uri);
       browser.tabs.create({ url: qrUrl });
       toast(tf('showQrCode', 'Export via QR'));
     }
