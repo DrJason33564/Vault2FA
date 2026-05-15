@@ -1147,10 +1147,19 @@ async function unlockWithInput(inputId, errId){
 async function migrateAccountSequenceIfMissing(){
   const prefs = await browser.storage.local.get(ACCOUNT_SETTINGS_KEY);
   const raw = prefs && prefs[ACCOUNT_SETTINGS_KEY];
-  if(raw && typeof raw === 'object' && raw.sequence && typeof raw.sequence === 'object') return;
+  if(raw && typeof raw === 'object' && raw.sequence && typeof raw.sequence === 'object') return false;
+  const beforeOrder = accounts.map(acc => String(acc && acc.id || ''));
   accounts = accounts.slice().sort(compareIssuerOrder);
   persistSequenceFromCurrentOrder();
   await persistAccountSettings();
+  await debugInfo('Account sequence migrated to accountSettings.sequence', {
+    reason: 'missing_sequence',
+    accountCount: accounts.length,
+    beforeOrder,
+    afterOrder: accounts.map(acc => String(acc && acc.id || '')),
+    sequenceSize: Object.keys((accountSettings && accountSettings.sequence) || {}).length,
+  });
+  return true;
 }
 
 async function boot(){
