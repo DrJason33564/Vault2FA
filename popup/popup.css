@@ -131,6 +131,7 @@ html, body {
 .act-btn.share:hover { color:var(--accent); border-color:var(--accent); }
 .card.dragging { opacity:.55; }
 .card.drag-over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.list.touch-dragging { touch-action:none; }
 .card-otp { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .otp-code {
   font-family: var(--mono);
