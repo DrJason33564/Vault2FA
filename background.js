@@ -99,11 +99,7 @@ async function scheduleVaultAutoLock(){
 }
 
 async function touchVaultActivity(){
-  const vault = await getVaultSettings();
-  if(!vault.encryptionEnabled || !vault.autoLockEnabled) return;
-  const unlocked = await loadSessionUnlockState();
-  if(!unlocked) return;
-  await scheduleVaultAutoLock();
+  // Auto-lock countdown is anchored to unlock time and must not be reset by activity.
 }
 
 function enc(str){ return new TextEncoder().encode(str); }
@@ -129,15 +125,6 @@ function randomBytes(n){
 function normalizeAutofillPattern(pattern){
   return String(pattern || '').trim().toLowerCase();
 }
-function escapeRegex(text){
-  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-function wildcardToRegex(pattern){
-  const normalized = normalizeAutofillPattern(pattern);
-  if(!normalized) return null;
-  const escaped = normalized.split('*').map(escapeRegex).join('.*');
-  return new RegExp(`^${escaped}$`, 'i');
-}
 function getAccountPatterns(account){
   if(Array.isArray(account && account.autofillPatterns)){
     return account.autofillPatterns.map(normalizeAutofillPattern).filter(Boolean);
@@ -152,12 +139,12 @@ function matchHostname(hostname, pattern){
   const normalizedHost = normalizeAutofillPattern(hostname);
   const normalizedPattern = normalizeAutofillPattern(pattern);
   if(!normalizedHost || !normalizedPattern) return false;
-  const direct = wildcardToRegex(normalizedPattern);
-  if(direct && direct.test(normalizedHost)) return true;
-  if(!normalizedPattern.includes('*')){
-    return normalizedHost === normalizedPattern || normalizedHost.endsWith('.' + normalizedPattern);
+  if(normalizedPattern.startsWith('*.')){
+    const baseDomain = normalizedPattern.slice(2);
+    if(!baseDomain) return false;
+    return normalizedHost === baseDomain || normalizedHost.endsWith('.' + baseDomain);
   }
-  return false;
+  return normalizedHost === normalizedPattern;
 }
 function shouldSkipInjectionUrl(url){
   const value = String(url || '').trim();

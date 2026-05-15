@@ -27,6 +27,10 @@ const debugTapTimes = [];
 const DEBUG_TAP_WINDOW_MS = 1600;
 let displayCodesById = new Map();
 let displayCodeRefreshInFlight = false;
+let accountSettings = { sequence: {} };
+let dragAccountId = null;
+let touchDragState = null;
+const TOUCH_DRAG_HOLD_MS = 320;
 
 const I18N = {};
 let availableLanguages = [];
@@ -196,6 +200,8 @@ function applyStaticTranslations(){
   byId('btnExport').title = t('btnExportTitle');
   const syncBtn = settingButton();
   if(syncBtn) syncBtn.title = tf('btnSettingTitle', tf('btnSyncTitle', 'Settings'));
+  const reorderBtn = byId('btnReorderAll');
+  if(reorderBtn) reorderBtn.title = tf('reorderAccount', "Reorder all accounts by issuers' first letter.");
   byId('btnLang').title = t('btnLangTitle');
   byId('btnLang').textContent = t('btnLangText');
   byId('langDrawerTitle').textContent = t('btnLangTitle');
@@ -311,6 +317,31 @@ function formatAutofillPatterns(patterns){
   return (Array.isArray(patterns) ? patterns : []).map(normalizeAutofillPattern).filter(Boolean).join(', ');
 }
 
+const ACCOUNT_SETTINGS_KEY = 'accountSettings';
+
+function normalizeSequence(raw){
+  const normalized = {};
+  if(!raw || typeof raw !== 'object') return normalized;
+  for(const [id, value] of Object.entries(raw)){
+    const index = Number(value);
+    if(!id || !Number.isFinite(index) || index < 0) continue;
+    normalized[String(id)] = Math.floor(index);
+  }
+  return normalized;
+}
+
+async function loadAccountSettings(){
+  const prefs = await browser.storage.local.get(ACCOUNT_SETTINGS_KEY);
+  const data = prefs && prefs[ACCOUNT_SETTINGS_KEY];
+  accountSettings = { sequence: normalizeSequence(data && data.sequence) };
+}
+
+async function persistAccountSettings(){
+  await browser.storage.local.set({
+    [ACCOUNT_SETTINGS_KEY]: accountSettings,
+  });
+}
+
 function normalizeAccountRecord(acc){
   const next = Object.assign({}, acc || {});
   next.autofillPatterns = Array.isArray(next.autofillPatterns)
@@ -322,7 +353,7 @@ function normalizeAccountRecord(acc){
   return next;
 }
 
-function compareAccountOrder(a, b){
+function compareIssuerOrder(a, b){
   const issuerA = String(a.issuer || '').trim();
   const issuerB = String(b.issuer || '').trim();
   const issuerCmp = issuerA.localeCompare(issuerB, 'en', { numeric: true, sensitivity: 'base' });
@@ -334,6 +365,27 @@ function compareAccountOrder(a, b){
   if(labelCmp !== 0) return labelCmp;
 
   return String(a.id || '').localeCompare(String(b.id || ''), 'en', { numeric: true, sensitivity: 'base' });
+}
+
+function compareAccountOrder(a, b){
+  const sequence = (accountSettings && accountSettings.sequence) || {};
+  const posA = sequence[String(a.id || '')];
+  const posB = sequence[String(b.id || '')];
+  const hasA = Number.isFinite(posA);
+  const hasB = Number.isFinite(posB);
+  if(hasA && hasB && posA !== posB) return posA - posB;
+  if(hasA !== hasB) return hasA ? -1 : 1;
+
+  return compareIssuerOrder(a, b);
+}
+
+function buildOtpAuthUriForAccount(acc){
+  const secret = parseSecretByFormat(acc.secret, acc.secretFormat || 'base32');
+  const opts = { issuer:acc.issuer, label:acc.label, secret, algorithm:acc.algorithm||'SHA1', digits:acc.digits };
+  const otp = acc.type === 'hotp'
+    ? new OTPAuth.HOTP(Object.assign(opts, { counter:Math.max(0, Number(acc.counter || 0)) }))
+    : new OTPAuth.TOTP(Object.assign(opts, { period:Math.max(1, Number(acc.period || 30)) }));
+  return otp.toString();
 }
 
 async function sendMessage(payload){
@@ -463,6 +515,7 @@ function buildCard(acc){
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.id = String(acc.id);
+  card.draggable = true;
 
   const top = document.createElement('div');
   top.className = 'card-top';
@@ -512,6 +565,15 @@ function buildCard(acc){
     nextBtn.textContent = '↻';
     acts.appendChild(nextBtn);
   }
+
+  const shareBtn = document.createElement('button');
+  shareBtn.className = 'act-btn share';
+  shareBtn.dataset.a = 'share';
+  shareBtn.dataset.id = String(acc.id);
+  shareBtn.title = tf('showQrCode', 'Export via QR');
+  shareBtn.type = 'button';
+  shareBtn.textContent = '↗';
+  acts.appendChild(shareBtn);
 
   const editBtn = document.createElement('button');
   editBtn.className = 'act-btn edit';
@@ -601,6 +663,141 @@ function buildCard(acc){
   card.appendChild(otp);
 
   return card;
+}
+
+function persistSequenceFromCurrentOrder(){
+  const next = {};
+  accounts.forEach((acc, idx) => { next[String(acc.id)] = idx; });
+  accountSettings.sequence = next;
+}
+
+async function reorderAccount(dragId, dropId){
+  const from = accounts.findIndex(a => String(a.id) === String(dragId));
+  const to = accounts.findIndex(a => String(a.id) === String(dropId));
+  if(from < 0 || to < 0 || from === to) return;
+  const [moved] = accounts.splice(from, 1);
+  accounts.splice(to, 0, moved);
+  persistSequenceFromCurrentOrder();
+  await persistAndRender();
+}
+
+function clearDragOverStyles(){
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
+}
+
+function finishTouchDrag(){
+  if(!touchDragState) return;
+  if(touchDragState.timerId) clearTimeout(touchDragState.timerId);
+  if(touchDragState.card) touchDragState.card.classList.remove('dragging');
+  byId('list').classList.remove('touch-dragging');
+  touchDragState = null;
+  dragAccountId = null;
+  clearDragOverStyles();
+}
+
+function startTouchHoldDrag(e){
+  if(!guardVaultUnlocked()) return;
+  const card = e.target.closest('.card');
+  if(!card) return;
+  if(e.target.closest('[data-a], .otp-code')) return;
+  finishTouchDrag();
+  const touch = e.touches && e.touches[0];
+  if(!touch) return;
+  touchDragState = {
+    card,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    lastDropId: null,
+    dragging: false,
+    timerId: setTimeout(() => {
+      if(!touchDragState || touchDragState.card !== card) return;
+      touchDragState.dragging = true;
+      dragAccountId = String(card.dataset.id || '');
+      card.classList.add('dragging');
+      byId('list').classList.add('touch-dragging');
+    }, TOUCH_DRAG_HOLD_MS),
+  };
+}
+
+function moveTouchHoldDrag(e){
+  if(!touchDragState) return;
+  const touch = e.touches && e.touches[0];
+  if(!touch) return;
+  const dx = touch.clientX - touchDragState.startX;
+  const dy = touch.clientY - touchDragState.startY;
+  if(!touchDragState.dragging && Math.hypot(dx, dy) > 10){
+    finishTouchDrag();
+    return;
+  }
+  if(!touchDragState.dragging) return;
+  e.preventDefault();
+  const target = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.card');
+  clearDragOverStyles();
+  if(!target || String(target.dataset.id || '') === dragAccountId){
+    touchDragState.lastDropId = null;
+    return;
+  }
+  target.classList.add('drag-over');
+  touchDragState.lastDropId = String(target.dataset.id || '');
+}
+
+async function endTouchHoldDrag(){
+  if(!touchDragState) return;
+  const shouldReorder = touchDragState.dragging && dragAccountId && touchDragState.lastDropId;
+  const dragId = dragAccountId;
+  const dropId = touchDragState.lastDropId;
+  finishTouchDrag();
+  if(shouldReorder) await reorderAccount(dragId, dropId);
+}
+
+
+async function openQrImageTabForOtpAuth(otpauth){
+  if(typeof QRCode !== 'function') throw new Error(tf('showQrCodeLibraryError', 'QRCode library is not loaded.'));
+  const hostId = 'qrExportStaging';
+  let host = document.getElementById(hostId);
+  if(!host){
+    host = document.createElement('div');
+    host.id = hostId;
+    host.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:0;height:0;overflow:hidden;pointer-events:none;';
+    document.body.appendChild(host);
+  }
+  host.replaceChildren();
+  const mount = document.createElement('div');
+  mount.id = hostId + '_mount';
+  host.appendChild(mount);
+  new QRCode(mount.id, {
+    text: otpauth,
+    width: 512,
+    height: 512,
+    colorDark : '#000000',
+    colorLight : '#ffffff',
+    correctLevel : QRCode.CorrectLevel.H,
+  });
+  const dataUrl = await new Promise((resolve, reject) => {
+    let tries = 0;
+    const maxTries = 20;
+    const poll = () => {
+      const img = mount.querySelector('img');
+      if(img && typeof img.src === 'string' && img.src.startsWith('data:image/')){
+        resolve(img.src);
+        return;
+      }
+      const canvas = mount.querySelector('canvas');
+      if(canvas && typeof canvas.toDataURL === 'function'){
+        resolve(canvas.toDataURL('image/png'));
+        return;
+      }
+      tries += 1;
+      if(tries >= maxTries){
+        reject(new Error(tf('showQrCodeGenerateError', 'Failed to generate QR image.')));
+        return;
+      }
+      requestAnimationFrame(poll);
+    };
+    poll();
+  });
+  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#img=' + encodeURIComponent(dataUrl);
+  await browser.tabs.create({ url: previewUrl });
 }
 
 function render(){
@@ -779,7 +976,14 @@ async function saveAccounts(){
 }
 
 async function persistAndRender(){
+  const ids = new Set(accounts.map(acc => String(acc.id)));
+  const seq = (accountSettings && accountSettings.sequence) || {};
+  for(const id of Object.keys(seq)){
+    if(!ids.has(id)) delete seq[id];
+  }
+  accountSettings.sequence = normalizeSequence(seq);
   await saveAccounts();
+  await persistAccountSettings();
   render();
 }
 
@@ -1010,10 +1214,30 @@ async function unlockWithInput(inputId, errId){
   }
 }
 
+
+async function migrateAccountSequenceIfMissing(){
+  const prefs = await browser.storage.local.get(ACCOUNT_SETTINGS_KEY);
+  const raw = prefs && prefs[ACCOUNT_SETTINGS_KEY];
+  if(raw && typeof raw === 'object' && raw.sequence && typeof raw.sequence === 'object') return false;
+  const beforeOrder = accounts.map(acc => String(acc && acc.id || ''));
+  accounts = accounts.slice().sort(compareIssuerOrder);
+  persistSequenceFromCurrentOrder();
+  await persistAccountSettings();
+  await debugInfo('Account sequence migrated to accountSettings.sequence', {
+    reason: 'missing_sequence',
+    accountCount: accounts.length,
+    beforeOrder,
+    afterOrder: accounts.map(acc => String(acc && acc.id || '')),
+    sequenceSize: Object.keys((accountSettings && accountSettings.sequence) || {}).length,
+  });
+  return true;
+}
+
 async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
   await loadPopupLocales();
+  await loadAccountSettings();
   const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
   setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
@@ -1029,6 +1253,7 @@ async function boot(){
     return;
   }
   accounts = await loadAccounts();
+  await migrateAccountSequenceIfMissing();
   render();
 }
 
@@ -1045,6 +1270,14 @@ function handleDebugLogoTap(){
     toast(t('debugUnlockedToast'));
   }
 }
+
+byId('btnReorderAll').addEventListener('click', async () => {
+  if(!guardVaultUnlocked()) return;
+  accounts = accounts.slice().sort(compareIssuerOrder);
+  persistSequenceFromCurrentOrder();
+  await persistAndRender();
+  toast(tf('reorderAccountSuccess', 'Accounts reordered.'));
+});
 
 byId('btnAdd').addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
@@ -1332,6 +1565,15 @@ byId('list').addEventListener('click', async e => {
     if(actionBtn.dataset.a === 'edit'){
       openEditDrawer(accounts[index]);
     }
+    if(actionBtn.dataset.a === 'share'){
+      const uri = buildOtpAuthUriForAccount(accounts[index]);
+      try {
+        await openQrImageTabForOtpAuth(uri);
+        toast(tf('showQrCodeSuccess', 'QR Code generated in new tab.'));
+      } catch (err) {
+        toast((err && err.message) || 'Failed to generate QR image.');
+      }
+    }
     return;
   }
   const codeEl = e.target.closest('.otp-code');
@@ -1345,6 +1587,45 @@ byId('list').addEventListener('click', async e => {
   }
 });
 
+
+byId('list').addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.card');
+  if(!card) return;
+  dragAccountId = String(card.dataset.id || '');
+  card.classList.add('dragging');
+  if(e.dataTransfer){
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragAccountId);
+  }
+});
+
+byId('list').addEventListener('dragend', (e) => {
+  const card = e.target.closest('.card');
+  if(card) card.classList.remove('dragging');
+  dragAccountId = null;
+  clearDragOverStyles();
+});
+
+byId('list').addEventListener('dragover', (e) => {
+  const target = e.target.closest('.card');
+  if(!target || !dragAccountId || String(target.dataset.id || '') === dragAccountId) return;
+  e.preventDefault();
+  if(e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  clearDragOverStyles();
+  target.classList.add('drag-over');
+});
+
+byId('list').addEventListener('drop', async (e) => {
+  const target = e.target.closest('.card');
+  if(!target || !dragAccountId) return;
+  e.preventDefault();
+  target.classList.remove('drag-over');
+  await reorderAccount(dragAccountId, String(target.dataset.id || ''));
+});
+byId('list').addEventListener('touchstart', startTouchHoldDrag, { passive:true });
+byId('list').addEventListener('touchmove', moveTouchHoldDrag, { passive:false });
+byId('list').addEventListener('touchend', () => { endTouchHoldDrag().catch(() => {}); });
+byId('list').addEventListener('touchcancel', finishTouchDrag);
 byId('btnSaveEdit').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   const errEl = byId('editErr');

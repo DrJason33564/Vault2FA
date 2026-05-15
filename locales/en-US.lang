@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.6.0
+VERSION=2.7.1
 
 [Language]
 LANGUAGE=English
@@ -23,6 +23,12 @@ noAccountsToExport=No account to export
 copied=Copied!
 addAccount=Add Account
 editAccount=Edit Account
+showQrCode=Export via QR
+showQrCodeLibraryError=QR library loading failed.
+showQrCodeGenerateError=Failed to generate QR code.
+showQrCodeSuccess=QR Code generated in new tab.
+reorderAccount=Reorder all accounts by issuers' first letter
+reorderAccountSuccess=Accounts reordered.
 noAccountsYet=No account yet
 emptySub=Add your first account using the\n+ button below.
 vaultLocked=Vault Locked

@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.5.1
+VERSION=2.7.1
 
 [Language]
 LANGUAGE=Português
@@ -23,6 +23,12 @@ noAccountsToExport=Sem contas para exportar
 copied=Copiado!
 addAccount=Adicionar conta
 editAccount=Editar conta
+showQrCode=Exportar via QR
+showQrCodeLibraryError=Falha ao carregar a biblioteca de QR.
+showQrCodeGenerateError=Falha ao gerar o código QR.
+showQrCodeSuccess=Código QR gerado numa nova aba.
+reorderAccount=Reordenar todas as contas pela primeira letra do emissor
+reorderAccountSuccess=Contas reordenadas.
 noAccountsYet=Ainda não há contas
 emptySub=Adicione a sua primeira conta usando o\nbotão + abaixo.
 vaultLocked=Cofre bloqueado
@@ -83,6 +89,9 @@ settingDebugTitle=Depuração
 vaultEnableText=Ativar encriptação local
 vaultEnableHint=Quando ativado, as contas locais são encriptadas em repouso. É necessário desbloquear uma vez por sessão do navegador.
 labelVaultPassphrase=Palavra-passe do cofre
+vaultTimerEnableText=Ativar bloqueio automático do cofre
+vaultTimerEnableHint=Bloquear automaticamente o cofre após um período de inatividade quando a encriptação estiver ativada.
+labelVaultTimerPeriod=Período de bloqueio automático (minutos)
 applyVaultBtn=Aplicar definição de segurança
 lockVaultBtn=Bloquear cofre agora
 vaultLockedPill=Bloqueado
