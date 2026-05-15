@@ -1471,7 +1471,7 @@ byId('list').addEventListener('click', async e => {
       const uri = buildOtpAuthUriForAccount(accounts[index]);
       try {
         await openQrImageTabForOtpAuth(uri);
-        toast(tf('showQrCode', 'Export via QR'));
+        toast(tf('showQrCodeSuccess', 'QR Code generated in new tab.'));
       } catch (err) {
         toast((err && err.message) || 'Failed to generate QR image.');
       }
