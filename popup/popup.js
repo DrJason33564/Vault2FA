@@ -673,6 +673,55 @@ async function reorderAccount(dragId, dropId){
   await persistAndRender();
 }
 
+
+async function openQrImageTabForOtpAuth(otpauth){
+  if(typeof QRCode !== 'function') throw new Error('QRCode library is not loaded.');
+  const hostId = 'qrExportStaging';
+  let host = document.getElementById(hostId);
+  if(!host){
+    host = document.createElement('div');
+    host.id = hostId;
+    host.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:0;height:0;overflow:hidden;pointer-events:none;';
+    document.body.appendChild(host);
+  }
+  host.replaceChildren();
+  const mount = document.createElement('div');
+  mount.id = hostId + '_mount';
+  host.appendChild(mount);
+  new QRCode(mount.id, {
+    text: otpauth,
+    width: 512,
+    height: 512,
+    colorDark : '#000000',
+    colorLight : '#ffffff',
+    correctLevel : QRCode.CorrectLevel.H,
+  });
+  const dataUrl = await new Promise((resolve, reject) => {
+    let tries = 0;
+    const maxTries = 20;
+    const poll = () => {
+      const img = mount.querySelector('img');
+      if(img && typeof img.src === 'string' && img.src.startsWith('data:image/')){
+        resolve(img.src);
+        return;
+      }
+      const canvas = mount.querySelector('canvas');
+      if(canvas && typeof canvas.toDataURL === 'function'){
+        resolve(canvas.toDataURL('image/png'));
+        return;
+      }
+      tries += 1;
+      if(tries >= maxTries){
+        reject(new Error('Failed to generate QR image.'));
+        return;
+      }
+      requestAnimationFrame(poll);
+    };
+    poll();
+  });
+  await browser.tabs.create({ url: dataUrl });
+}
+
 function render(){
   const list = byId('list');
   const empty = byId('empty');
@@ -1412,9 +1461,12 @@ byId('list').addEventListener('click', async e => {
     }
     if(actionBtn.dataset.a === 'share'){
       const uri = buildOtpAuthUriForAccount(accounts[index]);
-      const qrUrl = browser.runtime.getURL('qr/export.html') + '?otpauth=' + encodeURIComponent(uri);
-      browser.tabs.create({ url: qrUrl });
-      toast(tf('showQrCode', 'Export via QR'));
+      try {
+        await openQrImageTabForOtpAuth(uri);
+        toast(tf('showQrCode', 'Export via QR'));
+      } catch (err) {
+        toast((err && err.message) || 'Failed to generate QR image.');
+      }
     }
     return;
   }
