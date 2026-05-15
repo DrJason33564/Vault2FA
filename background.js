@@ -99,11 +99,7 @@ async function scheduleVaultAutoLock(){
 }
 
 async function touchVaultActivity(){
-  const vault = await getVaultSettings();
-  if(!vault.encryptionEnabled || !vault.autoLockEnabled) return;
-  const unlocked = await loadSessionUnlockState();
-  if(!unlocked) return;
-  await scheduleVaultAutoLock();
+  // Auto-lock countdown is anchored to unlock time and must not be reset by activity.
 }
 
 function enc(str){ return new TextEncoder().encode(str); }

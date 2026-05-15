@@ -71,7 +71,7 @@
 
 <div class="ftr">
   <div class="sync-badge" id="syncBadge"><div class="sync-dot" id="syncDot"></div><span id="syncBadgeText">Local only</span></div>
-  <div class="vault-pill" id="vaultLockedPill" style="display:none">Locked</div><button class="add-btn" id="btnAdd">&#xff0b; Add Account</button>
+  <div class="ftr-actions"><div class="vault-pill" id="vaultLockedPill" style="display:none">Locked</div><button class="add-btn" id="btnReorderAll" title="Reorder all accounts by issuers' first letter.">🔃</button><button class="add-btn" id="btnAdd">&#xff0b; Add Account</button></div>
 </div>
 
 <!-- ADD DRAWER -->
@@ -344,6 +344,7 @@
 </div>
 
 <script src="../third-party/otpauth.min.js"></script>
+<script src="../third-party/qrcode.min.js"></script>
 <script src="../locales/i18n.js"></script>
 <script src="../migration/google.js"></script>
 <script src="popup.js"></script>
