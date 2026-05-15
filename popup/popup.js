@@ -663,19 +663,12 @@ function persistSequenceFromCurrentOrder(){
   accountSettings.sequence = next;
 }
 
-async function reorderAccount(dragId, dropId, placeAfter){
+async function reorderAccount(dragId, dropId){
   const from = accounts.findIndex(a => String(a.id) === String(dragId));
-  const target = accounts.findIndex(a => String(a.id) === String(dropId));
-  if(from < 0 || target < 0) return;
+  const to = accounts.findIndex(a => String(a.id) === String(dropId));
+  if(from < 0 || to < 0 || from === to) return;
   const [moved] = accounts.splice(from, 1);
-  const targetAfterRemoval = accounts.findIndex(a => String(a.id) === String(dropId));
-  let insertAt = placeAfter ? targetAfterRemoval + 1 : targetAfterRemoval;
-  if(insertAt < 0) insertAt = accounts.length;
-  if(insertAt < 0) insertAt = 0;
-  if(insertAt > accounts.length) insertAt = accounts.length;
-  accounts.splice(insertAt, 0, moved);
-  const newPos = accounts.findIndex(a => String(a.id) === String(dragId));
-  if(newPos === from) return;
+  accounts.splice(to, 0, moved);
   persistSequenceFromCurrentOrder();
   await persistAndRender();
 }
@@ -1505,7 +1498,7 @@ byId('list').addEventListener('dragend', (e) => {
   const card = e.target.closest('.card');
   if(card) card.classList.remove('dragging');
   dragAccountId = null;
-  for(const row of byId('list').querySelectorAll('.card.drag-over, .card.drop-before, .card.drop-after')){ row.classList.remove('drag-over', 'drop-before', 'drop-after'); }
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
 });
 
 byId('list').addEventListener('dragover', (e) => {
@@ -1513,7 +1506,7 @@ byId('list').addEventListener('dragover', (e) => {
   if(!target || !dragAccountId || String(target.dataset.id || '') === dragAccountId) return;
   e.preventDefault();
   if(e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  for(const row of byId('list').querySelectorAll('.card.drag-over, .card.drop-before, .card.drop-after')){ row.classList.remove('drag-over', 'drop-before', 'drop-after'); }
+  for(const row of byId('list').querySelectorAll('.card.drag-over')) row.classList.remove('drag-over');
   target.classList.add('drag-over');
 });
 
@@ -1521,9 +1514,8 @@ byId('list').addEventListener('drop', async (e) => {
   const target = e.target.closest('.card');
   if(!target || !dragAccountId) return;
   e.preventDefault();
-  const placeAfter = target.classList.contains('drop-after');
-  target.classList.remove('drag-over', 'drop-before', 'drop-after');
-  await reorderAccount(dragAccountId, String(target.dataset.id || ''), placeAfter);
+  target.classList.remove('drag-over');
+  await reorderAccount(dragAccountId, String(target.dataset.id || ''));
 });
 byId('btnSaveEdit').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
