@@ -314,7 +314,6 @@ function formatAutofillPatterns(patterns){
 }
 
 const ACCOUNT_SETTINGS_KEY = 'accountSettings';
-const ACCOUNT_SETTINGS_LEGACY_KEY = 'accountSetings';
 
 function normalizeSequence(raw){
   const normalized = {};
@@ -328,10 +327,8 @@ function normalizeSequence(raw){
 }
 
 async function loadAccountSettings(){
-  const prefs = await browser.storage.local.get([ACCOUNT_SETTINGS_KEY, ACCOUNT_SETTINGS_LEGACY_KEY]);
-  const primary = prefs && prefs[ACCOUNT_SETTINGS_KEY];
-  const legacy = prefs && prefs[ACCOUNT_SETTINGS_LEGACY_KEY];
-  const data = primary && typeof primary === 'object' ? primary : legacy;
+  const prefs = await browser.storage.local.get(ACCOUNT_SETTINGS_KEY);
+  const data = prefs && prefs[ACCOUNT_SETTINGS_KEY];
   accountSettings = { sequence: normalizeSequence(data && data.sequence) };
 }
 
