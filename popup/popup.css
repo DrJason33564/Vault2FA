@@ -130,7 +130,10 @@ html, body {
 .act-btn.del:hover { color:var(--red); border-color:var(--red); }
 .act-btn.share:hover { color:var(--accent); border-color:var(--accent); }
 .card.dragging { opacity:.55; }
-.card.drag-over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.card.drag-over { position:relative; }
+.card.drag-over::before { content:''; position:absolute; left:10px; right:10px; height:2px; background:var(--accent); border-radius:2px; }
+.card.drag-over.drop-before::before { top:-2px; }
+.card.drag-over.drop-after::before { bottom:-2px; }
 .card-otp { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .otp-code {
   font-family: var(--mono);
