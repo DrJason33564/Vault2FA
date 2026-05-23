@@ -47,6 +47,7 @@
 
 <div class="search-wrap">
   <input class="search-input" id="search" type="text" placeholder="Search accounts..." autocomplete="off" />
+  <button class="search-action-btn" id="btnReorderAll" title="Reorder all accounts by issuers' first letter.">🔃</button>
 </div>
 
 <div class="list" id="list">
@@ -71,7 +72,8 @@
 
 <div class="ftr">
   <div class="sync-badge" id="syncBadge"><div class="sync-dot" id="syncDot"></div><span id="syncBadgeText">Local only</span></div>
-  <div class="ftr-actions"><div class="vault-pill" id="vaultLockedPill" style="display:none">Locked</div><button class="add-btn" id="btnReorderAll" title="Reorder all accounts by issuers' first letter.">🔃</button><button class="add-btn" id="btnAdd">&#xff0b; Add Account</button></div>
+  <div class="vault-pill" id="vaultLockedPill" style="display:none">Locked</div>
+  <div class="ftr-actions"><button class="add-btn" id="btnAdd">&#xff0b; Add Account</button></div>
 </div>
 
 <!-- ADD DRAWER -->
