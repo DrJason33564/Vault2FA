@@ -188,7 +188,7 @@ html, body {
   display:flex; align-items:center; justify-content:space-between;
   font-size:11px; color:var(--dim); flex-shrink:0; background:var(--surf);
 }
-.ftr-actions { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.ftr-actions { position:relative; flex:1; min-width:0; display:flex; align-items:center; justify-content:flex-end; margin-left:10px; }
 .sync-badge { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--green); }
 .sync-dot   { width:5px; height:5px; background:var(--green); border-radius:50%; }
 .add-btn {
@@ -398,7 +398,7 @@ html, body {
 .lock-card .logo-img { align-self:center; width:42px; height:42px; }
 .lock-title { font-size:16px; font-weight:700; }
 .lock-sub { font-size:12px; color:var(--muted); line-height:1.55; }
-.vault-pill { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); margin-right:8px; }
+.vault-pill { position:absolute; left:50%; transform:translateX(-50%); display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); }
 .sep { border:0; border-top:1px solid var(--border); margin:12px 0; }
 .sync-meta { white-space:pre-line; }
 
