@@ -35,6 +35,12 @@ function qrt(key){
     || (QR_I18N[DEFAULT_LOCALE_ID] && QR_I18N[DEFAULT_LOCALE_ID][key])
     || key;
 }
+function qrtFmt(key, values = {}){
+  const template = qrt(key);
+  return String(template).replace(/\{(\w+)\}/g, (_, name) => {
+    return Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : '';
+  });
+}
 function applyQrI18n(){
   document.documentElement.lang = qrLang;
   document.getElementById('qrTitle').innerHTML = qrt('title');
@@ -229,12 +235,20 @@ async function process(file){
     });
     if(!rawValue) throw new Error(qrt('qrEmpty'));
 
+    const isStandardOtpAuthUri = rawText.startsWith('otpauth://');
+    const isNonOtpAuthQrPayload = !isStandardOtpAuthUri;
     let uris = [rawValue];
     if(isMigrationUri){
-      const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
-      uris = (decoded.accounts || []).map(item =>
-        window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
-      );
+      try {
+        const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
+        uris = (decoded.accounts || []).map(item =>
+          window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
+        );
+      } catch(e){
+        await debugInfo('QR migration decode failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
+        showErr(qrt('invalidOtp') + (e && e.message ? e.message : String(e)));
+        return;
+      }
     }
 
     if(!uris.length) throw new Error(qrt('qrEmpty'));
@@ -281,8 +295,8 @@ async function process(file){
     }
 
     const first = addedAccounts[0] || null;
-    const name = addedAccounts.length > 1
-      ? tFmt('migrationAccountsAdded', { count: addedAccounts.length })
+    const name = (isNonOtpAuthQrPayload || addedAccounts.length > 1)
+      ? qrtFmt('migrationAccountsAdded', { count: addedAccounts.length })
       : ([first.issuer, first.label].filter(Boolean).join(' — ') || qrt('unknownAccount')) + qrt('addedSuffix');
 
     nameEl.textContent = name;
