@@ -74,9 +74,9 @@ html, body {
 }
 
 /* Search */
-.search-wrap { padding:8px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.search-wrap { padding:8px 10px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; gap:8px; }
 .search-input {
-  width:100%; background:var(--surf); border:1px solid var(--border);
+  flex:1 1 auto; min-width:0; background:var(--surf); border:1px solid var(--border);
   border-radius:var(--rs); color:var(--text); font-family:inherit; font-size:13px;
   padding:6px 10px 6px 30px; outline:none; transition:border-color .15s;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%237d8590' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
@@ -84,6 +84,25 @@ html, body {
 }
 .search-input:focus { border-color:var(--accent); }
 .search-input::placeholder { color:var(--dim); }
+
+.search-action-btn {
+  width:30px; height:30px;
+  border:1px solid var(--border); border-radius:var(--rs);
+  background:transparent; color:var(--muted);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; line-height:1;
+  cursor:pointer; transition:all .15s;
+  flex-shrink:0;
+}
+.search-action-btn:hover {
+  background:var(--surf2); border-color:var(--bhr); color:var(--text);
+}
+.search-action-btn:disabled,
+.search-action-btn.is-disabled {
+  opacity:.45;
+  cursor:not-allowed;
+  pointer-events:none;
+}
 
 /* List */
 .list {
@@ -165,11 +184,12 @@ html, body {
 
 /* Footer */
 .ftr {
+  position:relative;
   padding:7px 11px; border-top:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
   font-size:11px; color:var(--dim); flex-shrink:0; background:var(--surf);
 }
-.ftr-actions { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.ftr-actions { flex:1; min-width:0; display:flex; align-items:center; justify-content:flex-end; margin-left:10px; }
 .sync-badge { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--green); }
 .sync-dot   { width:5px; height:5px; background:var(--green); border-radius:50%; }
 .add-btn {
@@ -379,7 +399,7 @@ html, body {
 .lock-card .logo-img { align-self:center; width:42px; height:42px; }
 .lock-title { font-size:16px; font-weight:700; }
 .lock-sub { font-size:12px; color:var(--muted); line-height:1.55; }
-.vault-pill { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); margin-right:8px; }
+.vault-pill { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); z-index:1; pointer-events:none; }
 .sep { border:0; border-top:1px solid var(--border); margin:12px 0; }
 .sync-meta { white-space:pre-line; }
 
