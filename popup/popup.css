@@ -184,6 +184,7 @@ html, body {
 
 /* Footer */
 .ftr {
+  position:relative;
   padding:7px 11px; border-top:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
   font-size:11px; color:var(--dim); flex-shrink:0; background:var(--surf);
@@ -398,7 +399,7 @@ html, body {
 .lock-card .logo-img { align-self:center; width:42px; height:42px; }
 .lock-title { font-size:16px; font-weight:700; }
 .lock-sub { font-size:12px; color:var(--muted); line-height:1.55; }
-.vault-pill { position:absolute; left:50%; transform:translateX(-50%); display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); }
+.vault-pill { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; color:#ffb4af; border:1px solid rgba(248,81,73,.35); background:rgba(248,81,73,.12); z-index:1; pointer-events:none; }
 .sep { border:0; border-top:1px solid var(--border); margin:12px 0; }
 .sync-meta { white-space:pre-line; }
 
