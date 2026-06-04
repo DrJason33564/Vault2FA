@@ -83,7 +83,7 @@ Exporting account data from Microsoft Authenticator is a bit more troublesome. S
 
 - `manifest.json`: Extension manifest
 - `popup/`: Main popup UI and logic
-- `qr/`: QR scanning page
+- `qr/`: QR scanning and previewing pages
 - `background.js`: Background logic
 - `autofill/`: Autofill pop-up
 - `json-import/`: Import account via json file page
