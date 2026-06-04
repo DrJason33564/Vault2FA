@@ -124,13 +124,13 @@ async function ensureSyncAutoUploadAlarm(){
     return;
   }
   if(!browser.alarms || typeof browser.alarms.get !== 'function'){
-    await runAutoUploadTick(true);
+    await runAutoUploadTick();
     return;
   }
   const alarm = await browser.alarms.get(SYNC_AUTO_UPLOAD_ALARM);
   if(alarm) return;
   try {
-    await runAutoUploadTick(true);
+    await runAutoUploadTick();
   } finally {
     await scheduleNextSyncAutoUploadAlarm(settings);
   }
@@ -869,18 +869,9 @@ async function uploadToSync(accounts, settings, options = {}){
   return result;
 }
 
-function shouldAutoUpload(settings){
-  if(!settings.enabled || !settings.sessionId) return false;
-  const interval = normalizeSyncIntervalMinutes(settings.intervalMinutes);
-  if(!settings.lastUploadedAt) return true;
-  return (Date.now() - settings.lastUploadedAt) >= interval * 60 * 1000;
-}
-
-
-async function runAutoUploadTick(force){
+async function runAutoUploadTick(){
   const settings = await getSyncSettings();
   if(!settings.enabled || !settings.sessionId) return { skipped: true, reason: 'disabled' };
-  if(!force && !shouldAutoUpload(settings)) return { skipped: true, reason: 'interval' };
   let accounts = [];
   if(!settings.useEncryptedPayload){
     try {
@@ -1545,7 +1536,7 @@ if(browser.alarms && browser.alarms.onAlarm){
     if(alarm.name === SYNC_AUTO_UPLOAD_ALARM){
       (async () => {
         try {
-          await runAutoUploadTick(true);
+          await runAutoUploadTick();
         } catch (err) {
           await appendDebugInfo('Sync auto upload alarm failed', {
             error: err && err.message ? err.message : String(err),

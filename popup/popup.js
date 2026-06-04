@@ -379,15 +379,6 @@ function compareAccountOrder(a, b){
   return compareIssuerOrder(a, b);
 }
 
-function buildOtpAuthUriForAccount(acc){
-  const secret = parseSecretByFormat(acc.secret, acc.secretFormat || 'base32');
-  const opts = { issuer:acc.issuer, label:acc.label, secret, algorithm:acc.algorithm||'SHA1', digits:acc.digits };
-  const otp = acc.type === 'hotp'
-    ? new OTPAuth.HOTP(Object.assign(opts, { counter:Math.max(0, Number(acc.counter || 0)) }))
-    : new OTPAuth.TOTP(Object.assign(opts, { period:Math.max(1, Number(acc.period || 30)) }));
-  return otp.toString();
-}
-
 async function sendMessage(payload){
   const resp = await browser.runtime.sendMessage(payload);
   if(!resp || resp.success === false){
