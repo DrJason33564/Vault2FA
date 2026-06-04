@@ -82,7 +82,7 @@ Google Authenticator使用Base64编码后protobuf结构的`otpauth-migration://`
 
 - `manifest.json`: 扩展配置
 - `popup/`: 主弹窗界面与逻辑
-- `qr/`: 二维码扫描页面
+- `qr/`: 二维码扫描与预览页面
 - `background.js`: 后台逻辑
 - `autofill/`: 自动填充弹窗
 - `json-import/`: 通过JSON文件导入账号页面
