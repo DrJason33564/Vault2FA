@@ -151,6 +151,15 @@ function shouldSkipInjectionUrl(url){
   if(!value) return true;
   return !/^https?:\/\//i.test(value);
 }
+function isAutofillMessageAction(action){
+  return action === 'getAccountsForAutofill' || action === 'generateCodeForAutofillById';
+}
+function getSenderAddOnId(sender){
+  return String(sender && sender.id || '');
+}
+function getRuntimeAddOnId(){
+  return String(browser && browser.runtime && browser.runtime.id || '');
+}
 function extractHostnameFromUrl(url){
   try {
     const parsed = new URL(String(url || ''));
@@ -1046,8 +1055,41 @@ async function lockVault(trigger = 'manual'){
   return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
+async function guardAutofillMessage(message, sender){
+  const action = message && message.action;
+  if(!isAutofillMessageAction(action)) return null;
+
+  const senderId = getSenderAddOnId(sender);
+  const expectedId = getRuntimeAddOnId();
+  const context = {
+    action,
+    senderId: senderId || null,
+    expectedId: expectedId || null,
+    hostname: message && message.hostname ? String(message.hostname) : null,
+  };
+
+  if(senderId !== expectedId){
+    await appendDebugInfo('Autofill request denied because sender add-on id mismatched', context);
+    return { success: false, error: 'Permission denied: mismatching add-on id', code: 'MISMATCHING_ADDON_ID' };
+  }
+
+  const featureSettings = await getFeatureSettings();
+  if(featureSettings.autofillEnabled === false){
+    await appendDebugInfo('Autofill request denied because autofill is disabled', context);
+    return { success: false, error: 'Permission denied: autofill is disabled', code: 'AUTOFILL_DISABLED' };
+  }
+
+  return null;
+}
+
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    const autofillDenied = await guardAutofillMessage(message, sender);
+    if(autofillDenied){
+      sendResponse(autofillDenied);
+      return;
+    }
+
     switch(message.action){
       case 'getAccounts': {
         const accounts = await getLocalAccounts();
@@ -1273,33 +1315,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           items.push(buildDisplayCodeInfo(account));
         }
         sendResponse({ success: true, items });
-        return;
-      }
-      case 'generateCodeForAutofill': {
-        const secret = String(message.secret || '').trim();
-        const type = message.type === 'hotp' ? 'hotp' : 'totp';
-        const digits = Math.max(6, Number(message.digits || 6));
-        if(!secret) throw new Error('Secret is required.');
-        const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
-        const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
-        if(type === 'hotp'){
-          const counter = Math.max(0, Number(message.counter || 0));
-          const code = OTPAuth.HOTP.generate({
-            secret: otpSecret,
-            algorithm: String(message.algorithm || 'SHA1'),
-            digits,
-            counter,
-          });
-          sendResponse({ success: true, code });
-          return;
-        }
-        const otp = new OTPAuth.TOTP({
-          secret: otpSecret,
-          algorithm: String(message.algorithm || 'SHA1'),
-          digits,
-          period: Math.max(1, Number(message.period || 30)),
-        });
-        sendResponse({ success: true, code: otp.generate() });
         return;
       }
       case 'downloadSyncToLocal': {
