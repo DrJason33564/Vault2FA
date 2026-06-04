@@ -46,19 +46,6 @@
     return sections;
   }
 
-  function parseDirectoryLocaleIds(html){
-    const ids = new Set();
-    const regex = /href\s*=\s*["']([^"']+\.lang)["']/ig;
-    let match;
-    while((match = regex.exec(String(html || '')))){
-      const href = decodeURIComponent(match[1] || '');
-      const fileName = href.split('/').pop() || '';
-      if(!/\.lang$/i.test(fileName)) continue;
-      ids.add(fileName.replace(/\.lang$/i, ''));
-    }
-    return Array.from(ids);
-  }
-
   function parseLangConfigText(text){
     const ids = [];
     for(const rawLine of String(text || '').split(/\r?\n/)){
@@ -94,84 +81,13 @@
     return raw.toLowerCase();
   }
 
-  function readDirectoryEntries(dirEntry){
-    return new Promise((resolve, reject) => {
-      const reader = dirEntry.createReader();
-      const all = [];
-      function readBatch(){
-        reader.readEntries((entries) => {
-          if(!entries || !entries.length){
-            resolve(all);
-            return;
-          }
-          all.push(...entries);
-          readBatch();
-        }, reject);
-      }
-      readBatch();
-    });
-  }
-
-  async function listLocaleIdsViaPackageDirectory(){
-    if(!browser.runtime || typeof browser.runtime.getPackageDirectoryEntry !== 'function') return [];
-    const root = await new Promise((resolve, reject) => {
-      browser.runtime.getPackageDirectoryEntry((entry) => {
-        if(entry) resolve(entry);
-        else reject(new Error('Package directory entry unavailable.'));
-      });
-    });
-    const queue = [{ entry: root, path: '' }];
-    const localeIds = new Set();
-    while(queue.length){
-      const { entry, path } = queue.shift();
-      if(!entry || typeof entry.isDirectory !== 'boolean') continue;
-      if(entry.isDirectory){
-        const children = await readDirectoryEntries(entry);
-        for(const child of children){
-          const childPath = path ? `${path}/${child.name}` : child.name;
-          queue.push({ entry: child, path: childPath });
-        }
-        continue;
-      }
-      if(!entry.isFile) continue;
-      if(!/^locales\/.+\.lang$/i.test(path)) continue;
-      const name = path.split('/').pop() || '';
-      if(!name || name.toLowerCase() === 'i18n.js') continue;
-      localeIds.add(name.replace(/\.lang$/i, ''));
-    }
-    return Array.from(localeIds);
-  }
-
   async function discoverLocaleIds(){
     if(localeIndexPromise) return localeIndexPromise;
     localeIndexPromise = (async () => {
-      const result = new Set();
+      const localeIds = await listLocaleIdsViaConfig();
+      const finalList = localeIds.length ? localeIds : [DEFAULT_LOCALE_ID];
       try {
-        const configIds = await listLocaleIdsViaConfig();
-        if(configIds.length){
-          for(const localeId of configIds) result.add(localeId);
-          const finalFromConfig = Array.from(result);
-          try {
-            console.info('[Vault2FA][i18n] discovered locale ids from lang.conf:', finalFromConfig);
-          } catch (_) {}
-          return finalFromConfig;
-        }
-      } catch (_) {}
-      try {
-        const listedFromPackage = await listLocaleIdsViaPackageDirectory();
-        for(const localeId of listedFromPackage) result.add(normalizeLocaleCandidate(localeId));
-      } catch (_) {}
-      try {
-        const url = browser.runtime.getURL('locales/');
-        const resp = await fetch(url);
-        if(!resp || !resp.ok) throw new Error('Cannot read locales directory.');
-        const html = await resp.text();
-        const listed = parseDirectoryLocaleIds(html);
-        for(const localeId of listed) result.add(normalizeLocaleCandidate(localeId));
-      } catch (_) {}
-      const finalList = Array.from(result);
-      try {
-        console.info('[Vault2FA][i18n] discovered locale ids:', finalList);
+        console.info('[Vault2FA][i18n] discovered locale ids from lang.conf:', finalList);
       } catch (_) {}
       return finalList;
     })();
