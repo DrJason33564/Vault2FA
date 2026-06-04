@@ -751,52 +751,10 @@ async function endTouchHoldDrag(){
 }
 
 
-async function openQrImageTabForOtpAuth(otpauth){
-  if(typeof QRCode !== 'function') throw new Error(tf('showQrCodeLibraryError', 'QRCode library is not loaded.'));
-  const hostId = 'qrExportStaging';
-  let host = document.getElementById(hostId);
-  if(!host){
-    host = document.createElement('div');
-    host.id = hostId;
-    host.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:0;height:0;overflow:hidden;pointer-events:none;';
-    document.body.appendChild(host);
-  }
-  host.replaceChildren();
-  const mount = document.createElement('div');
-  mount.id = hostId + '_mount';
-  host.appendChild(mount);
-  new QRCode(mount.id, {
-    text: otpauth,
-    width: 512,
-    height: 512,
-    colorDark : '#000000',
-    colorLight : '#ffffff',
-    correctLevel : QRCode.CorrectLevel.H,
-  });
-  const dataUrl = await new Promise((resolve, reject) => {
-    let tries = 0;
-    const maxTries = 20;
-    const poll = () => {
-      const img = mount.querySelector('img');
-      if(img && typeof img.src === 'string' && img.src.startsWith('data:image/')){
-        resolve(img.src);
-        return;
-      }
-      const canvas = mount.querySelector('canvas');
-      if(canvas && typeof canvas.toDataURL === 'function'){
-        resolve(canvas.toDataURL('image/png'));
-        return;
-      }
-      tries += 1;
-      if(tries >= maxTries){
-        reject(new Error(tf('showQrCodeGenerateError', 'Failed to generate QR image.')));
-        return;
-      }
-      requestAnimationFrame(poll);
-    };
-    poll();
-  });
-  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#img=' + encodeURIComponent(dataUrl);
+async function openQrPreviewTabForAccountId(accountId){
+  const id = String(accountId || '').trim();
+  if(!id) throw new Error('Account ID is required.');
+  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#id=' + encodeURIComponent(id);
   await browser.tabs.create({ url: previewUrl });
 }
 
@@ -1566,9 +1524,14 @@ byId('list').addEventListener('click', async e => {
       openEditDrawer(accounts[index]);
     }
     if(actionBtn.dataset.a === 'share'){
-      const uri = buildOtpAuthUriForAccount(accounts[index]);
       try {
-        await openQrImageTabForOtpAuth(uri);
+        await debugInfo('Popup opening QR export preview', {
+          accountId: String(accounts[index].id || ''),
+          issuer: String(accounts[index].issuer || ''),
+          label: String(accounts[index].label || ''),
+          type: accounts[index].type === 'hotp' ? 'hotp' : 'totp',
+        });
+        await openQrPreviewTabForAccountId(accounts[index].id);
         toast(tf('showQrCodeSuccess', 'QR Code generated in new tab.'));
       } catch (err) {
         toast((err && err.message) || 'Failed to generate QR image.');
