@@ -41,9 +41,29 @@ function qrtFmt(key, values = {}){
     return Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : '';
   });
 }
+function renderQrTitle(){
+  const titleEl = document.getElementById('qrTitle');
+  if(!titleEl) return;
+  const title = String(qrt('title') || '');
+  const marker = '<em>2FA</em>';
+  const markerIndex = title.indexOf(marker);
+  if(markerIndex < 0){
+    titleEl.textContent = title.replace(/<\/?em>/g, '');
+    return;
+  }
+  const before = title.slice(0, markerIndex);
+  const after = title.slice(markerIndex + marker.length);
+  const accent = document.createElement('em');
+  accent.textContent = '2FA';
+  titleEl.replaceChildren(
+    document.createTextNode(before),
+    accent,
+    document.createTextNode(after)
+  );
+}
 function applyQrI18n(){
   document.documentElement.lang = qrLang;
-  document.getElementById('qrTitle').innerHTML = qrt('title');
+  renderQrTitle();
   document.getElementById('dzTitle').textContent = qrt('dzTitle');
   document.getElementById('dzSub').textContent = qrt('dzSub');
   document.getElementById('status').textContent = qrt('waiting');
