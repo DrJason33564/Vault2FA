@@ -47,8 +47,7 @@ const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAUL
 let unlockedCrypto = null; // { salt, key }
 const SESSION_UNLOCKED_CRYPTO_KEY = 'sessionUnlockedCrypto';
 const VAULT_AUTO_LOCK_ALARM = 'vaultAutoLock';
-let autoUploadTimer = null;
-const AUTO_UPLOAD_TICK_MS = 60 * 1000;
+const SYNC_AUTO_UPLOAD_ALARM = 'syncAutoUpload';
 
 async function loadSessionUnlockState(){
   if(unlockedCrypto && unlockedCrypto.salt && unlockedCrypto.key) return unlockedCrypto;
@@ -81,8 +80,16 @@ function normalizeAutoLockMinutes(value){
   return Math.max(1, parseInt(value, 10) || 15);
 }
 
+function normalizeSyncIntervalMinutes(value){
+  return Math.max(1, parseInt(value, 10) || 5);
+}
+
 async function clearVaultAutoLockAlarm(){
   if(browser.alarms && typeof browser.alarms.clear === 'function') await browser.alarms.clear(VAULT_AUTO_LOCK_ALARM);
+}
+
+async function clearSyncAutoUploadAlarm(){
+  if(browser.alarms && typeof browser.alarms.clear === 'function') await browser.alarms.clear(SYNC_AUTO_UPLOAD_ALARM);
 }
 
 async function scheduleVaultAutoLock(){
@@ -95,6 +102,37 @@ async function scheduleVaultAutoLock(){
   const delayMinutes = normalizeAutoLockMinutes(vault.autoLockMinutes);
   if(browser.alarms && typeof browser.alarms.create === 'function'){
     browser.alarms.create(VAULT_AUTO_LOCK_ALARM, { delayInMinutes: delayMinutes });
+  }
+}
+
+async function scheduleNextSyncAutoUploadAlarm(settings){
+  const sync = settings || await getSyncSettings();
+  if(!sync.enabled || !sync.sessionId){
+    await clearSyncAutoUploadAlarm();
+    return;
+  }
+  const delayMinutes = normalizeSyncIntervalMinutes(sync.intervalMinutes);
+  if(browser.alarms && typeof browser.alarms.create === 'function'){
+    browser.alarms.create(SYNC_AUTO_UPLOAD_ALARM, { delayInMinutes: delayMinutes });
+  }
+}
+
+async function ensureSyncAutoUploadAlarm(){
+  const settings = await getSyncSettings();
+  if(!settings.enabled || !settings.sessionId){
+    await clearSyncAutoUploadAlarm();
+    return;
+  }
+  if(!browser.alarms || typeof browser.alarms.get !== 'function'){
+    await runAutoUploadTick();
+    return;
+  }
+  const alarm = await browser.alarms.get(SYNC_AUTO_UPLOAD_ALARM);
+  if(alarm) return;
+  try {
+    await runAutoUploadTick();
+  } finally {
+    await scheduleNextSyncAutoUploadAlarm(settings);
   }
 }
 
@@ -150,6 +188,15 @@ function shouldSkipInjectionUrl(url){
   const value = String(url || '').trim();
   if(!value) return true;
   return !/^https?:\/\//i.test(value);
+}
+function isAutofillMessageAction(action){
+  return action === 'getAccountsForAutofill' || action === 'generateCodeForAutofillById';
+}
+function getSenderAddOnId(sender){
+  return String(sender && sender.id || '');
+}
+function getRuntimeAddOnId(){
+  return String(browser && browser.runtime && browser.runtime.id || '');
 }
 function extractHostnameFromUrl(url){
   try {
@@ -278,6 +325,46 @@ function buildAutofillCodeInfo(account){
   const nowSeconds = Date.now() / 1000;
   const remaining = Math.max(0, Math.ceil(period - (nowSeconds % period)) % period || period);
   return { code, type, digits, algorithm, counter: null, period, remaining };
+}
+
+function parseSecretByFormat(secretRaw, format){
+  const input = String(secretRaw || '').trim();
+  const normalized = input.replace(/\s+/g, '');
+  switch(String(format || 'base32').toLowerCase()){
+    case 'base32':
+      return OTPAuth.Secret.fromBase32(normalized.toUpperCase());
+    case 'base64': {
+      const b64 = normalized.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - (b64.length % 4 || 4)) % 4);
+      const bytes = Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
+      return new OTPAuth.Secret({ buffer: bytes.buffer });
+    }
+    case 'hex':
+      return OTPAuth.Secret.fromHex(normalized);
+    case 'utf8':
+      return OTPAuth.Secret.fromUTF8(input);
+    case 'latin1':
+      return OTPAuth.Secret.fromLatin1(input);
+    default:
+      throw new Error('Unsupported secret format.');
+  }
+}
+
+function buildOtpAuthUriForAccount(account){
+  if(!account) throw new Error('Account was not found.');
+  const type = account.type === 'hotp' ? 'hotp' : 'totp';
+  const secret = parseSecretByFormat(account.secret, account.secretFormat || 'base32');
+  const opts = {
+    issuer: String(account.issuer || ''),
+    label: String(account.label || ''),
+    secret,
+    algorithm: String(account.algorithm || 'SHA1'),
+    digits: Math.max(6, Number(account.digits || 6)),
+  };
+  const otp = type === 'hotp'
+    ? new OTPAuth.HOTP(Object.assign(opts, { counter: Math.max(0, Number(account.counter || 0)) }))
+    : new OTPAuth.TOTP(Object.assign(opts, { period: Math.max(1, Number(account.period || 30)) }));
+  return otp.toString();
 }
 
 function buildDisplayCodeInfo(account){
@@ -782,18 +869,9 @@ async function uploadToSync(accounts, settings, options = {}){
   return result;
 }
 
-function shouldAutoUpload(settings){
-  if(!settings.enabled || !settings.sessionId) return false;
-  const interval = Math.max(1, parseInt(settings.intervalMinutes, 10) || 1);
-  if(!settings.lastUploadedAt) return true;
-  return (Date.now() - settings.lastUploadedAt) >= interval * 60 * 1000;
-}
-
-
-async function runAutoUploadTick(force){
+async function runAutoUploadTick(){
   const settings = await getSyncSettings();
   if(!settings.enabled || !settings.sessionId) return { skipped: true, reason: 'disabled' };
-  if(!force && !shouldAutoUpload(settings)) return { skipped: true, reason: 'interval' };
   let accounts = [];
   if(!settings.useEncryptedPayload){
     try {
@@ -804,14 +882,6 @@ async function runAutoUploadTick(force){
     }
   }
   return uploadToSync(accounts, settings, { useEncryptedPayload: !!settings.useEncryptedPayload });
-}
-
-function startAutoUploadScheduler(){
-  if(autoUploadTimer !== null) return;
-  runAutoUploadTick(true).catch(() => {});
-  autoUploadTimer = setInterval(() => {
-    runAutoUploadTick(false).catch(() => {});
-  }, AUTO_UPLOAD_TICK_MS);
 }
 
 async function downloadFromSync(sessionId, options = {}){
@@ -1046,8 +1116,41 @@ async function lockVault(trigger = 'manual'){
   return { success: true, unlocked: false, encryptionEnabled: true };
 }
 
+async function guardAutofillMessage(message, sender){
+  const action = message && message.action;
+  if(!isAutofillMessageAction(action)) return null;
+
+  const senderId = getSenderAddOnId(sender);
+  const expectedId = getRuntimeAddOnId();
+  const context = {
+    action,
+    senderId: senderId || null,
+    expectedId: expectedId || null,
+    hostname: message && message.hostname ? String(message.hostname) : null,
+  };
+
+  if(senderId !== expectedId){
+    await appendDebugInfo('Autofill request denied because sender add-on id mismatched', context);
+    return { success: false, error: 'Permission denied: mismatching add-on id', code: 'MISMATCHING_ADDON_ID' };
+  }
+
+  const featureSettings = await getFeatureSettings();
+  if(featureSettings.autofillEnabled === false){
+    await appendDebugInfo('Autofill request denied because autofill is disabled', context);
+    return { success: false, error: 'Permission denied: autofill is disabled', code: 'AUTOFILL_DISABLED' };
+  }
+
+  return null;
+}
+
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    const autofillDenied = await guardAutofillMessage(message, sender);
+    if(autofillDenied){
+      sendResponse(autofillDenied);
+      return;
+    }
+
     switch(message.action){
       case 'getAccounts': {
         const accounts = await getLocalAccounts();
@@ -1073,7 +1176,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await setSyncSettings({
           enabled: !!incoming.enabled,
           sessionId: String(incoming.sessionId || '').trim(),
-          intervalMinutes: Math.max(1, parseInt(incoming.intervalMinutes, 10) || 5),
+          intervalMinutes: normalizeSyncIntervalMinutes(incoming.intervalMinutes),
           useEncryptedPayload: !!incoming.useEncryptedPayload,
         });
         await appendDebugInfo('Sync settings updated', {
@@ -1082,6 +1185,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           intervalMinutes: settings.intervalMinutes,
           useEncryptedPayload: settings.useEncryptedPayload,
         });
+        await scheduleNextSyncAutoUploadAlarm(settings);
         sendResponse({ success: true, settings, upload: { skipped: true } });
         return;
       }
@@ -1106,9 +1210,49 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ? !!settings.useEncryptedPayload
           : !!message.useEncryptedPayload;
         const accounts = useEncryptedPayload ? [] : await getLocalAccounts();
-        const upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }), { useEncryptedPayload });
+        let upload;
+        try {
+          upload = await uploadToSync(accounts, Object.assign({}, settings, { sessionId }), { useEncryptedPayload });
+        } finally {
+          await scheduleNextSyncAutoUploadAlarm(await getSyncSettings());
+        }
         await appendDebugInfo('uploadSyncNow response', { upload });
         sendResponse({ success: true, upload, settings: await getSyncSettings() });
+        return;
+      }
+
+      case 'getOtpAuthUriForAccount': {
+        const accountId = String(message.id || '').trim();
+        if(!accountId) throw new Error('Account ID is required.');
+        const accounts = await getLocalAccounts();
+        const account = accounts.find(item => String(item && item.id || '') === accountId);
+        if(!account) throw new Error('Account was not found.');
+        const uri = buildOtpAuthUriForAccount(account);
+        await touchVaultActivity();
+        await appendDebugInfo('QR export URI generated', {
+          accountId,
+          account: {
+            id: accountId,
+            type: account.type === 'hotp' ? 'hotp' : 'totp',
+            issuer: String(account.issuer || ''),
+            label: String(account.label || ''),
+            algorithm: String(account.algorithm || 'SHA1'),
+            digits: Number(account.digits || 6),
+            period: account.period != null ? Number(account.period) : undefined,
+            counter: account.counter != null ? Number(account.counter) : undefined,
+            secretFormat: String(account.secretFormat || 'base32'),
+          },
+        });
+        sendResponse({
+          success: true,
+          uri,
+          account: {
+            id: accountId,
+            type: account.type === 'hotp' ? 'hotp' : 'totp',
+            issuer: String(account.issuer || ''),
+            label: String(account.label || ''),
+          },
+        });
         return;
       }
 
@@ -1275,33 +1419,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, items });
         return;
       }
-      case 'generateCodeForAutofill': {
-        const secret = String(message.secret || '').trim();
-        const type = message.type === 'hotp' ? 'hotp' : 'totp';
-        const digits = Math.max(6, Number(message.digits || 6));
-        if(!secret) throw new Error('Secret is required.');
-        const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
-        const otpSecret = OTPAuth.Secret.fromBase32(normalizedSecret);
-        if(type === 'hotp'){
-          const counter = Math.max(0, Number(message.counter || 0));
-          const code = OTPAuth.HOTP.generate({
-            secret: otpSecret,
-            algorithm: String(message.algorithm || 'SHA1'),
-            digits,
-            counter,
-          });
-          sendResponse({ success: true, code });
-          return;
-        }
-        const otp = new OTPAuth.TOTP({
-          secret: otpSecret,
-          algorithm: String(message.algorithm || 'SHA1'),
-          digits,
-          period: Math.max(1, Number(message.period || 30)),
-        });
-        sendResponse({ success: true, code: otp.generate() });
-        return;
-      }
       case 'downloadSyncToLocal': {
         const settings = await getSyncSettings();
         const sessionId = String(message.sessionId || settings.sessionId || '').trim();
@@ -1400,6 +1517,7 @@ if(browser.runtime && browser.runtime.onStartup){
   browser.runtime.onStartup.addListener(() => {
     refreshAutofillInjectionForOpenTabs().catch(() => {});
     scheduleVaultAutoLock().catch(() => {});
+    ensureSyncAutoUploadAlarm().catch(() => {});
   });
 }
 if(browser.contextMenus && browser.contextMenus.onClicked){
@@ -1410,8 +1528,24 @@ if(browser.contextMenus && browser.contextMenus.onClicked){
 }
 if(browser.alarms && browser.alarms.onAlarm){
   browser.alarms.onAlarm.addListener((alarm) => {
-    if(!alarm || alarm.name !== VAULT_AUTO_LOCK_ALARM) return;
-    lockVault('auto_timer_expired').catch(() => {});
+    if(!alarm) return;
+    if(alarm.name === VAULT_AUTO_LOCK_ALARM){
+      lockVault('auto_timer_expired').catch(() => {});
+      return;
+    }
+    if(alarm.name === SYNC_AUTO_UPLOAD_ALARM){
+      (async () => {
+        try {
+          await runAutoUploadTick();
+        } catch (err) {
+          await appendDebugInfo('Sync auto upload alarm failed', {
+            error: err && err.message ? err.message : String(err),
+          });
+        } finally {
+          await scheduleNextSyncAutoUploadAlarm();
+        }
+      })().catch(() => {});
+    }
   });
 }
 
@@ -1428,6 +1562,6 @@ if(browser.storage && browser.storage.onChanged){
   });
 }
 
-startAutoUploadScheduler();
+ensureSyncAutoUploadAlarm().catch(() => {});
 scheduleVaultAutoLock().catch(() => {});
 refreshAutofillInjectionForOpenTabs().catch(() => {});

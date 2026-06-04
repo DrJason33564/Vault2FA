@@ -65,7 +65,11 @@ Google Authenticator使用Base64编码后protobuf结构的`otpauth-migration://`
 
 - 请妥善保管导出的 URI、同步会话 ID 和加密口令  
 - 丢失口令会导致**无法解密本地数据**  
-- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题  
+- 强烈建议在本地保存一份密码库的备份，因为Firefox Sync并非为同步秘钥设计，云同步可能存在潜在问题
+
+### 权限声明   
+1. Vault2FA需要“访问您在所有网站的数据”权限以在网页中识别验证码输入框并自动填充。您可在Vault2FA的设置界面关闭此功能
+2. Vault2FA会在右键菜单中增加一个选项以扫描网页内的二维码。您可在Vault2FA的设置界面关闭此功能
 
 ### 截图 / Screenshots
 ![IMG_20260318_215605.jpg](images/IMG_20260318_215605.jpg)
@@ -78,7 +82,7 @@ Google Authenticator使用Base64编码后protobuf结构的`otpauth-migration://`
 
 - `manifest.json`: 扩展配置
 - `popup/`: 主弹窗界面与逻辑
-- `qr/`: 二维码扫描页面
+- `qr/`: 二维码扫描与预览页面
 - `background.js`: 后台逻辑
 - `autofill/`: 自动填充弹窗
 - `json-import/`: 通过JSON文件导入账号页面

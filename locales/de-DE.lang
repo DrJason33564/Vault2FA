@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.1
+VERSION=2.7.3
 
 [Language]
 LANGUAGE=Deutsch
@@ -24,8 +24,6 @@ copied=Kopiert!
 addAccount=Konto hinzufügen
 editAccount=Konto bearbeiten
 showQrCode=Per QR exportieren
-showQrCodeLibraryError=QR-Bibliothek konnte nicht geladen werden.
-showQrCodeGenerateError=QR-Code konnte nicht erzeugt werden.
 showQrCodeSuccess=QR-Code wurde in einem neuen Tab erzeugt.
 reorderAccount=Alle Konten nach dem ersten Buchstaben des Ausstellers neu anordnen
 reorderAccountSuccess=Konten neu angeordnet.
@@ -193,6 +191,10 @@ addFail=Konto konnte nicht hinzugefügt werden:
 loadingFromImage=Lade Bild von der Webseite…
 loadImageFail=Das ausgewählte Bild konnte nicht geladen werden: 
 migrationAccountsAdded=Konto aus Drittanbieterquelle importiert — du kannst diesen Tab schließen.
+
+[qr-previewer]
+showQrCodeLibraryError=QR-Bibliothek konnte nicht geladen werden.
+showQrCodeGenerateError=QR-Code konnte nicht erzeugt werden.
 
 [json-import]
 title=Vault <em>2FA</em> — JSON-Import

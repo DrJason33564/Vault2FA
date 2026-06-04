@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.1
+VERSION=2.7.3
 
 [Language]
 LANGUAGE=Português
@@ -24,8 +24,6 @@ copied=Copiado!
 addAccount=Adicionar conta
 editAccount=Editar conta
 showQrCode=Exportar via QR
-showQrCodeLibraryError=Falha ao carregar a biblioteca de QR.
-showQrCodeGenerateError=Falha ao gerar o código QR.
 showQrCodeSuccess=Código QR gerado numa nova aba.
 reorderAccount=Reordenar todas as contas pela primeira letra do emissor
 reorderAccountSuccess=Contas reordenadas.
@@ -193,10 +191,10 @@ addFail=Não foi possível adicionar a conta:
 loadingFromImage=A carregar imagem da página web…
 loadImageFail=Não foi possível carregar a imagem selecionada: 
 migrationAccountsAdded=Conta importada de fonte de terceiros — pode fechar esta aba.
-permissionAutofillEnableText=Ativar preenchimento automático
-permissionAutofillEnableHint=Preencher campos de entrada relacionados com 2fa em websites.
-permissionRightclickEnableText=Ativar leitura de QR com clique direito
-permissionRightclickEnableHint=Mostrar uma ação de leitura de QR no menu de contexto da imagem com clique direito.
+
+[qr-previewer]
+showQrCodeLibraryError=Falha ao carregar a biblioteca de QR.
+showQrCodeGenerateError=Falha ao gerar o código QR.
 
 [json-import]
 title=Vault <em>2FA</em> — Importação JSON
