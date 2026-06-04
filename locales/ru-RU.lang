@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.1
+VERSION=2.7.3
 
 [Language]
 LANGUAGE=Русский
@@ -24,8 +24,6 @@ copied=Скопировано!
 addAccount=Добавить аккаунт
 editAccount=Редактировать аккаунт
 showQrCode=Экспортировать через QR
-showQrCodeLibraryError=Не удалось загрузить библиотеку QR.
-showQrCodeGenerateError=Не удалось создать QR-код.
 showQrCodeSuccess=QR-код создан в новой вкладке.
 reorderAccount=Пересортировать все аккаунты по первой букве издателя
 reorderAccountSuccess=Аккаунты пересортированы.
@@ -193,10 +191,10 @@ addFail=Не удалось добавить аккаунт:
 loadingFromImage=Загрузка изображения с веб-страницы…
 loadImageFail=Не удалось загрузить выбранное изображение: 
 migrationAccountsAdded=Аккаунт импортирован из стороннего источника — можете закрыть эту вкладку.
-permissionAutofillEnableText=Включить автозаполнение
-permissionAutofillEnableHint=Заполнять поля ввода, связанные с 2fa, на сайтах.
-permissionRightclickEnableText=Включить сканирование QR по правому клику
-permissionRightclickEnableHint=Показывать действие сканирования QR в контекстном меню изображения по правому клику.
+
+[qr-previewer]
+showQrCodeLibraryError=Не удалось загрузить библиотеку QR.
+showQrCodeGenerateError=Не удалось создать QR-код.
 
 [json-import]
 title=Vault <em>2FA</em> — Импорт JSON

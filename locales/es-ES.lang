@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.1
+VERSION=2.7.3
 
 [Language]
 LANGUAGE=Español
@@ -24,8 +24,6 @@ copied=¡Copiado!
 addAccount=Añadir cuenta
 editAccount=Editar cuenta
 showQrCode=Exportar mediante QR
-showQrCodeLibraryError=Error al cargar la biblioteca QR.
-showQrCodeGenerateError=No se pudo generar el código QR.
 showQrCodeSuccess=Código QR generado en una nueva pestaña.
 reorderAccount=Reordenar todas las cuentas por la primera letra del emisor
 reorderAccountSuccess=Cuentas reordenadas.
@@ -193,10 +191,10 @@ addFail=No se pudo añadir la cuenta:
 loadingFromImage=Cargando imagen desde la página web…
 loadImageFail=No se pudo cargar la imagen seleccionada: 
 migrationAccountsAdded=Cuenta importada desde una fuente de terceros; ya puedes cerrar esta pestaña.
-syncUseEncryptedPayloadText=Subir la bóveda cifrada
-syncUseEncryptedPayloadHint=Después de activar el cifrado local de la bóveda, subir a Firefox Sync el contenido ya cifrado, en lugar de subirlo en texto plano
-confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda cifrada. ¿Confirmas la descarga, la sobrescritura y el bloqueo de la bóveda?
-downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
+
+[qr-previewer]
+showQrCodeLibraryError=Error al cargar la biblioteca QR.
+showQrCodeGenerateError=No se pudo generar el código QR.
 
 [json-import]
 title=Vault <em>2FA</em> — Importación JSON

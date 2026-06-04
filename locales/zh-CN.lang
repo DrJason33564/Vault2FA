@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.7.1
+VERSION=2.7.3
 
 [Language]
 LANGUAGE=简体中文
@@ -24,8 +24,6 @@ copied=已复制！
 addAccount=添加账号
 editAccount=编辑账号
 showQrCode=账号二维码
-showQrCodeLibraryError=二维码生成库加载失败
-showQrCodeGenerateError=二维码生成失败
 showQrCodeSuccess=二维码已在新标签页中显示
 reorderAccount=按发行方首字母顺序重新排列所有账号
 reorderAccountSuccess=账号已重排序
@@ -193,6 +191,10 @@ addFail=无法添加账号：
 loadingFromImage=正在加载网页中的图片…
 loadImageFail=无法加载所选图片：
 migrationAccountsAdded=已由第三方源添加账号！
+
+[qr-previewer]
+showQrCodeLibraryError=二维码生成库加载失败
+showQrCodeGenerateError=二维码生成失败
 
 [json-import]
 title=Vault <em>2FA</em> — JSON 导入
