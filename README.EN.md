@@ -68,6 +68,10 @@ Exporting account data from Microsoft Authenticator is a bit more troublesome. S
 - It is strongly recommended to keep a local backup of your vault since Firefox Sync is not designed for syncing secrets. Cloud sync
   therefore may have potential bugs
 
+### Permission Declaration  
+1. Vault2FA needs "Access your data for all websites" permission to auto fill in input fields in webpages. You can disable this feature in Vault2FA's setting.
+2. Vault2FA will add an option to your right-click menu to scan in-page QR code images. You can disable this feature in Vault2FA's setting.
+
 ### Screenshots
 ![IMG_20260318_215605.jpg](images/IMG_20260318_215605.jpg)
 ![IMG_20260318_221245.jpg](images/IMG_20260318_221245.jpg)
