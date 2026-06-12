@@ -95,6 +95,16 @@ function randomBytes(n){
   return out;
 }
 
+async function getVaultSettings(){
+  const result = await browser.storage.local.get(VAULT_SETTINGS_KEY);
+  return Object.assign({}, defaultVaultSettings, result[VAULT_SETTINGS_KEY] || {});
+}
+async function setVaultSettings(next){
+  const merged = Object.assign({}, await getVaultSettings(), next || {});
+  await browser.storage.local.set({ [VAULT_SETTINGS_KEY]: merged });
+  return merged;
+}
+
 async function deriveKey(passphrase, saltB64){
   const salt = bytesFromB64(saltB64);
   const baseKey = await crypto.subtle.importKey('raw', enc(passphrase), 'PBKDF2', false, ['deriveKey']);
