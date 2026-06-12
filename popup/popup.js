@@ -743,10 +743,7 @@ async function endTouchHoldDrag(){
 
 
 async function openQrPreviewTabForAccountId(accountId){
-  const id = String(accountId || '').trim();
-  if(!id) throw new Error('Account ID is required.');
-  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#id=' + encodeURIComponent(id);
-  await browser.tabs.create({ url: previewUrl });
+  await sendMessage({ action:'openQrPreviewForAccount', id: accountId });
 }
 
 function render(){

@@ -25,6 +25,7 @@
       "background/debug.js",
       "background/storage-vault.js",
       "background/otp-account.js",
+      "background/qr-background.js",
       "background/sync.js",
       "background/autofill-background.js",
       "background/context-menu.js",
