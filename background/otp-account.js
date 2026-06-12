@@ -3,8 +3,8 @@
 
 function buildAutofillCodeInfo(account){
   const type = account && account.type === 'hotp' ? 'hotp' : 'totp';
-  const digits = Math.max(6, Number((account && account.digits) || 6));
   const algorithm = String((account && account.algorithm) || 'SHA1');
+  const digits = Math.max(6, Number((account && account.digits) || 6));
   const secret = String((account && account.secret) || '').trim();
   if(!secret) throw new Error('Secret is required.');
   const normalizedSecret = secret.toUpperCase().replace(/\s+/g, '');
@@ -20,6 +20,13 @@ function buildAutofillCodeInfo(account){
   const nowSeconds = Date.now() / 1000;
   const remaining = Math.max(0, Math.ceil(period - (nowSeconds % period)) % period || period);
   return { code, type, digits, algorithm, counter: null, period, remaining };
+}
+
+function generateAccountId(){
+  const rand = (crypto && crypto.randomUUID)
+    ? crypto.randomUUID().replace(/-/g, '')
+    : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  return 'acc_' + rand;
 }
 
 function parseSecretByFormat(secretRaw, format){
@@ -43,6 +50,13 @@ function parseSecretByFormat(secretRaw, format){
     default:
       throw new Error('Unsupported secret format.');
   }
+}
+
+function normalizeAccountPatterns(patterns){
+  return (Array.isArray(patterns) ? patterns : [])
+    .map(v => String(v || '').trim().toLowerCase())
+    .filter(Boolean)
+    .filter((v, idx, arr) => arr.indexOf(v) === idx);
 }
 
 function buildOtpAuthUriForAccount(account){
@@ -100,9 +114,12 @@ function buildDisplayCodeInfo(account){
 
 function normalizeImportedAccountRecord(incoming){
   const type = incoming && incoming.type === 'hotp' ? 'hotp' : 'totp';
-  const secret = String(incoming && incoming.secret || '').toUpperCase().replace(/\s+/g, '');
   const label = String(incoming && incoming.label || '').trim();
   const issuer = String(incoming && incoming.issuer || label).trim() || label;
+  const secretFormat = String(incoming && incoming.secretFormat || 'base32').toLowerCase();
+  const rawSecret = String(incoming && incoming.secret || '').trim();
+  if(!rawSecret) throw new Error('Secret is required.');
+  const secret = parseSecretByFormat(rawSecret, secretFormat).base32;
   const account = {
     id: String(incoming && incoming.id || ''),
     type,
@@ -113,18 +130,74 @@ function normalizeImportedAccountRecord(incoming){
     digits: Math.max(6, Number(incoming && incoming.digits || 6)),
     period: type === 'hotp' ? undefined : Math.max(1, Number(incoming && incoming.period || 30)),
     counter: type === 'hotp' ? Math.max(0, Number(incoming && incoming.counter || 0)) : undefined,
-    autofillPatterns: Array.isArray(incoming && incoming.autofillPatterns)
-      ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean).filter((v, idx, arr) => arr.indexOf(v) === idx)
-      : [],
+    autofillPatterns: normalizeAccountPatterns(incoming && incoming.autofillPatterns),
   };
-  if(!account.id){
-    const rand = (crypto && crypto.randomUUID)
-      ? crypto.randomUUID().replace(/-/g, '')
-      : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-    account.id = 'acc_' + rand;
-  }
-  if(!account.secret) throw new Error('Secret is required.');
+  if(!account.id) account.id = generateAccountId();
   if(!account.label) throw new Error('Account label is required.');
-  OTPAuth.Secret.fromBase32(account.secret);
   return account;
+}
+
+function accountFromOtpAuthUri(uri){
+  const parsed = OTPAuth.URI.parse(String(uri || '').trim());
+  return normalizeImportedAccountRecord({
+    id: generateAccountId(),
+    type: parsed instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
+    issuer: parsed.issuer || '',
+    label: parsed.label || '',
+    secret: parsed.secret.base32,
+    algorithm: parsed.algorithm || 'SHA1',
+    digits: parsed.digits,
+    period: parsed instanceof OTPAuth.TOTP ? parsed.period : undefined,
+    counter: parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
+    autofillPatterns: [],
+  });
+}
+
+function expandOtpAuthInput(value){
+  const text = String(value || '').trim();
+  if(!text) return [];
+  if(
+    window.Vault2FAGoogleMigration &&
+    window.Vault2FAGoogleMigration.isGoogleMigrationUri(text)
+  ){
+    const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(text);
+    return (decoded.accounts || []).map(item =>
+      window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
+    );
+  }
+  return [text];
+}
+
+function parseJsonImportAccounts(raw){
+  const parsed = JSON.parse(raw);
+  const source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
+  if(!source) throw new Error('JSON payload must contain an accounts array.');
+  return source.map(normalizeImportedAccountRecord);
+}
+
+function parseUriImportAccounts(raw){
+  const lines = String(raw || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const accounts = [];
+  let fail = 0;
+  for(const uri of lines){
+    try {
+      const expanded = expandOtpAuthInput(uri);
+      for(const item of expanded){
+        accounts.push(accountFromOtpAuthUri(item));
+      }
+    } catch (_) {
+      fail++;
+    }
+  }
+  return { accounts, fail };
+}
+
+function parseAccountsForImportData(raw){
+  const input = String(raw || '').trim();
+  if(!input) return { accounts: [], fail: 0, inputType: 'empty' };
+  if(input.startsWith('{') || input.startsWith('[')){
+    return { accounts: parseJsonImportAccounts(input), fail: 0, inputType: 'json' };
+  }
+  const parsed = parseUriImportAccounts(input);
+  return { accounts: parsed.accounts, fail: parsed.fail, inputType: 'uri_lines' };
 }

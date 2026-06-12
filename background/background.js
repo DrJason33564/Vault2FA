@@ -89,6 +89,70 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      case 'buildOtpAuthUrisForExport': {
+        const accounts = await getLocalAccounts();
+        const uris = accounts.map(account => {
+          try {
+            return buildOtpAuthUriForAccount(account);
+          } catch (_) {
+            return null;
+          }
+        }).filter(Boolean);
+        sendResponse({ success: true, uris });
+        return;
+      }
+
+      case 'buildJsonExportPayload': {
+        const accounts = await getLocalAccounts();
+        const records = accounts.map(account => normalizeImportedAccountRecord(account));
+        sendResponse({
+          success: true,
+          payload: {
+            format: 'vault2fa-accounts',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            accounts: records,
+          },
+        });
+        return;
+      }
+
+      case 'normalizeAccountForPopup': {
+        const account = normalizeImportedAccountRecord(message.account || {});
+        sendResponse({ success: true, account });
+        return;
+      }
+
+      case 'parseAccountsForImport': {
+        const parsed = parseAccountsForImportData(message.rawText || '');
+        sendResponse({ success: true, parsed: parsed.accounts, fail: parsed.fail, inputType: parsed.inputType });
+        return;
+      }
+
+      case 'addAccountsFromQrPayload': {
+        const parsed = parseAccountsForImportData(message.payload || '');
+        if(!parsed.accounts.length) throw new Error('No QR code data was found.');
+        const existing = await getLocalAccounts();
+        const merged = existing.concat(parsed.accounts);
+        await setLocalAccounts(merged);
+        await touchVaultActivity();
+        const sync = { skipped: true, reason: 'timer_only' };
+        await appendDebugInfo('addAccountsFromQrPayload stored successfully', {
+          importedCount: parsed.accounts.length,
+          failedCount: parsed.fail,
+          totalAccounts: merged.length,
+        });
+        sendResponse({
+          success: true,
+          accounts: parsed.accounts,
+          importedCount: parsed.accounts.length,
+          failedCount: parsed.fail,
+          sync,
+          settings: await getSyncSettings(),
+        });
+        return;
+      }
+
       case 'addAccountFromQr': {
         const incoming = message.account || {};
         await appendDebugInfo('addAccountFromQr request received', {
@@ -105,20 +169,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             secretLength: String(incoming.secret || '').length,
           },
         });
-        const account = {
-          id: String(incoming.id || ''),
-          type: incoming.type === 'hotp' ? 'hotp' : 'totp',
-          issuer: String(incoming.issuer || ''),
-          label: String(incoming.label || ''),
-          secret: String(incoming.secret || ''),
-          algorithm: String(incoming.algorithm || 'SHA1'),
-          digits: Number(incoming.digits || 6),
-          period: incoming.period != null ? Number(incoming.period) : undefined,
-          counter: incoming.counter != null ? Number(incoming.counter) : undefined,
-          autofillPatterns: Array.isArray(incoming.autofillPatterns) ? incoming.autofillPatterns.map(v => String(v || '').trim().toLowerCase()).filter(Boolean) : [],
-        };
-        if(!account.secret) throw new Error('Secret is required.');
-        if(!account.label) throw new Error('Account label is required.');
+        const account = normalizeImportedAccountRecord(incoming);
 
         const accounts = await getLocalAccounts();
         accounts.push(account);
@@ -136,7 +187,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       case 'importAccountsFromJson': {
-        const encryptedPayload = message && message.encryptedPayload;
+        let encryptedPayload = message && message.encryptedPayload;
+        let source = Array.isArray(message.accounts) ? message.accounts : [];
+        if(message && typeof message.rawText === 'string'){
+          const parsed = JSON.parse(message.rawText);
+          if(hasPayloadHeaderFields(parsed) && typeof parsed.data === 'string' && parsed.data){
+            encryptedPayload = parsed;
+          } else {
+            source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : []);
+          }
+        }
         if(hasPayloadHeaderFields(encryptedPayload) && typeof encryptedPayload.data === 'string' && encryptedPayload.data){
           await setEncryptedPayload(encryptedPayload);
           await clearPlainAccounts();
@@ -155,7 +215,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           return;
         }
-        const source = Array.isArray(message.accounts) ? message.accounts : [];
         if(!source.length) throw new Error('No accounts provided.');
         const normalized = source.map(normalizeImportedAccountRecord);
         const existing = await getLocalAccounts();
@@ -174,7 +233,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
           hasPayload: !!payload,
           header: getPayloadHeaderForLog(payload),
         });
-        sendResponse({ success: true, payload });
+        sendResponse({ success: true, payload, hasPayload: hasPayloadHeaderFields(payload) && typeof payload.data === 'string' && !!payload.data });
         return;
       }
 

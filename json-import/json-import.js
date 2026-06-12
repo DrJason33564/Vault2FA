@@ -85,30 +85,6 @@ async function debugInfo(message, context){
   }
 }
 
-function parseJsonText(text){
-  let parsed;
-  try {
-    parsed = JSON.parse(String(text || ''));
-  } catch(_) {
-    throw new Error(t('invalidJson'));
-  }
-  const hasEncryptedHeader = !!(parsed && typeof parsed === 'object'
-    && typeof parsed.kdf === 'string'
-    && Number.isFinite(Number(parsed.iterations))
-    && typeof parsed.salt === 'string' && parsed.salt
-    && Number.isFinite(Number(parsed.keyLength))
-    && typeof parsed.cipher === 'string'
-    && Number.isFinite(Number(parsed.version))
-    && typeof parsed.iv === 'string' && parsed.iv
-    && typeof parsed.data === 'string' && parsed.data);
-  if(hasEncryptedHeader) return { encryptedPayload: parsed, format: 'encrypted_payload' };
-
-  const format = Array.isArray(parsed) ? 'array' : 'object_with_accounts';
-  const accounts = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
-  if(!accounts) throw new Error(t('missingAccounts'));
-  return { accounts, format };
-}
-
 async function importFile(file){
   hideErr();
   resultEl.classList.remove('show');
@@ -129,38 +105,35 @@ async function importFile(file){
       fileSize: typeof file.size === 'number' ? file.size : null,
     });
     const text = await file.text();
-    const parsed = parseJsonText(text);
-    await debugInfo('JSON import parsed payload', {
-      accountCount: Array.isArray(parsed.accounts) ? parsed.accounts.length : null,
-      format: parsed.format,
-      hasEncryptedHeader: !!parsed.encryptedPayload,
+    await debugInfo('JSON import file read', {
+      textLength: text.length,
     });
     const resp = await browser.runtime.sendMessage({
       action:'importAccountsFromJson',
-      accounts: parsed.accounts,
-      encryptedPayload: parsed.encryptedPayload || null,
+      rawText: text,
     });
     if(!resp || resp.success === false){
       throw new Error((resp && resp.error) || 'Unknown error');
     }
     await debugInfo('JSON import persisted via background', {
-      importedCount: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0),
+      importedCount: resp.importedCount || 0,
       totalAccounts: resp.totalAccounts,
       importedEncrypted: !!resp.importedEncrypted,
     });
     setResultSub(!!resp.importedEncrypted);
-    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0) });
+    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || 0 });
     resultEl.classList.add('show');
     showStatus('');
   } catch(err){
     const msg = String((err && err.message) || err);
-    const debugMsg = toDebugEnglishMessage(msg);
+    const displayMsg = err && err.name === 'SyntaxError' ? t('invalidJson') : msg;
+    const debugMsg = toDebugEnglishMessage(displayMsg);
     const extra = /Vault is locked|unlock/i.test(msg) ? ` ${t('lockedHint')}` : '';
     await debugInfo('JSON import failed', {
       error: debugMsg,
       vaultLockedHintShown: !!extra,
     });
-    showErr(t('importFailed') + msg + extra);
+    showErr(t('importFailed') + displayMsg + extra);
   }
 }
 

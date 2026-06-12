@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 'use strict';
 
-const OTPAuth = window.OTPAuth;
 
 let accounts = [];
 let visibleAccounts = [];
@@ -107,29 +106,6 @@ function tFmt(key, values = {}){
 function tf(key, fallback){
   const value = t(key);
   return value === key ? fallback : value;
-}
-
-function parseSecretByFormat(secretRaw, format){
-  const input = String(secretRaw || '').trim();
-  const normalized = input.replace(/\s+/g, '');
-  switch(String(format || 'base32').toLowerCase()){
-    case 'base32':
-      return OTPAuth.Secret.fromBase32(normalized.toUpperCase());
-    case 'base64': {
-      const b64 = normalized.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = b64 + '='.repeat((4 - (b64.length % 4 || 4)) % 4);
-      const bytes = Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
-      return new OTPAuth.Secret({ buffer: bytes.buffer });
-    }
-    case 'hex':
-      return OTPAuth.Secret.fromHex(normalized);
-    case 'utf8':
-      return OTPAuth.Secret.fromUTF8(input);
-    case 'latin1':
-      return OTPAuth.Secret.fromLatin1(input);
-    default:
-      throw new Error('Unsupported secret format.');
-  }
 }
 
 function setMultilineText(el, text){
@@ -819,101 +795,16 @@ function duplicateWarningText(acc, matches){
   return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || t('unknown')} / ${acc.label || t('noLabel')}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
 }
 
-function getExportRecords(){
-  return accounts.map(acc => normalizeAccountRecord({
-    id: acc.id,
-    type: acc.type === 'hotp' ? 'hotp' : 'totp',
-    issuer: acc.issuer || '',
-    label: acc.label || '',
-    secret: String(acc.secret || '').toUpperCase().replace(/\s+/g, ''),
-    algorithm: acc.algorithm || 'SHA1',
-    digits: acc.digits || 6,
-    period: acc.type === 'hotp' ? undefined : (acc.period || 30),
-    counter: acc.type === 'hotp' ? (acc.counter || 0) : undefined,
-    autofillPatterns: Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns : [],
-  }));
-}
-
-function buildJsonExportPayload(){
-  return {
-    format: 'vault2fa-accounts',
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    accounts: getExportRecords(),
-  };
-}
-
-function hasEncryptedPayloadHeader(payload){
-  if(!payload || typeof payload !== 'object') return false;
-  return (
-    typeof payload.kdf === 'string' &&
-    Number.isFinite(Number(payload.iterations)) &&
-    typeof payload.salt === 'string' && !!payload.salt &&
-    Number.isFinite(Number(payload.keyLength)) &&
-    typeof payload.cipher === 'string' &&
-    Number.isFinite(Number(payload.version)) &&
-    typeof payload.iv === 'string' && !!payload.iv &&
-    typeof payload.data === 'string' && !!payload.data
-  );
-}
-
 function buildImportSummaryText(parsedCount, failCount, duplicateCount){
   const failPart = failCount ? tFmt('importFailPart', { count: failCount }) : '';
   const dupPart = duplicateCount ? tFmt('importDupPart', { count: duplicateCount }) : '';
   return tFmt('importSummary', { ok: parsedCount, failPart, dupPart });
 }
 
-function parseJsonImportData(raw){
-  const parsed = JSON.parse(raw);
-  const source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
-  if(!source) throw new Error(t('jsonMissingAccounts'));
-  const list = [];
-  for(const item of source){
-    const secret = String(item && item.secret || '').toUpperCase().replace(/\s+/g, '');
-    const label = String(item && item.label || '').trim();
-    if(!secret || !label) throw new Error(t('jsonMissingSecretOrLabel'));
-    OTPAuth.Secret.fromBase32(secret);
-    const type = item && item.type === 'hotp' ? 'hotp' : 'totp';
-    list.push(normalizeAccountRecord({
-      id: nextAccountId(),
-      type,
-      issuer: String(item.issuer || label).trim() || label,
-      label,
-      secret,
-      algorithm: String(item.algorithm || 'SHA1').toUpperCase(),
-      digits: Math.max(6, Number(item.digits) || 6),
-      period: type === 'hotp' ? undefined : Math.max(1, Number(item.period) || 30),
-      counter: type === 'hotp' ? Math.max(0, Number(item.counter) || 0) : undefined,
-      autofillPatterns: Array.isArray(item.autofillPatterns) ? item.autofillPatterns : [],
-    }));
-  }
-  return list;
-}
-
-function parseUriImportData(raw){
-  const lines = String(raw || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const parsed = [];
-  let fail = 0;
-  for(const uri of lines){
-    try {
-      const expanded = expandMigrationIfNeeded(uri);
-      for(const item of expanded){
-        parsed.push(fromParsed(OTPAuth.URI.parse(item)));
-      }
-    } catch(e){
-      fail++;
-    }
-  }
-  return { parsed, fail };
-}
-
-function parseImportData(raw){
-  const input = String(raw || '').trim();
-  if(!input) return { parsed: [], fail: 0 };
-  if(input.startsWith('{') || input.startsWith('[')){
-    return { parsed: parseJsonImportData(input), fail: 0 };
-  }
-  return parseUriImportData(input);
+async function parseImportData(raw){
+  const resp = await sendMessage({ action:'parseAccountsForImport', rawText: raw });
+  if(!resp || resp.success === false) throw new Error((resp && resp.error) || t('importNothing'));
+  return { parsed: Array.isArray(resp.parsed) ? resp.parsed : [], fail: Number(resp.fail || 0), inputType: resp.inputType || 'unknown' };
 }
 
 async function saveAccounts(){
@@ -931,36 +822,6 @@ async function persistAndRender(){
   await saveAccounts();
   await persistAccountSettings();
   render();
-}
-
-function expandMigrationIfNeeded(uri){
-  const value = String(uri || '').trim();
-  if(!value) return [];
-  if(
-    window.Vault2FAGoogleMigration &&
-    window.Vault2FAGoogleMigration.isGoogleMigrationUri(value)
-  ){
-    const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(value);
-    return (decoded.accounts || []).map(item =>
-      window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
-    );
-  }
-  return [value];
-}
-
-function fromParsed(p){
-  return {
-    id: nextAccountId(),
-    type: p instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
-    issuer: p.issuer,
-    label: p.label,
-    secret: p.secret.base32,
-    algorithm: p.algorithm || 'SHA1',
-    digits: p.digits,
-    period: p instanceof OTPAuth.TOTP ? p.period : undefined,
-    counter: p instanceof OTPAuth.HOTP ? p.counter : undefined,
-    autofillPatterns: [],
-  };
 }
 
 async function pushAccount(acc, opts = {}){
@@ -1290,17 +1151,17 @@ byId('btnSave').addEventListener('click', async () => {
     let acc;
     if(activeTab === 'uri'){
       const uri = byId('fUri').value.trim();
-       if(!uri) throw new Error(t('needOtpAuthUri'));
- 
-       const expanded = expandMigrationIfNeeded(uri);
-       if(!expanded.length) throw new Error(t('needOtpAuthUri'));
- 
-       let addedCount = 0;
-       for(const item of expanded){
-         const added = await pushAccount(fromParsed(OTPAuth.URI.parse(item)));
-         if(added) addedCount++;
-       }
- 
+      if(!uri) throw new Error(t('needOtpAuthUri'));
+
+      const { parsed } = await parseImportData(uri);
+      if(!parsed.length) throw new Error(t('needOtpAuthUri'));
+
+      let addedCount = 0;
+      for(const item of parsed){
+        const added = await pushAccount(item);
+        if(added) addedCount++;
+      }
+
       if(addedCount > 0){
          closeD('drawAdd');
          resetForm();
@@ -1315,39 +1176,39 @@ byId('btnSave').addEventListener('click', async () => {
       const secretFormat = byId('fSecretFormat').value;
       if(!secret) throw new Error(t('secretRequired'));
       if(!label) throw new Error(t('accountNameRequired'));
-      let parsedSecret;
-      try {
-        parsedSecret = parseSecretByFormat(secret, secretFormat);
-      } catch(e){
-        debugInfo('Popup manual secret parse failed', {
-          secretFormat,
-          secretLength: secret.length,
-          parseError: e && e.message ? e.message : String(e),
-          issuer: byId('fIssuer').value.trim() || label,
-          label,
-        });
-        throw new Error(t('invalidSecretByFormat'));
-      }
-      debugInfo('Popup manual secret parsed', {
+      const draft = {
+        type: byId('fType').value,
+        issuer: byId('fIssuer').value.trim() || label,
+        label,
+        secret,
         secretFormat,
-        secretLength: secret.length,
-        normalizedBase32Length: parsedSecret.base32.length,
-        issuer: byId('fIssuer').value.trim() || label,
-        label,
-        type: byId('fType').value,
-      });
-      acc = {
-        id: nextAccountId(),
-        type: byId('fType').value,
-        issuer: byId('fIssuer').value.trim() || label,
-        label,
-        secret: parsedSecret.base32,
         algorithm: 'SHA1',
         digits: parseInt(byId('fDigits').value, 10),
         period: parseInt(byId('fPeriod').value, 10),
         counter: 0,
         autofillPatterns: parseAutofillPatterns(byId('fAutofillPatterns').value),
       };
+      try {
+        const normalized = await sendMessage({ action:'normalizeAccountForPopup', account: draft });
+        acc = normalized && normalized.account;
+      } catch(e){
+        debugInfo('Popup manual account normalization failed', {
+          secretFormat,
+          secretLength: secret.length,
+          parseError: e && e.message ? e.message : String(e),
+          issuer: draft.issuer,
+          label,
+        });
+        throw new Error(t('invalidSecretByFormat'));
+      }
+      debugInfo('Popup manual account normalized', {
+        secretFormat,
+        secretLength: secret.length,
+        normalizedBase32Length: acc && acc.secret ? acc.secret.length : 0,
+        issuer: draft.issuer,
+        label,
+        type: draft.type,
+      });
     }
     const added = await pushAccount(acc);
     debugInfo('Popup add account submit result', {
@@ -1368,18 +1229,11 @@ byId('btnSave').addEventListener('click', async () => {
   }
 });
 
-byId('btnExport').addEventListener('click', () => {
+byId('btnExport').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('noAccountsToExport')); return; }
-  const lines = accounts.map(acc => {
-    try {
-      const s = OTPAuth.Secret.fromBase32(acc.secret);
-      const o = acc.type === 'hotp'
-        ? new OTPAuth.HOTP({ issuer:acc.issuer, label:acc.label, secret:s, algorithm:acc.algorithm||'SHA1', digits:acc.digits, counter:acc.counter||0 })
-        : new OTPAuth.TOTP({ issuer:acc.issuer, label:acc.label, secret:s, algorithm:acc.algorithm||'SHA1', digits:acc.digits, period:acc.period });
-      return OTPAuth.URI.stringify(o);
-    } catch(e){ return null; }
-  }).filter(Boolean);
+  const resp = await sendMessage({ action:'buildOtpAuthUrisForExport' });
+  const lines = resp && Array.isArray(resp.uris) ? resp.uris : [];
   byId('exportData').value = lines.join('\n');
   openD('drawExport');
 });
@@ -1390,13 +1244,14 @@ byId('btnCopyExport').addEventListener('click', () => {
 byId('btnDownloadExportJson').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
-  let payload = buildJsonExportPayload();
+  const jsonExport = await sendMessage({ action:'buildJsonExportPayload' });
+  let payload = jsonExport && jsonExport.payload;
   let exportedMode = 'plaintext';
   if(vaultStatus.encryptionEnabled){
     try {
       const vaultExport = await sendMessage({ action:'getEncryptedPayloadForExport' });
       const encryptedPayload = vaultExport && vaultExport.payload;
-      const hasEncryptedPayload = hasEncryptedPayloadHeader(encryptedPayload);
+      const hasEncryptedPayload = !!(vaultExport && vaultExport.hasPayload);
       await debugInfo('Popup JSON export encryption status checked', {
         encryptionEnabled: !!vaultStatus.encryptionEnabled,
         hasEncryptedPayload,
@@ -1444,9 +1299,9 @@ async function applyImportRawText(rawText){
   const errEl = byId('importErr');
   errEl.style.display = 'none';
   try {
-    const { parsed, fail } = parseImportData(rawText);
+    const { parsed, fail, inputType } = await parseImportData(rawText);
     debugInfo('Popup import parse finished', {
-      inputType: String(rawText || '').trim().startsWith('{') || String(rawText || '').trim().startsWith('[') ? 'json' : 'uri_lines',
+      inputType,
       parsedCount: parsed.length,
       failedCount: fail,
     });

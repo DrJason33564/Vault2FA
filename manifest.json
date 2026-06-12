@@ -24,6 +24,7 @@
       "locales/i18n.js",
       "background/debug.js",
       "background/storage-vault.js",
+      "migration/google.js",
       "background/otp-account.js",
       "background/qr-background.js",
       "background/sync.js",

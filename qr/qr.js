@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 "use strict";
-const OTPAuth = window.OTPAuth;
 const dz       = document.getElementById('dz');
 const fileInput= document.getElementById('fileInput');
 const statusEl = document.getElementById('status');
@@ -274,11 +273,7 @@ async function process(file){
   try{
     const rawValue = await decodeQrText(file);
     const rawText = rawValue ? String(rawValue) : '';
-    const isMigrationUri = !!(
-      rawText &&
-      window.Vault2FAGoogleMigration &&
-      window.Vault2FAGoogleMigration.isGoogleMigrationUri(rawText)
-    );
+    const isMigrationUri = /^otpauth-migration:\/\//i.test(rawText);
     await debugInfo('QR decode result', {
       hasValue: !!rawValue,
       rawLength: rawText.length,
@@ -289,63 +284,26 @@ async function process(file){
 
     const isStandardOtpAuthUri = rawText.startsWith('otpauth://');
     const isNonOtpAuthQrPayload = !isStandardOtpAuthUri;
-    let uris = [rawValue];
-    if(isMigrationUri){
-      try {
-        const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
-        uris = (decoded.accounts || []).map(item =>
-          window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
-        );
-      } catch(e){
-        await debugInfo('QR migration decode failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
-        showErr(qrt('invalidOtp') + (e && e.message ? e.message : String(e)));
-        return;
-      }
+    await debugInfo('QR -> background request', {
+      action: 'addAccountsFromQrPayload',
+      rawLength: rawText.length,
+      rawPreview: buildSafeQrPreview(rawText),
+    });
+    const resp = await browser.runtime.sendMessage({ action: 'addAccountsFromQrPayload', payload: rawText });
+    await debugInfo('QR <- background response', {
+      success: !!(resp && resp.success),
+      error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
+      importedCount: resp && resp.importedCount,
+      failedCount: resp && resp.failedCount,
+      accounts: resp && Array.isArray(resp.accounts) ? resp.accounts.map(summarizeAccount) : [],
+      sync: resp && resp.sync ? resp.sync : undefined,
+    });
+    if(!resp || resp.success === false){
+      throw new Error((resp && resp.error) || 'Failed to add account.');
     }
 
-    if(!uris.length) throw new Error(qrt('qrEmpty'));
-
-    const addedAccounts = [];
-
-    for(const uri of uris){
-      let parsed;
-      try {
-        parsed = OTPAuth.URI.parse(uri);
-      } catch(e){
-        await debugInfo('QR parse failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
-        showErr(qrt('invalidOtp') + e.message);
-        return;
-      }
-
-      const acc = {
-        id:        generateId(),
-        type:      parsed instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
-        issuer:    parsed.issuer  || '',
-        label:     parsed.label   || '',
-        secret:    parsed.secret.base32,
-        algorithm: parsed.algorithm || 'SHA1',
-        digits:    parsed.digits,
-        period:    parsed instanceof OTPAuth.TOTP ? parsed.period  : undefined,
-        counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
-      };
-
-      await debugInfo('QR parsed account', summarizeAccount(acc));
-      const requestPayload = { action: 'addAccountFromQr', account: summarizeAccount(acc) };
-      await debugInfo('QR -> background request', requestPayload);
-      const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
-      await debugInfo('QR <- background response', {
-        success: !!(resp && resp.success),
-        error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
-        account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
-        sync: resp && resp.sync ? resp.sync : undefined,
-      });
-      if(!resp || resp.success === false){
-        throw new Error((resp && resp.error) || 'Failed to add account.');
-      }
-
-      addedAccounts.push(acc);
-    }
-
+    const addedAccounts = Array.isArray(resp.accounts) ? resp.accounts : [];
+    if(!addedAccounts.length) throw new Error(qrt('qrEmpty'));
     const first = addedAccounts[0] || null;
     const name = (isNonOtpAuthQrPayload || addedAccounts.length > 1)
       ? qrtFmt('migrationAccountsAdded', { count: addedAccounts.length })
@@ -366,10 +324,6 @@ async function process(file){
   }
 }
 
-function generateId(){
-  const rand = (crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-  return 'acc_' + rand;
-}
 function maskTail(value, keepHead = 4, keepTail = 2){
   const text = String(value || '');
   if(!text) return '';
@@ -394,10 +348,7 @@ function maskContextImageUrl(input){
 function buildSafeQrPreview(rawText){
   const text = String(rawText || '');
   if(!text) return '';
-  const isMigration = !!(
-    window.Vault2FAGoogleMigration &&
-    window.Vault2FAGoogleMigration.isGoogleMigrationUri(text)
-  );
+  const isMigration = /^otpauth-migration:\/\//i.test(text);
   const masked = isMigration ? maskMigrationData(text) : maskOtpUriSecrets(text);
   return masked.slice(0, 120);
 }
