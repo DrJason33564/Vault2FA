@@ -33,13 +33,14 @@ const QR_FALLBACK = {
 let qrLang = DEFAULT_LOCALE_ID;
 let qrStatusBusy = false;
 
-async function loadQrLocales(){
+async function loadQrLocalesFor(localeId){
   if(!window.Vault2FALocales) return;
-  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-  for(const localeId of localeIds){
-    const section = await window.Vault2FALocales.getSection('qr-scanner', localeId);
-    QR_I18N[localeId] = Object.assign({}, QR_I18N[localeId] || {}, section || {});
-  }
+  const requestedLocaleId = resolveLocaleId(localeId);
+  const localeIds = Array.from(new Set([DEFAULT_LOCALE_ID, requestedLocaleId].filter(Boolean)));
+  await Promise.all(localeIds.map(async (targetLocaleId) => {
+    const section = await window.Vault2FALocales.getSection('qr-scanner', targetLocaleId);
+    QR_I18N[targetLocaleId] = Object.assign({}, QR_I18N[targetLocaleId] || {}, section || {});
+  }));
 }
 
 
@@ -102,7 +103,7 @@ const qrLocaleReady = (async () => {
   } catch (_) {
     qrLang = DEFAULT_LOCALE_ID;
   }
-  await loadQrLocales();
+  await loadQrLocalesFor(qrLang);
   applyQrI18n();
 })();
 
@@ -139,7 +140,9 @@ async function processImageUrlFromQuery(){
   hideErr();
   await debugInfo('QR image URL received from context menu', { imageUrl: safeImageUrl });
   try {
-    const response = await fetch(imageUrl);
+    const responsePromise = fetch(imageUrl);
+    await qrLocaleReady.catch(() => {});
+    const response = await responsePromise;
     if(!response || !response.ok) throw new Error(`HTTP ${response ? response.status : 'ERR'}`);
     const blob = await response.blob();
     if(!blob || !(blob.type || '').startsWith('image/')) throw new Error('Not an image resource.');

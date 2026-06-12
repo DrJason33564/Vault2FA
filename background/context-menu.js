@@ -8,13 +8,14 @@ const QR_CONTEXT_MENU_ID = 'vault2fa-scan-qr-image';
 function resolveLocaleId(value){
   return window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(value) : DEFAULT_LOCALE_ID;
 }
-async function loadBackgroundLocales(){
+async function loadBackgroundLocalesFor(localeId){
   if(!window.Vault2FALocales) return;
-  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-  for(const localeId of localeIds){
-    const section = await window.Vault2FALocales.getSection('background', localeId);
-    MENU_I18N[localeId] = Object.assign({}, MENU_I18N[localeId] || {}, section || {});
-  }
+  const requestedLocaleId = resolveLocaleId(localeId);
+  const localeIds = Array.from(new Set([DEFAULT_LOCALE_ID, requestedLocaleId].filter(Boolean)));
+  await Promise.all(localeIds.map(async (targetLocaleId) => {
+    const section = await window.Vault2FALocales.getSection('background', targetLocaleId);
+    MENU_I18N[targetLocaleId] = Object.assign({}, MENU_I18N[targetLocaleId] || {}, section || {});
+  }));
 }
 
 function getContextMenuTitle(language){
@@ -36,10 +37,12 @@ async function resolveContextMenuLanguage(){
   return DEFAULT_LOCALE_ID;
 }
 async function setupContextMenus(){
-  await loadBackgroundLocales();
   if(!browser.contextMenus || typeof browser.contextMenus.create !== 'function') return;
-  const featureSettings = await getFeatureSettings();
-  const language = await resolveContextMenuLanguage();
+  const [featureSettings, language] = await Promise.all([
+    getFeatureSettings(),
+    resolveContextMenuLanguage(),
+  ]);
+  await loadBackgroundLocalesFor(language);
   try {
     await browser.contextMenus.remove(QR_CONTEXT_MENU_ID);
   } catch (_) {}
