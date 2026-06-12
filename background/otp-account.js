@@ -62,7 +62,7 @@ function normalizeAccountPatterns(patterns){
 function buildOtpAuthUriForAccount(account){
   if(!account) throw new Error('Account was not found.');
   const type = account.type === 'hotp' ? 'hotp' : 'totp';
-  const secret = parseSecretByFormat(account.secret, account.secretFormat || 'base32');
+  const secret = OTPAuth.Secret.fromBase32(String(account.secret || '').toUpperCase().replace(/\s+/g, ''));
   const opts = {
     issuer: String(account.issuer || ''),
     label: String(account.label || ''),
@@ -120,6 +120,30 @@ function normalizeImportedAccountRecord(incoming){
   const rawSecret = String(incoming && incoming.secret || '').trim();
   if(!rawSecret) throw new Error('Secret is required.');
   const secret = parseSecretByFormat(rawSecret, secretFormat).base32;
+  const account = {
+    id: String(incoming && incoming.id || ''),
+    type,
+    issuer,
+    label,
+    secret,
+    algorithm: String(incoming && incoming.algorithm || 'SHA1').toUpperCase(),
+    digits: Math.max(6, Number(incoming && incoming.digits || 6)),
+    period: type === 'hotp' ? undefined : Math.max(1, Number(incoming && incoming.period || 30)),
+    counter: type === 'hotp' ? Math.max(0, Number(incoming && incoming.counter || 0)) : undefined,
+    autofillPatterns: normalizeAccountPatterns(incoming && incoming.autofillPatterns),
+  };
+  if(!account.id) account.id = generateAccountId();
+  if(!account.label) throw new Error('Account label is required.');
+  return account;
+}
+
+function normalizeStoredAccountRecord(incoming){
+  const type = incoming && incoming.type === 'hotp' ? 'hotp' : 'totp';
+  const label = String(incoming && incoming.label || '').trim();
+  const issuer = String(incoming && incoming.issuer || label).trim() || label;
+  const rawSecret = String(incoming && incoming.secret || '').trim();
+  if(!rawSecret) throw new Error('Secret is required.');
+  const secret = OTPAuth.Secret.fromBase32(rawSecret.toUpperCase().replace(/\s+/g, '')).base32;
   const account = {
     id: String(incoming && incoming.id || ''),
     type,

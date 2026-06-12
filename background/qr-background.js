@@ -20,7 +20,6 @@ async function getOtpAuthUriForAccountResponse(accountIdRaw){
       digits: Number(account.digits || 6),
       period: account.period != null ? Number(account.period) : undefined,
       counter: account.counter != null ? Number(account.counter) : undefined,
-      secretFormat: String(account.secretFormat || 'base32'),
     },
   });
   return {

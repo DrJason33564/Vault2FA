@@ -104,7 +104,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'buildJsonExportPayload': {
         const accounts = await getLocalAccounts();
-        const records = accounts.map(account => normalizeImportedAccountRecord(account));
+        const records = accounts.map(account => normalizeStoredAccountRecord(account));
         sendResponse({
           success: true,
           payload: {
