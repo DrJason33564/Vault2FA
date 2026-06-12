@@ -22,7 +22,13 @@
     "scripts": [
       "third-party/otpauth.min.js",
       "locales/i18n.js",
-      "background.js"
+      "background/debug.js",
+      "background/storage-vault.js",
+      "background/otp-account.js",
+      "background/sync.js",
+      "background/autofill-background.js",
+      "background/context-menu.js",
+      "background/background.js"
     ]
   },
   "action": {
