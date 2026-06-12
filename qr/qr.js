@@ -10,6 +10,26 @@ const errEl    = document.getElementById('err');
 
 const QR_I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const QR_FALLBACK = {
+  title: 'Vault <em>2FA</em> — QR Scanner',
+  dzTitle: 'Drop a QR image here',
+  dzSub: 'or click to choose a file',
+  waiting: 'Waiting for a QR code image…',
+  resultSub: 'Account added to Vault 2FA — you can close this tab.',
+  hint: 'Tip: you can scan a QR code from webpage directly through right-clicking on it.',
+  notImage: 'Please drop an image file.',
+  scanning: 'Scanning…',
+  qrLibFail: 'QR decoder failed to load.',
+  qrEmpty: 'No QR code data was found.',
+  invalidOtp: 'QR found but not a URI Vault2FA can parse: ',
+  addedSuffix: ' added!',
+  unknownAccount: 'Account',
+  scanFail: 'Could not scan QR image: ',
+  addFail: 'Could not add account: ',
+  loadingFromImage: 'Loading image from web page…',
+  loadImageFail: 'Could not load the selected image: ',
+  migrationAccountsAdded: 'Account imported from third-party source - you can close this tab.',
+};
 let qrLang = DEFAULT_LOCALE_ID;
 
 async function loadQrLocales(){
@@ -33,6 +53,7 @@ function resolveLocaleId(value){
 function qrt(key){
   return (QR_I18N[qrLang] && QR_I18N[qrLang][key])
     || (QR_I18N[DEFAULT_LOCALE_ID] && QR_I18N[DEFAULT_LOCALE_ID][key])
+    || QR_FALLBACK[key]
     || key;
 }
 function qrtFmt(key, values = {}){
@@ -71,11 +92,16 @@ function applyQrI18n(){
   document.getElementById('qrHint').textContent = qrt('hint');
 }
 
-browser.storage.local.get('uiLanguage').then(async (result) => {
-  qrLang = resolveLocaleId(result.uiLanguage);
+const qrLocaleReady = (async () => {
+  try {
+    const result = await browser.storage.local.get('uiLanguage');
+    qrLang = resolveLocaleId(result.uiLanguage);
+  } catch (_) {
+    qrLang = DEFAULT_LOCALE_ID;
+  }
   await loadQrLocales();
   applyQrI18n();
-});
+})();
 
 applyTheme();
 if(window.matchMedia){
@@ -92,12 +118,14 @@ dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('dr
 dz.addEventListener('dragleave', e => { if(!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over'); });
 dz.addEventListener('drop', async e => {
   e.preventDefault(); dz.classList.remove('drag-over');
+  await qrLocaleReady;
   const f = e.dataTransfer.files[0];
   if(!f || !f.type.startsWith('image/')){ showErr(qrt('notImage')); return; }
   await process(f);
 });
 
 fileInput.addEventListener('change', async e => {
+  await qrLocaleReady;
   if(e.target.files[0]) await process(e.target.files[0]);
 });
 
@@ -233,6 +261,7 @@ async function decodeQrText(file){
 }
 
 async function process(file){
+  await qrLocaleReady;
   showStatus(qrt('scanning')); hideErr();
   await debugInfo('QR scan started', {
     fileName: file && file.name ? file.name : '',
@@ -323,7 +352,6 @@ async function process(file){
     resultEl.classList.add('show');
     showStatus('');
     hideErr();
-    setTimeout(() => window.close(), 2500);
   } catch(e){
     await debugInfo('QR processing failed', {
       error: toDebugEnglishMessage(e && e.message ? e.message : String(e)),
@@ -422,4 +450,4 @@ function showStatus(msg){ statusEl.textContent = msg; }
 function hideErr(){ errEl.textContent=''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent=msg; errEl.classList.add('show'); showStatus(''); }
 
-processImageUrlFromQuery().catch(() => {});
+qrLocaleReady.then(processImageUrlFromQuery).catch(() => {});
