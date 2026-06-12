@@ -31,6 +31,7 @@ const QR_FALLBACK = {
   migrationAccountsAdded: 'Account imported from third-party source - you can close this tab.',
 };
 let qrLang = DEFAULT_LOCALE_ID;
+let qrStatusBusy = false;
 
 async function loadQrLocales(){
   if(!window.Vault2FALocales) return;
@@ -87,7 +88,9 @@ function applyQrI18n(){
   renderQrTitle();
   document.getElementById('dzTitle').textContent = qrt('dzTitle');
   document.getElementById('dzSub').textContent = qrt('dzSub');
-  document.getElementById('status').textContent = qrt('waiting');
+  if(!qrStatusBusy && !resultEl.classList.contains('show') && !errEl.classList.contains('show')){
+    document.getElementById('status').textContent = qrt('waiting');
+  }
   document.getElementById('resultSub').textContent = qrt('resultSub');
   document.getElementById('qrHint').textContent = qrt('hint');
 }
@@ -118,14 +121,12 @@ dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('dr
 dz.addEventListener('dragleave', e => { if(!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over'); });
 dz.addEventListener('drop', async e => {
   e.preventDefault(); dz.classList.remove('drag-over');
-  await qrLocaleReady;
   const f = e.dataTransfer.files[0];
   if(!f || !f.type.startsWith('image/')){ showErr(qrt('notImage')); return; }
   await process(f);
 });
 
 fileInput.addEventListener('change', async e => {
-  await qrLocaleReady;
   if(e.target.files[0]) await process(e.target.files[0]);
 });
 
@@ -261,7 +262,6 @@ async function decodeQrText(file){
 }
 
 async function process(file){
-  await qrLocaleReady;
   showStatus(qrt('scanning')); hideErr();
   await debugInfo('QR scan started', {
     fileName: file && file.name ? file.name : '',
@@ -446,8 +446,11 @@ async function sha256Hex(bytes){
     return '';
   }
 }
-function showStatus(msg){ statusEl.textContent = msg; }
+function showStatus(msg){
+  statusEl.textContent = msg;
+  qrStatusBusy = !!msg && msg !== qrt('waiting');
+}
 function hideErr(){ errEl.textContent=''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent=msg; errEl.classList.add('show'); showStatus(''); }
 
-qrLocaleReady.then(processImageUrlFromQuery).catch(() => {});
+processImageUrlFromQuery().catch(() => {});
