@@ -24,6 +24,7 @@
     accountFallback: 'Account',
     hotp: 'Counter-based (HOTP)',
     locked: '🔒Vault2FA is locked.',
+    unlockPlaceholder: 'Fill in passphrase here then press ENTER',
   };
 
   function byId(id){ return document.getElementById(id); }
@@ -231,6 +232,26 @@
       }
     }
   }
+  async function unlockFromLockedInput(passphraseInput, errEl){
+    if(!passphraseInput) return;
+    const passphrase = passphraseInput.value;
+    if(errEl){
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
+    try {
+      const response = await browserApi.runtime.sendMessage({ action: 'unlockVault', passphrase });
+      if(!response || response.success === false) throw new Error(response && response.error ? response.error : 'Failed to unlock vault.');
+      state.locked = false;
+      await refreshVisibleAccounts();
+      renderDropdown();
+    } catch(err){
+      if(errEl){
+        errEl.textContent = err && err.message ? err.message : String(err);
+        errEl.style.display = 'block';
+      }
+    }
+  }
   function showLockedDropdown(input){
     const dd = ensureDropdown();
     dd.replaceChildren();
@@ -238,7 +259,23 @@
     const header = buildHeader();
     const locked = document.createElement('div');
     locked.className = 'vault2fa-autofill__locked';
-    locked.textContent = t('locked');
+    const lockedText = document.createElement('div');
+    lockedText.textContent = t('locked');
+    const passphraseInput = document.createElement('input');
+    passphraseInput.className = 'vault2fa-autofill__unlock-input';
+    passphraseInput.type = 'password';
+    passphraseInput.placeholder = t('unlockPlaceholder');
+    passphraseInput.autocomplete = 'current-password';
+    const err = document.createElement('div');
+    err.className = 'vault2fa-autofill__unlock-error';
+    err.style.display = 'none';
+    passphraseInput.addEventListener('keydown', ev => {
+      if(ev.key !== 'Enter') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      unlockFromLockedInput(passphraseInput, err).catch(() => {});
+    });
+    locked.append(lockedText, passphraseInput, err);
     dd.append(header, locked);
     state.activeInput = input;
     state.accounts = [];
