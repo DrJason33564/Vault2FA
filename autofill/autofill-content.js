@@ -13,6 +13,8 @@
     theme: 'auto',
     language: window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US',
     locked: false,
+    unlockPassphrase: '',
+    unlockError: '',
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
@@ -125,6 +127,8 @@
     state.activeInput = null;
     state.accounts = [];
     state.locked = false;
+    state.unlockPassphrase = '';
+    state.unlockError = '';
     stopTimer();
   }
   async function requestCode(account){
@@ -235,6 +239,7 @@
   async function unlockFromLockedInput(passphraseInput, errEl){
     if(!passphraseInput) return;
     const passphrase = passphraseInput.value;
+    state.unlockError = '';
     if(errEl){
       errEl.textContent = '';
       errEl.style.display = 'none';
@@ -243,17 +248,21 @@
       const response = await browserApi.runtime.sendMessage({ action: 'unlockVault', passphrase });
       if(!response || response.success === false) throw new Error(response && response.error ? response.error : 'Failed to unlock vault.');
       state.locked = false;
+      state.unlockPassphrase = '';
+      state.unlockError = '';
       await refreshVisibleAccounts();
       renderDropdown();
     } catch(err){
       if(errEl){
-        errEl.textContent = err && err.message ? err.message : String(err);
+        state.unlockError = err && err.message ? err.message : String(err);
+        errEl.textContent = state.unlockError;
         errEl.style.display = 'block';
       }
     }
   }
   function showLockedDropdown(input){
     const dd = ensureDropdown();
+    const shouldRestoreUnlockFocus = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('vault2fa-autofill__unlock-input');
     dd.replaceChildren();
     dd.dataset.theme = currentTheme();
     const header = buildHeader();
@@ -266,15 +275,24 @@
     passphraseInput.type = 'password';
     passphraseInput.placeholder = t('unlockPlaceholder');
     passphraseInput.autocomplete = 'current-password';
+    passphraseInput.value = state.unlockPassphrase;
     const err = document.createElement('div');
     err.className = 'vault2fa-autofill__unlock-error';
-    err.style.display = 'none';
+    err.textContent = state.unlockError;
+    err.style.display = state.unlockError ? 'block' : 'none';
+    passphraseInput.addEventListener('input', () => {
+      state.unlockPassphrase = passphraseInput.value;
+      state.unlockError = '';
+      err.textContent = '';
+      err.style.display = 'none';
+    });
     passphraseInput.addEventListener('keydown', ev => {
+      ev.stopPropagation();
       if(ev.key !== 'Enter') return;
       ev.preventDefault();
-      ev.stopPropagation();
       unlockFromLockedInput(passphraseInput, err).catch(() => {});
     });
+    passphraseInput.addEventListener('click', ev => { ev.stopPropagation(); });
     locked.append(lockedText, passphraseInput, err);
     dd.append(header, locked);
     state.activeInput = input;
@@ -282,6 +300,9 @@
     state.locked = true;
     positionDropdown(input);
     dd.style.display = 'block';
+    if(shouldRestoreUnlockFocus){
+      try { passphraseInput.focus({ preventScroll: true }); } catch(_) { passphraseInput.focus(); }
+    }
     stopTimer();
   }
   function renderDropdown(){
