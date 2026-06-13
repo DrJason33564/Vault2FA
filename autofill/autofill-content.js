@@ -15,6 +15,7 @@
     locked: false,
     unlockPassphrase: '',
     unlockError: '',
+    repositionFrame: null,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
@@ -105,12 +106,18 @@
     state.dropdown = root;
     return root;
   }
+  function isInsideDropdown(node){
+    return !!(state.dropdown && node && state.dropdown.contains(node));
+  }
   function positionDropdown(input){
     const dd = ensureDropdown();
+    if(!input || isInsideDropdown(input) || !input.isConnected || typeof input.getBoundingClientRect !== 'function') return false;
     const rect = input.getBoundingClientRect();
-    dd.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    dd.style.left = `${window.scrollX + rect.left}px`;
+    if(!rect || (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0)) return false;
+    dd.style.top = `${rect.bottom + 6}px`;
+    dd.style.left = `${rect.left}px`;
     dd.style.minWidth = `${Math.max(220, rect.width)}px`;
+    return true;
   }
   function stopTimer(){ if(state.timer){ clearInterval(state.timer); state.timer = null; } }
   async function tick(){
@@ -129,6 +136,10 @@
     state.locked = false;
     state.unlockPassphrase = '';
     state.unlockError = '';
+    if(state.repositionFrame){
+      cancelAnimationFrame(state.repositionFrame);
+      state.repositionFrame = null;
+    }
     stopTimer();
   }
   async function requestCode(account){
@@ -298,7 +309,10 @@
     state.activeInput = input;
     state.accounts = [];
     state.locked = true;
-    positionDropdown(input);
+    if(!positionDropdown(input)){
+      hideDropdown();
+      return;
+    }
     dd.style.display = 'block';
     if(shouldRestoreUnlockFocus){
       try { passphraseInput.focus({ preventScroll: true }); } catch(_) { passphraseInput.focus(); }
@@ -380,7 +394,7 @@
   async function onFocusIn(event){
     await preferencesReady.catch(() => {});
     const input = event.target;
-    if(!isOtpInput(input)) return;
+    if(isInsideDropdown(input) || !isOtpInput(input)) return;
     state.activeInput = input;
     try {
       const response = await lookupAccounts(window.location.hostname || '');
@@ -399,7 +413,14 @@
     if(state.dropdown.contains(event.target) || event.target === state.activeInput) return;
     hideDropdown();
   }
-  function onReposition(){ if(state.dropdown && state.activeInput && state.dropdown.style.display === 'block') positionDropdown(state.activeInput); }
+  function onReposition(){
+    if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block' || state.repositionFrame) return;
+    state.repositionFrame = requestAnimationFrame(() => {
+      state.repositionFrame = null;
+      if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block') return;
+      if(!positionDropdown(state.activeInput)) hideDropdown();
+    });
+  }
 
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('click', onDocClick, true);

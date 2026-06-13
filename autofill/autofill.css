@@ -1,6 +1,6 @@
 
 #vault2fa-autofill.vault2fa-autofill {
-  position: absolute;
+  position: fixed;
   z-index: 2147483647;
   width: min(320px, calc(100vw - 16px));
   border-radius: 14px;
