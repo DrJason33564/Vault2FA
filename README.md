@@ -20,7 +20,7 @@
 - 支持通过 `otpauth://` URI、json文件或二维码形式导入/导出账号数据
 - 通过拖动账户卡片以重新排序  
 - 支持从Google Authenticator以及微软Authenticator导入数据  
-- 支持根据自定义的网址匹配规则识别验证码输入框并自动填充  
+- 支持根据自定义的网址匹配规则、自动识别验证码输入框或右键唤起以自动填充  
 - 支持通过右键菜单直接扫描网页内的二维码图片  
 - 完全支持移动端  
 
@@ -83,12 +83,14 @@ Google Authenticator使用Base64编码后protobuf结构的`otpauth-migration://`
 - `manifest.json`: 扩展配置
 - `popup/`: 主弹窗界面与逻辑
 - `qr/`: 二维码扫描与预览页面
-- `background.js`: 后台逻辑
+- `background/`: 后台逻辑
 - `autofill/`: 自动填充弹窗
 - `json-import/`: 通过JSON文件导入账号页面
 - `migration/`: 对第三方来源进行解码
 - `locales/`: 本地化文件
 - `third-party/`: 第三方库
+
+详情见[structure.md](./structure.md)
 
 ### 致谢
 
