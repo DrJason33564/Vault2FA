@@ -13,24 +13,29 @@
     theme: 'auto',
     language: window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US',
     locked: false,
+    unlockPassphrase: '',
+    unlockError: '',
+    repositionFrame: null,
+    lastContextInput: null,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
-  const I18N = {
-    'en-US': {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: 'Select a code to autofill',
-      accountFallback: 'Account',
-      hotp: 'Counter-based (HOTP)',
-      locked: '🔒Vault2FA is locked.',
-    },
+  const I18N = {};
+  const AUTOFILL_FALLBACK = {
+    titleMain: 'Vault',
+    titleAccent: '2FA',
+    subtitle: 'Select a code to autofill',
+    accountFallback: 'Account',
+    hotp: 'Counter-based (HOTP)',
+    locked: '🔒Vault2FA is locked.',
+    unlockPlaceholder: 'Fill in passphrase here then press ENTER',
   };
 
   function byId(id){ return document.getElementById(id); }
   function t(key){
     return (I18N[state.language] && I18N[state.language][key])
       || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+      || AUTOFILL_FALLBACK[key]
       || key;
   }
   function currentTheme(){
@@ -62,20 +67,25 @@
       state.theme = result.uiTheme || 'auto';
       state.language = resolveLocaleId(result.uiLanguage);
       if(window.Vault2FALocales){
-        await applyAutofillLocale(DEFAULT_LOCALE_ID);
-        if(state.language !== DEFAULT_LOCALE_ID) await applyAutofillLocale(state.language);
+        await applyAutofillLocale(state.language);
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
-        if(state.dropdown.style.display === 'block') renderDropdown();
+        if(state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
       }
     } catch(_) {}
   }
   const preferencesReady = loadPreferences();
 
+  function isSupportedTextInput(input){
+    if(!input || !input.tagName) return false;
+    if(input.tagName === 'TEXTAREA') return !input.disabled && !input.readOnly;
+    if(input.tagName !== 'INPUT') return false;
+    if(['hidden','submit','button','checkbox','radio','file','image','reset','range','color'].includes(String(input.type || '').toLowerCase())) return false;
+    return !input.disabled && !input.readOnly;
+  }
   function isOtpInput(input){
-    if(!input || input.tagName !== 'INPUT') return false;
-    if(['hidden','submit','button','checkbox','radio'].includes(String(input.type || '').toLowerCase())) return false;
+    if(!isSupportedTextInput(input) || input.tagName !== 'INPUT') return false;
     const parts = [input.name, input.id, input.placeholder, input.className, input.getAttribute('aria-label'), input.getAttribute('autocomplete')]
       .filter(Boolean).join(' ').toLowerCase();
     if(OTP_HINTS.some(token => parts.includes(token))) return true;
@@ -103,12 +113,18 @@
     state.dropdown = root;
     return root;
   }
+  function isInsideDropdown(node){
+    return !!(state.dropdown && node && state.dropdown.contains(node));
+  }
   function positionDropdown(input){
     const dd = ensureDropdown();
+    if(!input || isInsideDropdown(input) || !input.isConnected || typeof input.getBoundingClientRect !== 'function') return false;
     const rect = input.getBoundingClientRect();
-    dd.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    dd.style.left = `${window.scrollX + rect.left}px`;
+    if(!rect || (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0)) return false;
+    dd.style.top = `${rect.bottom + 6}px`;
+    dd.style.left = `${rect.left}px`;
     dd.style.minWidth = `${Math.max(220, rect.width)}px`;
+    return true;
   }
   function stopTimer(){ if(state.timer){ clearInterval(state.timer); state.timer = null; } }
   async function tick(){
@@ -125,6 +141,12 @@
     state.activeInput = null;
     state.accounts = [];
     state.locked = false;
+    state.unlockPassphrase = '';
+    state.unlockError = '';
+    if(state.repositionFrame){
+      cancelAnimationFrame(state.repositionFrame);
+      state.repositionFrame = null;
+    }
     stopTimer();
   }
   async function requestCode(account){
@@ -232,20 +254,76 @@
       }
     }
   }
+  async function unlockFromLockedInput(passphraseInput, errEl){
+    if(!passphraseInput) return;
+    const passphrase = passphraseInput.value;
+    state.unlockError = '';
+    if(errEl){
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
+    try {
+      const response = await browserApi.runtime.sendMessage({ action: 'unlockVault', passphrase });
+      if(!response || response.success === false) throw new Error(response && response.error ? response.error : 'Failed to unlock vault.');
+      state.locked = false;
+      state.unlockPassphrase = '';
+      state.unlockError = '';
+      await refreshVisibleAccounts();
+      renderDropdown();
+    } catch(err){
+      if(errEl){
+        state.unlockError = err && err.message ? err.message : String(err);
+        errEl.textContent = state.unlockError;
+        errEl.style.display = 'block';
+      }
+    }
+  }
   function showLockedDropdown(input){
     const dd = ensureDropdown();
+    const shouldRestoreUnlockFocus = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('vault2fa-autofill__unlock-input');
     dd.replaceChildren();
     dd.dataset.theme = currentTheme();
     const header = buildHeader();
     const locked = document.createElement('div');
     locked.className = 'vault2fa-autofill__locked';
-    locked.textContent = t('locked');
+    const lockedText = document.createElement('div');
+    lockedText.textContent = t('locked');
+    const passphraseInput = document.createElement('input');
+    passphraseInput.className = 'vault2fa-autofill__unlock-input';
+    passphraseInput.type = 'password';
+    passphraseInput.placeholder = t('unlockPlaceholder');
+    passphraseInput.autocomplete = 'current-password';
+    passphraseInput.value = state.unlockPassphrase;
+    const err = document.createElement('div');
+    err.className = 'vault2fa-autofill__unlock-error';
+    err.textContent = state.unlockError;
+    err.style.display = state.unlockError ? 'block' : 'none';
+    passphraseInput.addEventListener('input', () => {
+      state.unlockPassphrase = passphraseInput.value;
+      state.unlockError = '';
+      err.textContent = '';
+      err.style.display = 'none';
+    });
+    passphraseInput.addEventListener('keydown', ev => {
+      ev.stopPropagation();
+      if(ev.key !== 'Enter') return;
+      ev.preventDefault();
+      unlockFromLockedInput(passphraseInput, err).catch(() => {});
+    });
+    passphraseInput.addEventListener('click', ev => { ev.stopPropagation(); });
+    locked.append(lockedText, passphraseInput, err);
     dd.append(header, locked);
     state.activeInput = input;
     state.accounts = [];
     state.locked = true;
-    positionDropdown(input);
+    if(!positionDropdown(input)){
+      hideDropdown();
+      return;
+    }
     dd.style.display = 'block';
+    if(shouldRestoreUnlockFocus){
+      try { passphraseInput.focus({ preventScroll: true }); } catch(_) { passphraseInput.focus(); }
+    }
     stopTimer();
   }
   function renderDropdown(){
@@ -301,9 +379,13 @@
     const hostname = window.location.hostname || '';
     const response = await lookupAccounts(hostname);
     if(response.locked){
-      state.locked = true;
       state.accounts = [];
-      renderDropdown();
+      if(!state.locked){
+        state.locked = true;
+        renderDropdown();
+      } else {
+        stopTimer();
+      }
       return;
     }
     state.locked = false;
@@ -316,34 +398,65 @@
     const shouldRerender = idSet.size !== state.accounts.filter(acc => acc.type !== 'hotp').length;
     if(shouldRerender) renderDropdown();
   }
-  async function onFocusIn(event){
+  async function showAutofillForInput(input){
     await preferencesReady.catch(() => {});
-    const input = event.target;
-    if(!isOtpInput(input)) return;
+    if(isInsideDropdown(input) || !isSupportedTextInput(input)) return false;
     state.activeInput = input;
     try {
       const response = await lookupAccounts(window.location.hostname || '');
       if(response.locked){
         showLockedDropdown(input);
-        return;
+        return true;
       }
       state.locked = false;
       state.accounts = response.accounts;
       if(state.accounts.length) renderDropdown();
       else hideDropdown();
-    } catch(_) { hideDropdown(); }
+      return true;
+    } catch(_) {
+      hideDropdown();
+      return false;
+    }
+  }
+  async function onFocusIn(event){
+    await preferencesReady.catch(() => {});
+    const input = event.target;
+    if(isInsideDropdown(input) || !isOtpInput(input)) return;
+    await showAutofillForInput(input);
+  }
+  function rememberContextInput(event){
+    const target = event.target;
+    state.lastContextInput = isSupportedTextInput(target) ? target : null;
   }
   function onDocClick(event){
     if(!state.dropdown || state.dropdown.style.display !== 'block') return;
     if(state.dropdown.contains(event.target) || event.target === state.activeInput) return;
     hideDropdown();
   }
-  function onReposition(){ if(state.dropdown && state.activeInput && state.dropdown.style.display === 'block') positionDropdown(state.activeInput); }
+  function onReposition(){
+    if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block' || state.repositionFrame) return;
+    state.repositionFrame = requestAnimationFrame(() => {
+      state.repositionFrame = null;
+      if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block') return;
+      if(!positionDropdown(state.activeInput)) hideDropdown();
+    });
+  }
 
   document.addEventListener('focusin', onFocusIn, true);
+  document.addEventListener('contextmenu', rememberContextInput, true);
   document.addEventListener('click', onDocClick, true);
   window.addEventListener('scroll', onReposition, true);
   window.addEventListener('resize', onReposition);
+  if(browserApi.runtime && browserApi.runtime.onMessage){
+    browserApi.runtime.onMessage.addListener((message) => {
+      if(!message || message.action !== 'openAutofillPopupHere') return false;
+      const input = isSupportedTextInput(state.lastContextInput) && state.lastContextInput.isConnected
+        ? state.lastContextInput
+        : document.activeElement;
+      showAutofillForInput(input).catch(() => hideDropdown());
+      return false;
+    });
+  }
   if(browserApi.storage && browserApi.storage.onChanged){
     browserApi.storage.onChanged.addListener((changes, area) => {
       if(area !== 'local') return;
@@ -357,7 +470,7 @@
         applyAutofillLocale(state.language).catch(() => {});
         changed = true;
       }
-      if(changed && state.dropdown && state.dropdown.style.display === 'block') renderDropdown();
+      if(changed && state.dropdown && state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
     });
   }
   if(window.matchMedia){

@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.3
+VERSION=2.8.2
 
 [Language]
 LANGUAGE=Português (do Brasil) 
@@ -167,8 +167,10 @@ confirmCloudEncryptedOverwrite=Os dados de sincronização baixados estão cript
 downloadedEncryptedCloudData=Dados criptografados da nuvem baixados. O cofre está bloqueado.
 permissionAutofillEnableText=Ativar preenchimento automático
 permissionAutofillEnableHint=Preencher campos de entrada relacionados a 2FA em sites.
-permissionRightclickEnableText=Ativar leitura de QR com clique direito
-permissionRightclickEnableHint=Mostrar uma ação de leitura de QR no menu de contexto ao clicar com o botão direito em uma imagem.
+permissionRightclickEnableQRScanText=Ativar leitura de QR com clique direito
+permissionRightclickEnableQRScanHint=Mostrar uma ação de leitura de QR no menu de contexto ao clicar com o botão direito em uma imagem.
+permissionRightclickEnableAutofillText=Ative o preenchimento automático clicando com o botão direito do mouse.
+permissionRightclickEnableAutofillHint=Adicione uma opção de preenchimento automático ao menu de contexto (clique com o botão direito do mouse) da caixa de entrada.
 permissionSaveBtn=Salvar configurações de permissão
 permissionSavedToast=Configurações de permissão salvas
 
@@ -220,6 +222,8 @@ subtitle=Selecione um código para preenchimento automático
 accountFallback=Conta
 hotp=Baseado em contador (HOTP)
 locked=🔒Vault2FA está bloqueado.
+unlockPlaceholder=Digite a senha e pressione Enter.
 
 [background]
 scanQrFromImage=Escanear código QR
+openAutofillPopup=Abra a janela pop-up de preenchimento automático aqui

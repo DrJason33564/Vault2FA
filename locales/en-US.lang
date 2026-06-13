@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.7.3
+VERSION=2.8.2
 
 [Language]
 LANGUAGE=English
@@ -167,8 +167,10 @@ confirmCloudEncryptedOverwrite=The downloaded sync data is encrypted and needs d
 downloadedEncryptedCloudData=Encrypted cloud data downloaded. Vault is locked.
 permissionAutofillEnableText=Enable autofill feature
 permissionAutofillEnableHint=Fill in 2FA related input fields in websites.
-permissionRightclickEnableText=Enable right-click QR scan
-permissionRightclickEnableHint=Show a QR scanning action in the right-click image context menu.
+permissionRightclickEnableQRScanText=Enable right-click QR scan
+permissionRightclickEnableQRScanHint=Show a QR scanning action in the right-click image context menu.
+permissionRightclickEnableAutofillText=Enable open-autofill-popup context menu
+permissionRightclickEnableAutofillHint=Show a open-autofill-popup action in the right-click input-field context menu.
 permissionSaveBtn=Save Permission Settings
 permissionSavedToast=Permission Settings saved
 
@@ -220,6 +222,8 @@ subtitle=Select a code to autofill
 accountFallback=Account
 hotp=Counter-based (HOTP)
 locked=🔒Vault2FA is locked.
+unlockPlaceholder=Fill in passphrase here then press ENTER.
 
 [background]
 scanQrFromImage=Scan QR code
+openAutofillPopup=Open autofill pop-up here

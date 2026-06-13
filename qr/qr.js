@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 "use strict";
-const OTPAuth = window.OTPAuth;
 const dz       = document.getElementById('dz');
 const fileInput= document.getElementById('fileInput');
 const statusEl = document.getElementById('status');
@@ -10,15 +9,34 @@ const errEl    = document.getElementById('err');
 
 const QR_I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const QR_FALLBACK = {
+  title: 'Vault <em>2FA</em> — QR Scanner',
+  dzTitle: 'Drop a QR image here',
+  dzSub: 'or click to choose a file',
+  waiting: 'Waiting for a QR code image…',
+  resultSub: 'Account added to Vault 2FA — you can close this tab.',
+  hint: 'Tip: you can scan a QR code from webpage directly through right-clicking on it.',
+  notImage: 'Please drop an image file.',
+  scanning: 'Scanning…',
+  qrLibFail: 'QR decoder failed to load.',
+  qrEmpty: 'No QR code data was found.',
+  invalidOtp: 'QR found but not a URI Vault2FA can parse: ',
+  addedSuffix: ' added!',
+  unknownAccount: 'Account',
+  scanFail: 'Could not scan QR image: ',
+  addFail: 'Could not add account: ',
+  loadingFromImage: 'Loading image from web page…',
+  loadImageFail: 'Could not load the selected image: ',
+  migrationAccountsAdded: 'Account imported from third-party source - you can close this tab.',
+};
 let qrLang = DEFAULT_LOCALE_ID;
+let qrStatusBusy = false;
 
-async function loadQrLocales(){
+async function loadQrLocale(localeId){
   if(!window.Vault2FALocales) return;
-  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-  for(const localeId of localeIds){
-    const section = await window.Vault2FALocales.getSection('qr-scanner', localeId);
-    QR_I18N[localeId] = Object.assign({}, QR_I18N[localeId] || {}, section || {});
-  }
+  const targetLocaleId = resolveLocaleId(localeId);
+  const section = await window.Vault2FALocales.getSection('qr-scanner', targetLocaleId);
+  QR_I18N[targetLocaleId] = Object.assign({}, QR_I18N[targetLocaleId] || {}, section || {});
 }
 
 
@@ -33,6 +51,7 @@ function resolveLocaleId(value){
 function qrt(key){
   return (QR_I18N[qrLang] && QR_I18N[qrLang][key])
     || (QR_I18N[DEFAULT_LOCALE_ID] && QR_I18N[DEFAULT_LOCALE_ID][key])
+    || QR_FALLBACK[key]
     || key;
 }
 function qrtFmt(key, values = {}){
@@ -66,16 +85,23 @@ function applyQrI18n(){
   renderQrTitle();
   document.getElementById('dzTitle').textContent = qrt('dzTitle');
   document.getElementById('dzSub').textContent = qrt('dzSub');
-  document.getElementById('status').textContent = qrt('waiting');
+  if(!qrStatusBusy && !resultEl.classList.contains('show') && !errEl.classList.contains('show')){
+    document.getElementById('status').textContent = qrt('waiting');
+  }
   document.getElementById('resultSub').textContent = qrt('resultSub');
   document.getElementById('qrHint').textContent = qrt('hint');
 }
 
-browser.storage.local.get('uiLanguage').then(async (result) => {
-  qrLang = resolveLocaleId(result.uiLanguage);
-  await loadQrLocales();
+const qrLocaleReady = (async () => {
+  try {
+    const result = await browser.storage.local.get('uiLanguage');
+    qrLang = resolveLocaleId(result.uiLanguage);
+  } catch (_) {
+    qrLang = DEFAULT_LOCALE_ID;
+  }
+  await loadQrLocale(qrLang);
   applyQrI18n();
-});
+})();
 
 applyTheme();
 if(window.matchMedia){
@@ -110,7 +136,9 @@ async function processImageUrlFromQuery(){
   hideErr();
   await debugInfo('QR image URL received from context menu', { imageUrl: safeImageUrl });
   try {
-    const response = await fetch(imageUrl);
+    const responsePromise = fetch(imageUrl);
+    await qrLocaleReady.catch(() => {});
+    const response = await responsePromise;
     if(!response || !response.ok) throw new Error(`HTTP ${response ? response.status : 'ERR'}`);
     const blob = await response.blob();
     if(!blob || !(blob.type || '').startsWith('image/')) throw new Error('Not an image resource.');
@@ -160,30 +188,26 @@ async function imageDataFromFile(file){
 
 function buildDecodeCandidates(imageData){
   const maxDimension = Math.max(imageData.width, imageData.height);
-  // 对高像素相机图片进行自适应缩放，可显著提升移动端识别速度与稳定性。
-  const targetMaxDimensions = [1600, 1200, 900, 700, 500];
-  const ratios = Array.from(
-    new Set(
-      [1].concat(
-        targetMaxDimensions
-          .filter((value) => value > 0)
-          .map((value) => Math.min(1, value / maxDimension))
-      )
-    )
-  ).sort((a, b) => b - a);
+  const isLargeImage = maxDimension > 2000;
+  // 对高像素相机图片先扫描较小候选图，避免在原图正反色解码上浪费时间。
+  const targetMaxDimensions = isLargeImage ? [1200, 1600, 900, 700, 500, 'full'] : ['full', 1600, 1200, 900, 700, 500];
+  const seenSizes = new Set();
 
-  const candidates = [];
-  ratios.forEach((ratio) => {
+  return targetMaxDimensions.reduce((candidates, targetMaxDimension) => {
+    const ratio = targetMaxDimension === 'full' ? 1 : Math.min(1, targetMaxDimension / maxDimension);
     const width = Math.max(1, Math.round(imageData.width * ratio));
     const height = Math.max(1, Math.round(imageData.height * ratio));
+    const sizeKey = `${width}x${height}`;
+    if(seenSizes.has(sizeKey)) return candidates;
+    seenSizes.add(sizeKey);
     candidates.push({
       name: ratio === 1 ? 'full' : `scaled-${width}x${height}`,
       width,
       height,
       data: resizeImageData(imageData, width, height),
     });
-  });
-  return candidates;
+    return candidates;
+  }, []);
 }
 
 function resizeImageData(imageData, width, height){
@@ -217,17 +241,21 @@ async function decodeQrText(file){
     pixelSha256: await sha256Hex(imageData.data),
   });
   const candidates = buildDecodeCandidates(imageData);
+  const inversionAttempts = ['dontInvert', 'onlyInvert'];
   for(const candidate of candidates){
-    const startedAt = Date.now();
-    const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: 'attemptBoth' });
-    await debugInfo('QR decode attempt', {
-      candidate: candidate.name,
-      width: candidate.width,
-      height: candidate.height,
-      elapsedMs: Date.now() - startedAt,
-      hasValue: !!(result && result.data),
-    });
-    if(result && result.data) return result.data;
+    for(const inversionAttempt of inversionAttempts){
+      const startedAt = Date.now();
+      const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: inversionAttempt });
+      await debugInfo('QR decode attempt', {
+        candidate: candidate.name,
+        inversionAttempt,
+        width: candidate.width,
+        height: candidate.height,
+        elapsedMs: Date.now() - startedAt,
+        hasValue: !!(result && result.data),
+      });
+      if(result && result.data) return result.data;
+    }
   }
   return '';
 }
@@ -242,11 +270,7 @@ async function process(file){
   try{
     const rawValue = await decodeQrText(file);
     const rawText = rawValue ? String(rawValue) : '';
-    const isMigrationUri = !!(
-      rawText &&
-      window.Vault2FAGoogleMigration &&
-      window.Vault2FAGoogleMigration.isGoogleMigrationUri(rawText)
-    );
+    const isMigrationUri = /^otpauth-migration:\/\//i.test(rawText);
     await debugInfo('QR decode result', {
       hasValue: !!rawValue,
       rawLength: rawText.length,
@@ -257,63 +281,26 @@ async function process(file){
 
     const isStandardOtpAuthUri = rawText.startsWith('otpauth://');
     const isNonOtpAuthQrPayload = !isStandardOtpAuthUri;
-    let uris = [rawValue];
-    if(isMigrationUri){
-      try {
-        const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(rawValue);
-        uris = (decoded.accounts || []).map(item =>
-          window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
-        );
-      } catch(e){
-        await debugInfo('QR migration decode failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
-        showErr(qrt('invalidOtp') + (e && e.message ? e.message : String(e)));
-        return;
-      }
+    await debugInfo('QR -> background request', {
+      action: 'addAccountsFromQrPayload',
+      rawLength: rawText.length,
+      rawPreview: buildSafeQrPreview(rawText),
+    });
+    const resp = await browser.runtime.sendMessage({ action: 'addAccountsFromQrPayload', payload: rawText });
+    await debugInfo('QR <- background response', {
+      success: !!(resp && resp.success),
+      error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
+      importedCount: resp && resp.importedCount,
+      failedCount: resp && resp.failedCount,
+      accounts: resp && Array.isArray(resp.accounts) ? resp.accounts.map(summarizeAccount) : [],
+      sync: resp && resp.sync ? resp.sync : undefined,
+    });
+    if(!resp || resp.success === false){
+      throw new Error((resp && resp.error) || 'Failed to add account.');
     }
 
-    if(!uris.length) throw new Error(qrt('qrEmpty'));
-
-    const addedAccounts = [];
-
-    for(const uri of uris){
-      let parsed;
-      try {
-        parsed = OTPAuth.URI.parse(uri);
-      } catch(e){
-        await debugInfo('QR parse failed', { error: toDebugEnglishMessage(e && e.message ? e.message : String(e)) });
-        showErr(qrt('invalidOtp') + e.message);
-        return;
-      }
-
-      const acc = {
-        id:        generateId(),
-        type:      parsed instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
-        issuer:    parsed.issuer  || '',
-        label:     parsed.label   || '',
-        secret:    parsed.secret.base32,
-        algorithm: parsed.algorithm || 'SHA1',
-        digits:    parsed.digits,
-        period:    parsed instanceof OTPAuth.TOTP ? parsed.period  : undefined,
-        counter:   parsed instanceof OTPAuth.HOTP ? parsed.counter : undefined,
-      };
-
-      await debugInfo('QR parsed account', summarizeAccount(acc));
-      const requestPayload = { action: 'addAccountFromQr', account: summarizeAccount(acc) };
-      await debugInfo('QR -> background request', requestPayload);
-      const resp = await browser.runtime.sendMessage({ action: 'addAccountFromQr', account: acc });
-      await debugInfo('QR <- background response', {
-        success: !!(resp && resp.success),
-        error: resp && resp.error ? toDebugEnglishMessage(String(resp.error)) : undefined,
-        account: resp && resp.account ? summarizeAccount(resp.account) : undefined,
-        sync: resp && resp.sync ? resp.sync : undefined,
-      });
-      if(!resp || resp.success === false){
-        throw new Error((resp && resp.error) || 'Failed to add account.');
-      }
-
-      addedAccounts.push(acc);
-    }
-
+    const addedAccounts = Array.isArray(resp.accounts) ? resp.accounts : [];
+    if(!addedAccounts.length) throw new Error(qrt('qrEmpty'));
     const first = addedAccounts[0] || null;
     const name = (isNonOtpAuthQrPayload || addedAccounts.length > 1)
       ? qrtFmt('migrationAccountsAdded', { count: addedAccounts.length })
@@ -323,7 +310,6 @@ async function process(file){
     resultEl.classList.add('show');
     showStatus('');
     hideErr();
-    setTimeout(() => window.close(), 2500);
   } catch(e){
     await debugInfo('QR processing failed', {
       error: toDebugEnglishMessage(e && e.message ? e.message : String(e)),
@@ -335,10 +321,6 @@ async function process(file){
   }
 }
 
-function generateId(){
-  const rand = (crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
-  return 'acc_' + rand;
-}
 function maskTail(value, keepHead = 4, keepTail = 2){
   const text = String(value || '');
   if(!text) return '';
@@ -363,10 +345,7 @@ function maskContextImageUrl(input){
 function buildSafeQrPreview(rawText){
   const text = String(rawText || '');
   if(!text) return '';
-  const isMigration = !!(
-    window.Vault2FAGoogleMigration &&
-    window.Vault2FAGoogleMigration.isGoogleMigrationUri(text)
-  );
+  const isMigration = /^otpauth-migration:\/\//i.test(text);
   const masked = isMigration ? maskMigrationData(text) : maskOtpUriSecrets(text);
   return masked.slice(0, 120);
 }
@@ -418,7 +397,10 @@ async function sha256Hex(bytes){
     return '';
   }
 }
-function showStatus(msg){ statusEl.textContent = msg; }
+function showStatus(msg){
+  statusEl.textContent = msg;
+  qrStatusBusy = !!msg && msg !== qrt('waiting');
+}
 function hideErr(){ errEl.textContent=''; errEl.classList.remove('show'); }
 function showErr(msg){ errEl.textContent=msg; errEl.classList.add('show'); showStatus(''); }
 

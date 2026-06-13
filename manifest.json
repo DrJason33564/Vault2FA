@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vault2FA",
-  "version": "2.7.3",
+  "version": "2.8.0",
   "description": "A fine TOTP/HOTP 2FA extension for Firefox with optional sync and auto fill.",
   "icons": {
     "16": "icons/icon16.png",
@@ -16,13 +16,22 @@
     "clipboardWrite",
     "contextMenus",
     "scripting",
-    "alarms"
+    "alarms",
+    "unlimitedStorage"
   ],
   "background": {
     "scripts": [
       "third-party/otpauth.min.js",
       "locales/i18n.js",
-      "background.js"
+      "background/debug.js",
+      "background/storage-vault.js",
+      "migration/google.js",
+      "background/otp-account.js",
+      "background/qr-background.js",
+      "background/sync.js",
+      "background/autofill-background.js",
+      "background/context-menu.js",
+      "background/background.js"
     ]
   },
   "action": {

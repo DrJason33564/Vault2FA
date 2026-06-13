@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.3
+VERSION=2.8.2
 
 [Language]
 LANGUAGE=Deutsch
@@ -167,8 +167,10 @@ confirmCloudEncryptedOverwrite=Die heruntergeladenen Synchronisierungsdaten sind
 downloadedEncryptedCloudData=Verschlüsselte Cloud-Daten heruntergeladen. Der Tresor ist gesperrt.
 permissionAutofillEnableText=Autofill-Funktion aktivieren
 permissionAutofillEnableHint=2FA-bezogene Eingabefelder auf Websites ausfüllen.
-permissionRightclickEnableText=QR-Scan per Rechtsklick aktivieren
-permissionRightclickEnableHint=Im Rechtsklick-Bildkontextmenü eine QR-Scan-Aktion anzeigen.
+permissionRightclickEnableQRScanText=QR-Scan per Rechtsklick aktivieren
+permissionRightclickEnableQRScanHint=Im Rechtsklick-Bildkontextmenü eine QR-Scan-Aktion anzeigen.
+permissionRightclickEnableAutofillText=Automatisches Ausfüllen per Rechtsklick aktivieren
+permissionRightclickEnableAutofillHint=Füge dem Kontextmenü des Eingabefelds eine Autofill-Option hinzu.
 permissionSaveBtn=Berechtigungseinstellungen speichern
 permissionSavedToast=Berechtigungseinstellungen gespeichert
 
@@ -220,6 +222,8 @@ subtitle=Einen Code für Autofill auswählen
 accountFallback=Konto
 hotp=Zählerbasiert (HOTP)
 locked=🔒Vault2FA ist gesperrt.
+unlockPlaceholder=Geben Sie das Passwort ein und drücken Sie die Eingabetaste.
 
 [background]
 scanQrFromImage=QR-Code scannen
+openAutofillPopup=Öffnen Sie hier das Autofill-Popup
