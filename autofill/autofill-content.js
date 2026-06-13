@@ -69,7 +69,7 @@
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
-        if(state.dropdown.style.display === 'block') renderDropdown();
+        if(state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
       }
     } catch(_) {}
   }
@@ -358,9 +358,13 @@
     const hostname = window.location.hostname || '';
     const response = await lookupAccounts(hostname);
     if(response.locked){
-      state.locked = true;
       state.accounts = [];
-      renderDropdown();
+      if(!state.locked){
+        state.locked = true;
+        renderDropdown();
+      } else {
+        stopTimer();
+      }
       return;
     }
     state.locked = false;
@@ -414,7 +418,7 @@
         applyAutofillLocale(state.language).catch(() => {});
         changed = true;
       }
-      if(changed && state.dropdown && state.dropdown.style.display === 'block') renderDropdown();
+      if(changed && state.dropdown && state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
     });
   }
   if(window.matchMedia){
