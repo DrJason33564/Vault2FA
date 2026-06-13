@@ -13,6 +13,9 @@
     theme: 'auto',
     language: window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US',
     locked: false,
+    unlockPassphrase: '',
+    unlockError: '',
+    repositionFrame: null,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
@@ -24,6 +27,7 @@
     accountFallback: 'Account',
     hotp: 'Counter-based (HOTP)',
     locked: '🔒Vault2FA is locked.',
+    unlockPlaceholder: 'Fill in passphrase here then press ENTER',
   };
 
   function byId(id){ return document.getElementById(id); }
@@ -66,7 +70,7 @@
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();
-        if(state.dropdown.style.display === 'block') renderDropdown();
+        if(state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
       }
     } catch(_) {}
   }
@@ -102,12 +106,18 @@
     state.dropdown = root;
     return root;
   }
+  function isInsideDropdown(node){
+    return !!(state.dropdown && node && state.dropdown.contains(node));
+  }
   function positionDropdown(input){
     const dd = ensureDropdown();
+    if(!input || isInsideDropdown(input) || !input.isConnected || typeof input.getBoundingClientRect !== 'function') return false;
     const rect = input.getBoundingClientRect();
-    dd.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    dd.style.left = `${window.scrollX + rect.left}px`;
+    if(!rect || (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0)) return false;
+    dd.style.top = `${rect.bottom + 6}px`;
+    dd.style.left = `${rect.left}px`;
     dd.style.minWidth = `${Math.max(220, rect.width)}px`;
+    return true;
   }
   function stopTimer(){ if(state.timer){ clearInterval(state.timer); state.timer = null; } }
   async function tick(){
@@ -124,6 +134,12 @@
     state.activeInput = null;
     state.accounts = [];
     state.locked = false;
+    state.unlockPassphrase = '';
+    state.unlockError = '';
+    if(state.repositionFrame){
+      cancelAnimationFrame(state.repositionFrame);
+      state.repositionFrame = null;
+    }
     stopTimer();
   }
   async function requestCode(account){
@@ -231,20 +247,76 @@
       }
     }
   }
+  async function unlockFromLockedInput(passphraseInput, errEl){
+    if(!passphraseInput) return;
+    const passphrase = passphraseInput.value;
+    state.unlockError = '';
+    if(errEl){
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
+    try {
+      const response = await browserApi.runtime.sendMessage({ action: 'unlockVault', passphrase });
+      if(!response || response.success === false) throw new Error(response && response.error ? response.error : 'Failed to unlock vault.');
+      state.locked = false;
+      state.unlockPassphrase = '';
+      state.unlockError = '';
+      await refreshVisibleAccounts();
+      renderDropdown();
+    } catch(err){
+      if(errEl){
+        state.unlockError = err && err.message ? err.message : String(err);
+        errEl.textContent = state.unlockError;
+        errEl.style.display = 'block';
+      }
+    }
+  }
   function showLockedDropdown(input){
     const dd = ensureDropdown();
+    const shouldRestoreUnlockFocus = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('vault2fa-autofill__unlock-input');
     dd.replaceChildren();
     dd.dataset.theme = currentTheme();
     const header = buildHeader();
     const locked = document.createElement('div');
     locked.className = 'vault2fa-autofill__locked';
-    locked.textContent = t('locked');
+    const lockedText = document.createElement('div');
+    lockedText.textContent = t('locked');
+    const passphraseInput = document.createElement('input');
+    passphraseInput.className = 'vault2fa-autofill__unlock-input';
+    passphraseInput.type = 'password';
+    passphraseInput.placeholder = t('unlockPlaceholder');
+    passphraseInput.autocomplete = 'current-password';
+    passphraseInput.value = state.unlockPassphrase;
+    const err = document.createElement('div');
+    err.className = 'vault2fa-autofill__unlock-error';
+    err.textContent = state.unlockError;
+    err.style.display = state.unlockError ? 'block' : 'none';
+    passphraseInput.addEventListener('input', () => {
+      state.unlockPassphrase = passphraseInput.value;
+      state.unlockError = '';
+      err.textContent = '';
+      err.style.display = 'none';
+    });
+    passphraseInput.addEventListener('keydown', ev => {
+      ev.stopPropagation();
+      if(ev.key !== 'Enter') return;
+      ev.preventDefault();
+      unlockFromLockedInput(passphraseInput, err).catch(() => {});
+    });
+    passphraseInput.addEventListener('click', ev => { ev.stopPropagation(); });
+    locked.append(lockedText, passphraseInput, err);
     dd.append(header, locked);
     state.activeInput = input;
     state.accounts = [];
     state.locked = true;
-    positionDropdown(input);
+    if(!positionDropdown(input)){
+      hideDropdown();
+      return;
+    }
     dd.style.display = 'block';
+    if(shouldRestoreUnlockFocus){
+      try { passphraseInput.focus({ preventScroll: true }); } catch(_) { passphraseInput.focus(); }
+    }
     stopTimer();
   }
   function renderDropdown(){
@@ -300,9 +372,13 @@
     const hostname = window.location.hostname || '';
     const response = await lookupAccounts(hostname);
     if(response.locked){
-      state.locked = true;
       state.accounts = [];
-      renderDropdown();
+      if(!state.locked){
+        state.locked = true;
+        renderDropdown();
+      } else {
+        stopTimer();
+      }
       return;
     }
     state.locked = false;
@@ -318,7 +394,7 @@
   async function onFocusIn(event){
     await preferencesReady.catch(() => {});
     const input = event.target;
-    if(!isOtpInput(input)) return;
+    if(isInsideDropdown(input) || !isOtpInput(input)) return;
     state.activeInput = input;
     try {
       const response = await lookupAccounts(window.location.hostname || '');
@@ -337,7 +413,14 @@
     if(state.dropdown.contains(event.target) || event.target === state.activeInput) return;
     hideDropdown();
   }
-  function onReposition(){ if(state.dropdown && state.activeInput && state.dropdown.style.display === 'block') positionDropdown(state.activeInput); }
+  function onReposition(){
+    if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block' || state.repositionFrame) return;
+    state.repositionFrame = requestAnimationFrame(() => {
+      state.repositionFrame = null;
+      if(!state.dropdown || !state.activeInput || state.dropdown.style.display !== 'block') return;
+      if(!positionDropdown(state.activeInput)) hideDropdown();
+    });
+  }
 
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('click', onDocClick, true);
@@ -356,7 +439,7 @@
         applyAutofillLocale(state.language).catch(() => {});
         changed = true;
       }
-      if(changed && state.dropdown && state.dropdown.style.display === 'block') renderDropdown();
+      if(changed && state.dropdown && state.dropdown.style.display === 'block' && !state.locked) renderDropdown();
     });
   }
   if(window.matchMedia){

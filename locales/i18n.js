@@ -123,8 +123,6 @@
 
   async function getSection(sectionName, language){
     const localeId = language ? localeIdFromLanguage(language) : await getPreferredLocaleId();
-    const localeIds = await discoverLocaleIds();
-    if(!localeIds.includes(localeId)) return {};
     const data = await loadLocaleById(localeId);
     return Object.assign({}, (data && data[sectionName]) || {});
   }
