@@ -226,7 +226,7 @@ Firefox Sync 同步逻辑。
 - 根据 Firefox sync storage 限制估算大小并分片。
 - 支持明文账号数组分片上传。
 - 支持加密 payload 字符串分片上传。
-- 下载 sync 数据并兼容当前 version 3、version 2 和旧结构。
+- 下载 sync 数据并兼容当前 version 1 和旧结构。
 - 下载时可应用到本地：普通账号会写入本地账号；加密 payload 会写入 encrypted storage、清空明文账号、锁定 vault 并启用加密状态。
 - 维护自动上传 alarm。
 
@@ -505,7 +505,7 @@ Google Authenticator migration URI 解码工具。
 3. 如果上传明文账号，按账号数组分片写入 `browser.storage.sync`。
 4. 如果上传加密 payload，则将 payload JSON 字符串分片写入 sync。
 5. 下载时，background 读取 sync metadata 和 chunk。
-6. 支持 version 3、version 2 和旧格式。
+6. 支持 version 1 和旧格式。
 7. 如果下载普通账号并 apply，则覆盖本地账号。
 8. 如果下载加密 payload 并允许 encrypted，则写入 encrypted payload，清空明文账号，并将 vault 置为加密锁定状态。
 

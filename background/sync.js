@@ -152,7 +152,7 @@ async function uploadToSync(accounts, settings, options = {}){
     chunkedAccounts = splitAccountsForSync(Array.isArray(accounts) ? accounts : [], baseKey);
   }
   const payload = {
-    version: 3,
+    version: 1,
     sessionId: settings.sessionId,
     updatedAt: Date.now(),
     count: payloadCount,
@@ -165,7 +165,7 @@ async function uploadToSync(accounts, settings, options = {}){
   const previous = await browser.storage.sync.get(baseKey);
   await appendDebugInfo('Sync upload previous metadata loaded', { baseKey, previous });
   const previousPayload = previous[baseKey];
-  const previousChunkCount = previousPayload && (previousPayload.version === 2 || previousPayload.version === 3)
+  const previousChunkCount = previousPayload && previousPayload.version === 1
     ? Math.max(0, Number(previousPayload.chunkCount) || 0)
     : 0;
 
@@ -262,11 +262,11 @@ async function downloadFromSync(sessionId, options = {}){
     throw new Error('No synced data was found for this session ID.');
   }
 
-  let mode = payload.version === 3 ? String(payload.mode || 'plainAccounts') : 'plainAccounts';
+  let mode = payload.version === 1 ? String(payload.mode || 'plainAccounts') : 'plainAccounts';
   let accounts = [];
   let encryptedPayload = null;
   const chunkCount = Math.max(0, Number(payload.chunkCount) || 0);
-  if(payload.version === 3){
+  if(payload.version === 1){
     const chunkKeys = [];
     for(let i = 0; i < chunkCount; i += 1){
       chunkKeys.push(getSyncChunkKey(baseKey, i));
@@ -291,26 +291,6 @@ async function downloadFromSync(sessionId, options = {}){
         throw new Error('Synced encrypted payload is invalid.');
       }
     } else {
-      accounts = [];
-      for(const key of chunkKeys){
-        const chunk = chunkData[key];
-        if(!Array.isArray(chunk)){
-          throw new Error('Synced data is incomplete. Try uploading again from another device.');
-        }
-        accounts.push(...chunk);
-      }
-    }
-  } else if(payload.version === 2){
-    mode = 'plainAccounts';
-    if(chunkCount === 0){
-      accounts = [];
-    } else {
-      const chunkKeys = [];
-      for(let i = 0; i < chunkCount; i += 1){
-        chunkKeys.push(getSyncChunkKey(baseKey, i));
-      }
-      const chunkData = await browser.storage.sync.get(chunkKeys);
-      await appendDebugInfo('Sync download chunk response', { chunkKeys, chunkData, mode });
       accounts = [];
       for(const key of chunkKeys){
         const chunk = chunkData[key];
