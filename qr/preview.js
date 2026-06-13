@@ -16,12 +16,10 @@ function resolveLocaleId(value){
 
 async function loadPreviewLocale(localeId){
   if(!window.Vault2FALocales) return;
-  const section = await window.Vault2FALocales.getSection('qr-previewer', localeId);
-  PREVIEW_I18N[localeId] = Object.assign({}, PREVIEW_I18N[localeId] || {}, section || {});
-  if(localeId !== DEFAULT_LOCALE_ID){
-    const fallback = await window.Vault2FALocales.getSection('qr-previewer', DEFAULT_LOCALE_ID);
-    PREVIEW_I18N[DEFAULT_LOCALE_ID] = Object.assign({}, PREVIEW_I18N[DEFAULT_LOCALE_ID] || {}, fallback || {});
-  }
+  const targetLocaleId = resolveLocaleId(localeId);
+  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
+  const section = await window.Vault2FALocales.getSection('qr-previewer', targetLocaleId);
+  PREVIEW_I18N[targetLocaleId] = Object.assign({}, PREVIEW_I18N[targetLocaleId] || {}, section || {});
 }
 
 function t(key){

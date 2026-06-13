@@ -61,9 +61,8 @@
       const result = await browserApi.storage.local.get(['uiTheme', 'uiLanguage']);
       state.theme = result.uiTheme || 'auto';
       state.language = resolveLocaleId(result.uiLanguage);
-      if(window.Vault2FALocales){
-        await applyAutofillLocale(DEFAULT_LOCALE_ID);
-        if(state.language !== DEFAULT_LOCALE_ID) await applyAutofillLocale(state.language);
+      if(window.Vault2FALocales && state.language !== DEFAULT_LOCALE_ID){
+        await applyAutofillLocale(state.language);
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();

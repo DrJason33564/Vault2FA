@@ -28,13 +28,12 @@ const JSON_IMPORT_FALLBACK = {
 };
 let lang = DEFAULT_LOCALE_ID;
 
-async function loadJsonImportLocales(){
+async function loadJsonImportLocale(localeId){
   if(!window.Vault2FALocales) return;
-  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-  for(const localeId of localeIds){
-    const section = await window.Vault2FALocales.getSection('json-import', localeId);
-    I18N[localeId] = Object.assign({}, I18N[localeId] || {}, section || {});
-  }
+  const targetLocaleId = window.Vault2FALocales.localeIdFromLanguage(localeId);
+  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
+  const section = await window.Vault2FALocales.getSection('json-import', targetLocaleId);
+  I18N[targetLocaleId] = Object.assign({}, I18N[targetLocaleId] || {}, section || {});
 }
 
 function t(key){
@@ -169,7 +168,7 @@ fileInput.addEventListener('change', async (e) => {
 
 browser.storage.local.get('uiLanguage').then(async (result) => {
   lang = window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(result.uiLanguage) : DEFAULT_LOCALE_ID;
-  await loadJsonImportLocales();
+  await loadJsonImportLocale(lang);
   applyI18n();
 });
 

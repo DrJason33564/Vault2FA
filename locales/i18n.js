@@ -108,34 +108,44 @@
     return promise;
   }
 
+  async function getPreferredLocaleId(){
+    try {
+      const result = await browser.storage.local.get('uiLanguage');
+      if(result && result.uiLanguage) return localeIdFromLanguage(result.uiLanguage);
+    } catch (_) {}
+    try {
+      if(browser.i18n && typeof browser.i18n.getUILanguage === 'function'){
+        return localeIdFromLanguage(browser.i18n.getUILanguage());
+      }
+    } catch (_) {}
+    return DEFAULT_LOCALE_ID;
+  }
+
   async function getSection(sectionName, language){
-    const localeId = localeIdFromLanguage(language);
+    const localeId = language ? localeIdFromLanguage(language) : await getPreferredLocaleId();
+    if(localeId === DEFAULT_LOCALE_ID) return {};
     const data = await loadLocaleById(localeId);
-    const section = Object.assign({}, (data && data[sectionName]) || {});
-    if(Object.keys(section).length) return section;
-    if(localeId !== DEFAULT_LOCALE_ID){
-      const fallback = await loadLocaleById(DEFAULT_LOCALE_ID);
-      return Object.assign({}, (fallback && fallback[sectionName]) || {});
-    }
-    return section;
+    return Object.assign({}, (data && data[sectionName]) || {});
+  }
+
+  function getLanguageDisplayName(localeId){
+    try {
+      if(typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function'){
+        const display = new Intl.DisplayNames([localeId, DEFAULT_LOCALE_ID], { type: 'language' }).of(localeId);
+        if(display) return display;
+      }
+    } catch (_) {}
+    return localeId;
   }
 
   async function getAvailableLanguages(){
     const localeIds = await discoverLocaleIds();
-    const list = [];
-    for(const localeId of localeIds){
-      const parsed = await loadLocaleById(localeId);
-      const info = (parsed && parsed.Information) || {};
-      const language = (parsed && parsed.Language) || {};
-      if(!language.LOCALE_ID && !localeId) continue;
-      list.push({
-        localeId: language.LOCALE_ID || localeId,
-        language: language.LANGUAGE || localeId,
-        translator: info.TRANSLATOR || '',
-        version: info.VERSION || '',
-      });
-    }
-    return list;
+    return localeIds.map(localeId => ({
+      localeId,
+      language: getLanguageDisplayName(localeId),
+      translator: '',
+      version: '',
+    }));
   }
 
   window.Vault2FALocales = {
@@ -143,6 +153,7 @@
     normalizeLanguage,
     localeIdFromLanguage,
     loadLocaleById,
+    getPreferredLocaleId,
     getSection,
     discoverLocaleIds,
     getAvailableLanguages,

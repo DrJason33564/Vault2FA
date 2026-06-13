@@ -34,6 +34,172 @@ const TOUCH_DRAG_HOLD_MS = 320;
 const I18N = {};
 let availableLanguages = [];
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const POPUP_FALLBACK = {
+  "localOnly": "Local only",
+  "syncOn": "Sync ON ·",
+  "storageModeLabel": "Storage mode:",
+  "storageModeSync": "Local + Firefox Sync upload",
+  "storageModeLocal": "Local only",
+  "lastUpload": "Last upload:",
+  "lastDownload": "Last local overwrite from cloud:",
+  "uploadSuccess": "Uploaded local data",
+  "syncSaved": "Sync settings saved",
+  "syncDisabled": "Sync settings saved",
+  "needSession": "Please enter a sync session ID first.",
+  "needSessionEnable": "Please enter a sync session ID before enabling sync.",
+  "noAccountsToExport": "No account to export",
+  "copied": "Copied!",
+  "addAccount": "Add Account",
+  "editAccount": "Edit Account",
+  "showQrCode": "Export via QR",
+  "showQrCodeSuccess": "QR Code generated in new tab.",
+  "reorderAccount": "Reorder all accounts by issuers' first letter",
+  "reorderAccountSuccess": "Accounts reordered.",
+  "noAccountsYet": "No account yet",
+  "emptySub": "Add your first account using the\n+ button below.",
+  "vaultLocked": "Vault Locked",
+  "vaultLockSub": "Local vault is locked. Enter your passphrase to unlock this browser session.",
+  "unlockVault": "Unlock Vault",
+  "searchPlaceholder": "Search accounts...",
+  "syncEnabledHint": "Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.",
+  "syncEnableText": "Enable Firefox Sync upload",
+  "syncSessionLabel": "Sync Session ID",
+  "syncSessionHint": "Each session ID is isolated. Use a different ID for each sync group.",
+  "syncIntervalLabel": "Auto Upload Interval (minutes)",
+  "syncIntervalHint": "When auto upload is enabled, local changes upload no more often than this interval.",
+  "syncSaveBtn": "Save Sync Settings",
+  "syncUploadBtn": "Upload Local Data Now",
+  "syncDownloadBtn": "Download Cloud Data to Local",
+  "syncWarnOverwrite": "Downloading from the cloud will overwrite your current local accounts.",
+  "addDrawerTitle": "Add Account",
+  "tabManual": "Manual",
+  "tabQr": "Scan QR",
+  "tabUri": "URI",
+  "labelIssuer": "Issuer / Service",
+  "labelAccount": "Account / Email",
+  "labelSecret": "Secret Key",
+  "labelSecretFormat": "Secret Format",
+  "labelAutofillPatterns": "Autofill Patterns",
+  "hintAutofillPatterns": "Comma-separated. Supports * wildcard matching.",
+  "hintAutofillExample": "Example: github.com, *.github.com",
+  "autofillMatchLabel": "Matching",
+  "noAutofillRules": "No autofill rules set",
+  "labelType": "Type",
+  "labelDigits": "Digits",
+  "labelPeriod": "Period",
+  "qrTabTitle": "Scan a QR Code",
+  "qrTabSub": "A new tab will open where you can drop or pick your QR image. The account will be added automatically when scanned.",
+  "openQrTab": "Open QR Scanner Tab",
+  "labelUri": "otpauth:// otpauth-migration:// URI",
+  "hintUri": "Paste from your QR reader or another authenticator's export.",
+  "saveAccountBtn": "Add Account",
+  "exportDrawerTitle": "Export Accounts",
+  "exportHint": "Keep these safe — they contain your secrets.",
+  "copyExportBtn": "Copy to Clipboard",
+  "exportJsonBtn": "Download JSON File",
+  "exportUriLabel": "otpauth:// URIs",
+  "importDrawerTitle": "Import Accounts",
+  "importInputLabel": "Paste otpauth:// otpauth-migration:// URIs (one per line) or JSON",
+  "importFileHint": "JSON file import opens in a new tab.",
+  "openJsonImportTabBtn": "Open JSON Import Tab",
+  "importBtn": "Import",
+  "editDrawerTitle": "Edit Account",
+  "editSaveBtn": "Save Changes",
+  "deleteConfirm": "Delete this account?",
+  "editBtnTitle": "Edit",
+  "saveEditSuccess": "Account updated",
+  "settingDrawerTitle": "Setting",
+  "settingSecurityTitle": "Sync & Security",
+  "settingPermissionTitle": "Permission",
+  "settingDebugTitle": "Debugging",
+  "vaultEnableText": "Enable local encryption",
+  "vaultEnableHint": "When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.",
+  "labelVaultPassphrase": "Vault Passphrase",
+  "vaultTimerEnableText": "Enable automatic vault lock",
+  "vaultTimerEnableHint": "Automatically lock the vault after inactivity when encryption is enabled.",
+  "labelVaultTimerPeriod": "Auto-lock period (minutes)",
+  "applyVaultBtn": "Apply Security Setting",
+  "lockVaultBtn": "Lock Vault Now",
+  "vaultLockedPill": "Locked",
+  "needEncryptBeforeLock": "You need to encrypt the vault first.",
+  "themeToggleTitle": "Toggle light/dark theme",
+  "themeLight": "Light mode",
+  "themeDark": "Dark mode",
+  "vaultLockedActionBlocked": "Unlock Vault to use this feature.",
+  "debugEnableText": "Enable debug mode",
+  "debugHint": "When enabled, info logs are stored locally and can be downloaded as a .txt file.",
+  "debugDownloadBtn": "Download Debug Log",
+  "debugUnlockedToast": "Debug switch unlocked",
+  "debugModeOn": "Debug mode enabled",
+  "debugModeOff": "Debug mode disabled",
+  "debugLogEmpty": "No debug log available.",
+  "importNothing": "Nothing to import.",
+  "importDuplicateConfirm": "Detected {count} imported item(s) with similar names. Import all parsed accounts anyway?",
+  "importSummary": "Imported {ok} account(s){failPart}{dupPart}",
+  "importFailPart": ", failed {count}",
+  "importDupPart": ", have duplicate {count}",
+  "openJsonImportTabStatus": "JSON import tab opened — continue there.",
+  "exportJsonEmpty": "No accounts available to export.",
+  "exportJsonFilename": "vault2fa-accounts-{timestamp}.json",
+  "exportJsonEncrypted": "Local vault is encrypted. Export as encrypted?",
+  "nextCodeTitle": "Next code",
+  "deleteBtnTitle": "Delete",
+  "clickToCopy": "click to copy",
+  "unknown": "Unknown",
+  "noLabel": "(no label)",
+  "invalidSecretByFormat": "Invalid secret for selected format.",
+  "btnImportTitle": "Import accounts",
+  "btnExportTitle": "Export accounts",
+  "btnSyncTitle": "Sync and security",
+  "btnLangTitle": "Switch language",
+  "unlockPassphrasePlaceholder": "Passphrase",
+  "vaultPassphrasePlaceholder": "At least 6 characters",
+  "secretFormatUtf8": "String (UTF-8)",
+  "secretFormatLatin1": "String (Latin-1)",
+  "btnLangText": "🌐",
+  "jsonMissingAccounts": "Invalid JSON format: missing accounts array.",
+  "jsonMissingSecretOrLabel": "JSON contains item(s) without secret or account label.",
+  "duplicateHint": "Warning: found {count} similar account name{suffix}. You will be asked to confirm before adding.",
+  "never": "Never",
+  "vaultMetaEncryption": "Local encryption:",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "vaultMetaState": "Vault state:",
+  "unlocked": "Unlocked",
+  "locked": "Locked",
+  "notRequired": "Not required",
+  "vaultMetaLastUnlock": "Last unlock:",
+  "vaultUnlockedToast": "Vault unlocked",
+  "qrTabOpenedStatus": "QR scanner tab opened — scan your code there. This popup will update automatically.",
+  "qrAccountAdded": "QR account added!",
+  "needOtpAuthUri": "Please enter an otpauth:// URI.",
+  "useOpenQrTabBtn": "Use the \"Open QR Scanner Tab\" button above.",
+  "secretRequired": "Secret key is required.",
+  "accountNameRequired": "Account name is required.",
+  "accountAdded": "Account added",
+  "accountSaved": "Account saved",
+  "noEditAccountSelected": "No account selected for editing.",
+  "accountNotExists": "Account no longer exists.",
+  "confirmCloudOverwrite": "Cloud data will overwrite your current local accounts. Continue?",
+  "downloadedCloudData": "Downloaded cloud data",
+  "confirmDisableEncryption": "Disable local encryption and store data locally without encryption?",
+  "securitySettingChanged": "Security settings updated",
+  "securitySettingUnchanged": "Security settings unchanged",
+  "vaultLockedToast": "Vault locked",
+  "popupLoadFailed": "Failed to load popup",
+  "migrationAccountsImported": "Account imported from third-party source!",
+  "langVersionMismatch": "Language file version mismatches with add-on version",
+  "syncUseEncryptedPayloadText": "Upload encrypted local vault directlly",
+  "syncUseEncryptedPayloadHint": "When local encryption is enabled, upload the encrypted payload to Firefox Sync instead of plaintext data.",
+  "confirmCloudEncryptedOverwrite": "The downloaded sync data is encrypted and needs decryption. Overwrite local data with encrypted payload and lock vault now?",
+  "downloadedEncryptedCloudData": "Encrypted cloud data downloaded. Vault is locked.",
+  "permissionAutofillEnableText": "Enable autofill feature",
+  "permissionAutofillEnableHint": "Fill in 2FA related input fields in websites.",
+  "permissionRightclickEnableText": "Enable right-click QR scan",
+  "permissionRightclickEnableHint": "Show a QR scanning action in the right-click image context menu.",
+  "permissionSaveBtn": "Save Permission Settings",
+  "permissionSavedToast": "Permission Settings saved"
+};
 let popupVersion = '';
 
 function resolveLocaleId(value){
@@ -46,16 +212,17 @@ function resolveLocaleId(value){
   return raw.toLowerCase().startsWith('zh') ? 'zh-CN' : DEFAULT_LOCALE_ID;
 }
 
-async function loadPopupLocales(){
+async function loadPopupLocale(localeId){
+  if(!window.Vault2FALocales) return;
+  const target = resolveLocaleId(localeId);
+  if(target === DEFAULT_LOCALE_ID) return;
+  const section = await window.Vault2FALocales.getSection('popup', target);
+  I18N[target] = Object.assign({}, I18N[target] || {}, section || {});
+}
+
+async function loadAvailableLanguages(){
   if(!window.Vault2FALocales) return;
   availableLanguages = await window.Vault2FALocales.getAvailableLanguages();
-  for(const meta of availableLanguages){
-    const section = await window.Vault2FALocales.getSection('popup', meta.localeId);
-    I18N[meta.localeId] = Object.assign({}, I18N[meta.localeId] || {}, section || {});
-  }
-  if(!I18N[DEFAULT_LOCALE_ID]){
-    I18N[DEFAULT_LOCALE_ID] = {};
-  }
   try {
     const manifest = browser.runtime.getManifest && browser.runtime.getManifest();
     popupVersion = String((manifest && manifest.version) || '');
@@ -97,7 +264,7 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){
   return (I18N[uiLanguage] && I18N[uiLanguage][key])
-    || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || POPUP_FALLBACK[key]
     || key;
 }
 function tFmt(key, values = {}){
@@ -226,7 +393,7 @@ function renderLanguageDrawer(){
     row.className = 'lang-item';
     if(meta.localeId === uiLanguage) row.classList.add('active');
     row.addEventListener('click', () => {
-      setLanguage(meta.localeId);
+      setLanguage(meta.localeId).catch(() => {});
       closeD('drawLang');
     });
 
@@ -259,8 +426,9 @@ function renderLanguageDrawer(){
   }
 }
 
-function setLanguage(next){
+async function setLanguage(next){
   uiLanguage = resolveLocaleId(next);
+  await loadPopupLocale(uiLanguage);
   document.documentElement.lang = uiLanguage;
   byId('btnLang').textContent = t('btnLangText');
   browser.storage.local.set({ uiLanguage });
@@ -1045,10 +1213,10 @@ async function migrateAccountSequenceIfMissing(){
 async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
-  await loadPopupLocales();
+  await loadAvailableLanguages();
   await loadAccountSettings();
   const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
-  setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
+  await setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
   
   await refreshVaultStatus();

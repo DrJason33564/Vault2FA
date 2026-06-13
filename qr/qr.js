@@ -32,14 +32,12 @@ const QR_FALLBACK = {
 let qrLang = DEFAULT_LOCALE_ID;
 let qrStatusBusy = false;
 
-async function loadQrLocalesFor(localeId){
+async function loadQrLocale(localeId){
   if(!window.Vault2FALocales) return;
-  const requestedLocaleId = resolveLocaleId(localeId);
-  const localeIds = Array.from(new Set([DEFAULT_LOCALE_ID, requestedLocaleId].filter(Boolean)));
-  await Promise.all(localeIds.map(async (targetLocaleId) => {
-    const section = await window.Vault2FALocales.getSection('qr-scanner', targetLocaleId);
-    QR_I18N[targetLocaleId] = Object.assign({}, QR_I18N[targetLocaleId] || {}, section || {});
-  }));
+  const targetLocaleId = resolveLocaleId(localeId);
+  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
+  const section = await window.Vault2FALocales.getSection('qr-scanner', targetLocaleId);
+  QR_I18N[targetLocaleId] = Object.assign({}, QR_I18N[targetLocaleId] || {}, section || {});
 }
 
 
@@ -102,7 +100,7 @@ const qrLocaleReady = (async () => {
   } catch (_) {
     qrLang = DEFAULT_LOCALE_ID;
   }
-  await loadQrLocalesFor(qrLang);
+  await loadQrLocale(qrLang);
   applyQrI18n();
 })();
 
