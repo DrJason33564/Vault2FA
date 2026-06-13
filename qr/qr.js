@@ -188,30 +188,26 @@ async function imageDataFromFile(file){
 
 function buildDecodeCandidates(imageData){
   const maxDimension = Math.max(imageData.width, imageData.height);
-  // 对高像素相机图片进行自适应缩放，可显著提升移动端识别速度与稳定性。
-  const targetMaxDimensions = [1600, 1200, 900, 700, 500];
-  const ratios = Array.from(
-    new Set(
-      [1].concat(
-        targetMaxDimensions
-          .filter((value) => value > 0)
-          .map((value) => Math.min(1, value / maxDimension))
-      )
-    )
-  ).sort((a, b) => b - a);
+  const isLargeImage = maxDimension > 2000;
+  // 对高像素相机图片先扫描较小候选图，避免在原图正反色解码上浪费时间。
+  const targetMaxDimensions = isLargeImage ? [1200, 1600, 900, 700, 500, 'full'] : ['full', 1600, 1200, 900, 700, 500];
+  const seenSizes = new Set();
 
-  const candidates = [];
-  ratios.forEach((ratio) => {
+  return targetMaxDimensions.reduce((candidates, targetMaxDimension) => {
+    const ratio = targetMaxDimension === 'full' ? 1 : Math.min(1, targetMaxDimension / maxDimension);
     const width = Math.max(1, Math.round(imageData.width * ratio));
     const height = Math.max(1, Math.round(imageData.height * ratio));
+    const sizeKey = `${width}x${height}`;
+    if(seenSizes.has(sizeKey)) return candidates;
+    seenSizes.add(sizeKey);
     candidates.push({
       name: ratio === 1 ? 'full' : `scaled-${width}x${height}`,
       width,
       height,
       data: resizeImageData(imageData, width, height),
     });
-  });
-  return candidates;
+    return candidates;
+  }, []);
 }
 
 function resizeImageData(imageData, width, height){
@@ -245,17 +241,21 @@ async function decodeQrText(file){
     pixelSha256: await sha256Hex(imageData.data),
   });
   const candidates = buildDecodeCandidates(imageData);
+  const inversionAttempts = ['dontInvert', 'onlyInvert'];
   for(const candidate of candidates){
-    const startedAt = Date.now();
-    const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: 'attemptBoth' });
-    await debugInfo('QR decode attempt', {
-      candidate: candidate.name,
-      width: candidate.width,
-      height: candidate.height,
-      elapsedMs: Date.now() - startedAt,
-      hasValue: !!(result && result.data),
-    });
-    if(result && result.data) return result.data;
+    for(const inversionAttempt of inversionAttempts){
+      const startedAt = Date.now();
+      const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: inversionAttempt });
+      await debugInfo('QR decode attempt', {
+        candidate: candidate.name,
+        inversionAttempt,
+        width: candidate.width,
+        height: candidate.height,
+        elapsedMs: Date.now() - startedAt,
+        hasValue: !!(result && result.data),
+      });
+      if(result && result.data) return result.data;
+    }
   }
   return '';
 }
