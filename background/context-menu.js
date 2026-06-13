@@ -51,18 +51,21 @@ async function setupContextMenus(){
       await browser.contextMenus.remove(id);
     } catch (_) {}
   }));
-  if(featureSettings.rightclickEnabled === false) return;
   try {
-    browser.contextMenus.create({
-      id: QR_CONTEXT_MENU_ID,
-      title: getContextMenuTitle(language, 'scanQrFromImage'),
-      contexts: ['image'],
-    });
-    browser.contextMenus.create({
-      id: AUTOFILL_CONTEXT_MENU_ID,
-      title: getContextMenuTitle(language, 'openAutofillPopup'),
-      contexts: ['editable'],
-    });
+    if(featureSettings.rightclickEnabled !== false){
+      browser.contextMenus.create({
+        id: QR_CONTEXT_MENU_ID,
+        title: getContextMenuTitle(language, 'scanQrFromImage'),
+        contexts: ['image'],
+      });
+    }
+    if(featureSettings.rightclickAutofillEnabled !== false){
+      browser.contextMenus.create({
+        id: AUTOFILL_CONTEXT_MENU_ID,
+        title: getContextMenuTitle(language, 'openAutofillPopup'),
+        contexts: ['editable'],
+      });
+    }
   } catch (_) {}
 }
 async function openQrScannerForImageUrl(imageUrl){

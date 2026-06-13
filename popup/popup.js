@@ -17,7 +17,7 @@ let syncSettings = {
 let vaultStatus = { encryptionEnabled:false, unlocked:true, lastUnlockedAt:null };
 let vaultTimerSettings = { autoLockEnabled:false, autoLockMinutes:15 };
 let debugState = { enabled:false };
-let featureSettings = { autofillEnabled:true, rightclickEnabled:true };
+let featureSettings = { autofillEnabled:true, rightclickEnabled:true, rightclickAutofillEnabled:true };
 let debugUiUnlocked = false;
 let uiLanguage = 'en-US';
 let uiTheme = 'auto';
@@ -197,6 +197,8 @@ const POPUP_FALLBACK = {
   "permissionAutofillEnableHint": "Fill in 2FA related input fields in websites.",
   "permissionRightclickEnableText": "Enable right-click QR scan",
   "permissionRightclickEnableHint": "Show a QR scanning action in the right-click image context menu.",
+  "permissionRightclickEnableAutofillText": "Enable open-autofill-popup context menu",
+  "permissionRightclickEnableAutofillHint": "Show a open-autofill-popup action in the right-click input-field context menu.",
   "permissionSaveBtn": "Save Permission Settings",
   "permissionSavedToast": "Permission Settings saved"
 };
@@ -243,6 +245,7 @@ const STATIC_TEXT_MAP = {
   settingDebugTitle: 'settingDebugTitle',
   permissionAutofillEnableText: 'permissionAutofillEnableText', permissionAutofillEnableHint: 'permissionAutofillEnableHint',
   permissionRightclickEnableText: 'permissionRightclickEnableText', permissionRightclickEnableHint: 'permissionRightclickEnableHint',
+  permissionRightclickEnableAutofillText: 'permissionRightclickEnableAutofillText', permissionRightclickEnableAutofillHint: 'permissionRightclickEnableAutofillHint',
   btnSavePermission: 'permissionSaveBtn',
   syncEnableText: 'syncEnableText', syncEnabledHint: 'syncEnabledHint', labelSyncSession: 'syncSessionLabel', syncSessionHint: 'syncSessionHint',
   labelSyncInterval: 'syncIntervalLabel', syncIntervalHint: 'syncIntervalHint', btnSaveSync: 'syncSaveBtn', btnUploadSync: 'syncUploadBtn',
@@ -328,6 +331,8 @@ function applyStaticTranslations(){
     permissionAutofillEnableHint: 'Automatically inject autofill on matched websites.',
     permissionRightclickEnableText: 'Enable right-click QR scan option',
     permissionRightclickEnableHint: 'Show a QR scanning action in the browser image context menu.',
+    permissionRightclickEnableAutofillText: 'Enable open-autofill-popup context menu',
+    permissionRightclickEnableAutofillHint: 'Show a open-autofill-popup action in the right-click input-field context menu.',
     btnSavePermission: 'Save Permission Settings',
     vaultTimerEnableText: 'Enable automatic vault lock',
     vaultTimerEnableHint: 'Automatically lock the vault after inactivity.',
@@ -1069,6 +1074,7 @@ function fmtTs(ts){ return ts ? new Date(ts).toLocaleString() : t('never'); }
 function updateSyncUi(){
   byId('autofillEnabled').checked = featureSettings.autofillEnabled !== false;
   byId('rightclickEnabled').checked = featureSettings.rightclickEnabled !== false;
+  byId('rightclickAutofillEnabled').checked = featureSettings.rightclickAutofillEnabled !== false;
   byId('syncEnabled').checked = !!syncSettings.enabled;
   byId('syncSessionId').value = syncSettings.sessionId || '';
   byId('syncInterval').value = syncSettings.intervalMinutes || 5;
@@ -1660,8 +1666,9 @@ byId('btnSavePermission').addEventListener('click', async () => {
   errEl.style.display = 'none';
   const autofillEnabled = byId('autofillEnabled').checked;
   const rightclickEnabled = byId('rightclickEnabled').checked;
+  const rightclickAutofillEnabled = byId('rightclickAutofillEnabled').checked;
   try {
-    const resp = await sendMessage({ action:'saveFeatureSettings', settings:{ autofillEnabled, rightclickEnabled } });
+    const resp = await sendMessage({ action:'saveFeatureSettings', settings:{ autofillEnabled, rightclickEnabled, rightclickAutofillEnabled } });
     if(resp.settings) featureSettings = Object.assign({}, featureSettings, resp.settings);
     updateSyncUi();
     toast(tf('permissionSavedToast', 'Permission settings saved'));

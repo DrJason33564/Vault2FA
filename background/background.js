@@ -56,6 +56,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await setFeatureSettings({
           autofillEnabled: incoming.autofillEnabled !== false,
           rightclickEnabled: incoming.rightclickEnabled !== false,
+          rightclickAutofillEnabled: incoming.rightclickAutofillEnabled !== false,
         });
         sendResponse({ success: true, settings });
         return;
