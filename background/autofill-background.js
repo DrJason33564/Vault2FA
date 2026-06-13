@@ -5,6 +5,7 @@ const FEATURE_SETTINGS_KEY = 'featureSettings';
 const defaultFeatureSettings = {
   autofillEnabled: true,
   rightclickEnabled: true,
+  rightclickAutofillEnabled: true,
 };
 
 function normalizeAutofillPattern(pattern){

@@ -16,7 +16,8 @@
     "clipboardWrite",
     "contextMenus",
     "scripting",
-    "alarms"
+    "alarms",
+    "unlimitedStorage"
   ],
   "background": {
     "scripts": [
