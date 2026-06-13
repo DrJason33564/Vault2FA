@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 'use strict';
 
-const OTPAuth = window.OTPAuth;
 
 let accounts = [];
 let visibleAccounts = [];
@@ -35,6 +34,172 @@ const TOUCH_DRAG_HOLD_MS = 320;
 const I18N = {};
 let availableLanguages = [];
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const POPUP_FALLBACK = {
+  "localOnly": "Local only",
+  "syncOn": "Sync ON ·",
+  "storageModeLabel": "Storage mode:",
+  "storageModeSync": "Local + Firefox Sync upload",
+  "storageModeLocal": "Local only",
+  "lastUpload": "Last upload:",
+  "lastDownload": "Last local overwrite from cloud:",
+  "uploadSuccess": "Uploaded local data",
+  "syncSaved": "Sync settings saved",
+  "syncDisabled": "Sync settings saved",
+  "needSession": "Please enter a sync session ID first.",
+  "needSessionEnable": "Please enter a sync session ID before enabling sync.",
+  "noAccountsToExport": "No account to export",
+  "copied": "Copied!",
+  "addAccount": "Add Account",
+  "editAccount": "Edit Account",
+  "showQrCode": "Export via QR",
+  "showQrCodeSuccess": "QR Code generated in new tab.",
+  "reorderAccount": "Reorder all accounts by issuers' first letter",
+  "reorderAccountSuccess": "Accounts reordered.",
+  "noAccountsYet": "No account yet",
+  "emptySub": "Add your first account using the\n+ button below.",
+  "vaultLocked": "Vault Locked",
+  "vaultLockSub": "Local vault is locked. Enter your passphrase to unlock this browser session.",
+  "unlockVault": "Unlock Vault",
+  "searchPlaceholder": "Search accounts...",
+  "syncEnabledHint": "Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.",
+  "syncEnableText": "Enable Firefox Sync upload",
+  "syncSessionLabel": "Sync Session ID",
+  "syncSessionHint": "Each session ID is isolated. Use a different ID for each sync group.",
+  "syncIntervalLabel": "Auto Upload Interval (minutes)",
+  "syncIntervalHint": "When auto upload is enabled, local changes upload no more often than this interval.",
+  "syncSaveBtn": "Save Sync Settings",
+  "syncUploadBtn": "Upload Local Data Now",
+  "syncDownloadBtn": "Download Cloud Data to Local",
+  "syncWarnOverwrite": "Downloading from the cloud will overwrite your current local accounts.",
+  "addDrawerTitle": "Add Account",
+  "tabManual": "Manual",
+  "tabQr": "Scan QR",
+  "tabUri": "URI",
+  "labelIssuer": "Issuer / Service",
+  "labelAccount": "Account / Email",
+  "labelSecret": "Secret Key",
+  "labelSecretFormat": "Secret Format",
+  "labelAutofillPatterns": "Autofill Patterns",
+  "hintAutofillPatterns": "Comma-separated. Supports * wildcard matching.",
+  "hintAutofillExample": "Example: github.com, *.github.com",
+  "autofillMatchLabel": "Matching",
+  "noAutofillRules": "No autofill rules set",
+  "labelType": "Type",
+  "labelDigits": "Digits",
+  "labelPeriod": "Period",
+  "qrTabTitle": "Scan a QR Code",
+  "qrTabSub": "A new tab will open where you can drop or pick your QR image. The account will be added automatically when scanned.",
+  "openQrTab": "Open QR Scanner Tab",
+  "labelUri": "otpauth:// otpauth-migration:// URI",
+  "hintUri": "Paste from your QR reader or another authenticator's export.",
+  "saveAccountBtn": "Add Account",
+  "exportDrawerTitle": "Export Accounts",
+  "exportHint": "Keep these safe — they contain your secrets.",
+  "copyExportBtn": "Copy to Clipboard",
+  "exportJsonBtn": "Download JSON File",
+  "exportUriLabel": "otpauth:// URIs",
+  "importDrawerTitle": "Import Accounts",
+  "importInputLabel": "Paste otpauth:// otpauth-migration:// URIs (one per line) or JSON",
+  "importFileHint": "JSON file import opens in a new tab.",
+  "openJsonImportTabBtn": "Open JSON Import Tab",
+  "importBtn": "Import",
+  "editDrawerTitle": "Edit Account",
+  "editSaveBtn": "Save Changes",
+  "deleteConfirm": "Delete this account?",
+  "editBtnTitle": "Edit",
+  "saveEditSuccess": "Account updated",
+  "settingDrawerTitle": "Setting",
+  "settingSecurityTitle": "Sync & Security",
+  "settingPermissionTitle": "Permission",
+  "settingDebugTitle": "Debugging",
+  "vaultEnableText": "Enable local encryption",
+  "vaultEnableHint": "When enabled, local accounts are encrypted at rest. Unlock is required once per browser session.",
+  "labelVaultPassphrase": "Vault Passphrase",
+  "vaultTimerEnableText": "Enable automatic vault lock",
+  "vaultTimerEnableHint": "Automatically lock the vault after inactivity when encryption is enabled.",
+  "labelVaultTimerPeriod": "Auto-lock period (minutes)",
+  "applyVaultBtn": "Apply Security Setting",
+  "lockVaultBtn": "Lock Vault Now",
+  "vaultLockedPill": "Locked",
+  "needEncryptBeforeLock": "You need to encrypt the vault first.",
+  "themeToggleTitle": "Toggle light/dark theme",
+  "themeLight": "Light mode",
+  "themeDark": "Dark mode",
+  "vaultLockedActionBlocked": "Unlock Vault to use this feature.",
+  "debugEnableText": "Enable debug mode",
+  "debugHint": "When enabled, info logs are stored locally and can be downloaded as a .txt file.",
+  "debugDownloadBtn": "Download Debug Log",
+  "debugUnlockedToast": "Debug switch unlocked",
+  "debugModeOn": "Debug mode enabled",
+  "debugModeOff": "Debug mode disabled",
+  "debugLogEmpty": "No debug log available.",
+  "importNothing": "Nothing to import.",
+  "importDuplicateConfirm": "Detected {count} imported item(s) with similar names. Import all parsed accounts anyway?",
+  "importSummary": "Imported {ok} account(s){failPart}{dupPart}",
+  "importFailPart": ", failed {count}",
+  "importDupPart": ", have duplicate {count}",
+  "openJsonImportTabStatus": "JSON import tab opened — continue there.",
+  "exportJsonEmpty": "No accounts available to export.",
+  "exportJsonFilename": "vault2fa-accounts-{timestamp}.json",
+  "exportJsonEncrypted": "Local vault is encrypted. Export as encrypted?",
+  "nextCodeTitle": "Next code",
+  "deleteBtnTitle": "Delete",
+  "clickToCopy": "click to copy",
+  "unknown": "Unknown",
+  "noLabel": "(no label)",
+  "invalidSecretByFormat": "Invalid secret for selected format.",
+  "btnImportTitle": "Import accounts",
+  "btnExportTitle": "Export accounts",
+  "btnSyncTitle": "Sync and security",
+  "btnLangTitle": "Switch language",
+  "unlockPassphrasePlaceholder": "Passphrase",
+  "vaultPassphrasePlaceholder": "At least 6 characters",
+  "secretFormatUtf8": "String (UTF-8)",
+  "secretFormatLatin1": "String (Latin-1)",
+  "btnLangText": "🌐",
+  "jsonMissingAccounts": "Invalid JSON format: missing accounts array.",
+  "jsonMissingSecretOrLabel": "JSON contains item(s) without secret or account label.",
+  "duplicateHint": "Warning: found {count} similar account name{suffix}. You will be asked to confirm before adding.",
+  "never": "Never",
+  "vaultMetaEncryption": "Local encryption:",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "vaultMetaState": "Vault state:",
+  "unlocked": "Unlocked",
+  "locked": "Locked",
+  "notRequired": "Not required",
+  "vaultMetaLastUnlock": "Last unlock:",
+  "vaultUnlockedToast": "Vault unlocked",
+  "qrTabOpenedStatus": "QR scanner tab opened — scan your code there. This popup will update automatically.",
+  "qrAccountAdded": "QR account added!",
+  "needOtpAuthUri": "Please enter an otpauth:// URI.",
+  "useOpenQrTabBtn": "Use the \"Open QR Scanner Tab\" button above.",
+  "secretRequired": "Secret key is required.",
+  "accountNameRequired": "Account name is required.",
+  "accountAdded": "Account added",
+  "accountSaved": "Account saved",
+  "noEditAccountSelected": "No account selected for editing.",
+  "accountNotExists": "Account no longer exists.",
+  "confirmCloudOverwrite": "Cloud data will overwrite your current local accounts. Continue?",
+  "downloadedCloudData": "Downloaded cloud data",
+  "confirmDisableEncryption": "Disable local encryption and store data locally without encryption?",
+  "securitySettingChanged": "Security settings updated",
+  "securitySettingUnchanged": "Security settings unchanged",
+  "vaultLockedToast": "Vault locked",
+  "popupLoadFailed": "Failed to load popup",
+  "migrationAccountsImported": "Account imported from third-party source!",
+  "langVersionMismatch": "Language file version mismatches with add-on version",
+  "syncUseEncryptedPayloadText": "Upload encrypted local vault directlly",
+  "syncUseEncryptedPayloadHint": "When local encryption is enabled, upload the encrypted payload to Firefox Sync instead of plaintext data.",
+  "confirmCloudEncryptedOverwrite": "The downloaded sync data is encrypted and needs decryption. Overwrite local data with encrypted payload and lock vault now?",
+  "downloadedEncryptedCloudData": "Encrypted cloud data downloaded. Vault is locked.",
+  "permissionAutofillEnableText": "Enable autofill feature",
+  "permissionAutofillEnableHint": "Fill in 2FA related input fields in websites.",
+  "permissionRightclickEnableText": "Enable right-click QR scan",
+  "permissionRightclickEnableHint": "Show a QR scanning action in the right-click image context menu.",
+  "permissionSaveBtn": "Save Permission Settings",
+  "permissionSavedToast": "Permission Settings saved"
+};
 let popupVersion = '';
 
 function resolveLocaleId(value){
@@ -47,16 +212,16 @@ function resolveLocaleId(value){
   return raw.toLowerCase().startsWith('zh') ? 'zh-CN' : DEFAULT_LOCALE_ID;
 }
 
-async function loadPopupLocales(){
+async function loadPopupLocale(localeId){
+  if(!window.Vault2FALocales) return;
+  const target = resolveLocaleId(localeId);
+  const section = await window.Vault2FALocales.getSection('popup', target);
+  I18N[target] = Object.assign({}, I18N[target] || {}, section || {});
+}
+
+async function loadAvailableLanguages(){
   if(!window.Vault2FALocales) return;
   availableLanguages = await window.Vault2FALocales.getAvailableLanguages();
-  for(const meta of availableLanguages){
-    const section = await window.Vault2FALocales.getSection('popup', meta.localeId);
-    I18N[meta.localeId] = Object.assign({}, I18N[meta.localeId] || {}, section || {});
-  }
-  if(!I18N[DEFAULT_LOCALE_ID]){
-    I18N[DEFAULT_LOCALE_ID] = {};
-  }
   try {
     const manifest = browser.runtime.getManifest && browser.runtime.getManifest();
     popupVersion = String((manifest && manifest.version) || '');
@@ -98,7 +263,7 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function sid(acc){ return 'ac' + String(acc.id).replace(/\W/g,''); }
 function t(key){
   return (I18N[uiLanguage] && I18N[uiLanguage][key])
-    || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || POPUP_FALLBACK[key]
     || key;
 }
 function tFmt(key, values = {}){
@@ -107,29 +272,6 @@ function tFmt(key, values = {}){
 function tf(key, fallback){
   const value = t(key);
   return value === key ? fallback : value;
-}
-
-function parseSecretByFormat(secretRaw, format){
-  const input = String(secretRaw || '').trim();
-  const normalized = input.replace(/\s+/g, '');
-  switch(String(format || 'base32').toLowerCase()){
-    case 'base32':
-      return OTPAuth.Secret.fromBase32(normalized.toUpperCase());
-    case 'base64': {
-      const b64 = normalized.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = b64 + '='.repeat((4 - (b64.length % 4 || 4)) % 4);
-      const bytes = Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
-      return new OTPAuth.Secret({ buffer: bytes.buffer });
-    }
-    case 'hex':
-      return OTPAuth.Secret.fromHex(normalized);
-    case 'utf8':
-      return OTPAuth.Secret.fromUTF8(input);
-    case 'latin1':
-      return OTPAuth.Secret.fromLatin1(input);
-    default:
-      throw new Error('Unsupported secret format.');
-  }
 }
 
 function setMultilineText(el, text){
@@ -169,11 +311,13 @@ function applyStaticTranslations(){
   for(const [id, key] of Object.entries(STATIC_TEXT_MAP)){
     const el = byId(id);
     if(!el) continue;
+    const value = t(key);
+    if(value === key) continue;
     if(id === 'btnAdd'){
-      el.textContent = '＋ ' + t(key);
+      el.textContent = '＋ ' + value;
       continue;
     }
-    el.textContent = t(key);
+    el.textContent = value;
   }
   const popupFallbackText = {
     settingDrawerTitle: 'Settings',
@@ -248,7 +392,7 @@ function renderLanguageDrawer(){
     row.className = 'lang-item';
     if(meta.localeId === uiLanguage) row.classList.add('active');
     row.addEventListener('click', () => {
-      setLanguage(meta.localeId);
+      setLanguage(meta.localeId).catch(() => {});
       closeD('drawLang');
     });
 
@@ -281,8 +425,9 @@ function renderLanguageDrawer(){
   }
 }
 
-function setLanguage(next){
+async function setLanguage(next){
   uiLanguage = resolveLocaleId(next);
+  await loadPopupLocale(uiLanguage);
   document.documentElement.lang = uiLanguage;
   byId('btnLang').textContent = t('btnLangText');
   browser.storage.local.set({ uiLanguage });
@@ -743,10 +888,7 @@ async function endTouchHoldDrag(){
 
 
 async function openQrPreviewTabForAccountId(accountId){
-  const id = String(accountId || '').trim();
-  if(!id) throw new Error('Account ID is required.');
-  const previewUrl = browser.runtime.getURL('qr/preview.html') + '#id=' + encodeURIComponent(id);
-  await browser.tabs.create({ url: previewUrl });
+  await sendMessage({ action:'openQrPreviewForAccount', id: accountId });
 }
 
 function render(){
@@ -822,101 +964,16 @@ function duplicateWarningText(acc, matches){
   return `Found ${matches.length} account name match${matches.length > 1 ? 'es' : ''} for:\n${acc.issuer || t('unknown')} / ${acc.label || t('noLabel')}\n\n${sample}${matches.length > 3 ? '\n...' : ''}\n\nAdd it anyway?`;
 }
 
-function getExportRecords(){
-  return accounts.map(acc => normalizeAccountRecord({
-    id: acc.id,
-    type: acc.type === 'hotp' ? 'hotp' : 'totp',
-    issuer: acc.issuer || '',
-    label: acc.label || '',
-    secret: String(acc.secret || '').toUpperCase().replace(/\s+/g, ''),
-    algorithm: acc.algorithm || 'SHA1',
-    digits: acc.digits || 6,
-    period: acc.type === 'hotp' ? undefined : (acc.period || 30),
-    counter: acc.type === 'hotp' ? (acc.counter || 0) : undefined,
-    autofillPatterns: Array.isArray(acc.autofillPatterns) ? acc.autofillPatterns : [],
-  }));
-}
-
-function buildJsonExportPayload(){
-  return {
-    format: 'vault2fa-accounts',
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    accounts: getExportRecords(),
-  };
-}
-
-function hasEncryptedPayloadHeader(payload){
-  if(!payload || typeof payload !== 'object') return false;
-  return (
-    typeof payload.kdf === 'string' &&
-    Number.isFinite(Number(payload.iterations)) &&
-    typeof payload.salt === 'string' && !!payload.salt &&
-    Number.isFinite(Number(payload.keyLength)) &&
-    typeof payload.cipher === 'string' &&
-    Number.isFinite(Number(payload.version)) &&
-    typeof payload.iv === 'string' && !!payload.iv &&
-    typeof payload.data === 'string' && !!payload.data
-  );
-}
-
 function buildImportSummaryText(parsedCount, failCount, duplicateCount){
   const failPart = failCount ? tFmt('importFailPart', { count: failCount }) : '';
   const dupPart = duplicateCount ? tFmt('importDupPart', { count: duplicateCount }) : '';
   return tFmt('importSummary', { ok: parsedCount, failPart, dupPart });
 }
 
-function parseJsonImportData(raw){
-  const parsed = JSON.parse(raw);
-  const source = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
-  if(!source) throw new Error(t('jsonMissingAccounts'));
-  const list = [];
-  for(const item of source){
-    const secret = String(item && item.secret || '').toUpperCase().replace(/\s+/g, '');
-    const label = String(item && item.label || '').trim();
-    if(!secret || !label) throw new Error(t('jsonMissingSecretOrLabel'));
-    OTPAuth.Secret.fromBase32(secret);
-    const type = item && item.type === 'hotp' ? 'hotp' : 'totp';
-    list.push(normalizeAccountRecord({
-      id: nextAccountId(),
-      type,
-      issuer: String(item.issuer || label).trim() || label,
-      label,
-      secret,
-      algorithm: String(item.algorithm || 'SHA1').toUpperCase(),
-      digits: Math.max(6, Number(item.digits) || 6),
-      period: type === 'hotp' ? undefined : Math.max(1, Number(item.period) || 30),
-      counter: type === 'hotp' ? Math.max(0, Number(item.counter) || 0) : undefined,
-      autofillPatterns: Array.isArray(item.autofillPatterns) ? item.autofillPatterns : [],
-    }));
-  }
-  return list;
-}
-
-function parseUriImportData(raw){
-  const lines = String(raw || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const parsed = [];
-  let fail = 0;
-  for(const uri of lines){
-    try {
-      const expanded = expandMigrationIfNeeded(uri);
-      for(const item of expanded){
-        parsed.push(fromParsed(OTPAuth.URI.parse(item)));
-      }
-    } catch(e){
-      fail++;
-    }
-  }
-  return { parsed, fail };
-}
-
-function parseImportData(raw){
-  const input = String(raw || '').trim();
-  if(!input) return { parsed: [], fail: 0 };
-  if(input.startsWith('{') || input.startsWith('[')){
-    return { parsed: parseJsonImportData(input), fail: 0 };
-  }
-  return parseUriImportData(input);
+async function parseImportData(raw){
+  const resp = await sendMessage({ action:'parseAccountsForImport', rawText: raw });
+  if(!resp || resp.success === false) throw new Error((resp && resp.error) || t('importNothing'));
+  return { parsed: Array.isArray(resp.parsed) ? resp.parsed : [], fail: Number(resp.fail || 0), inputType: resp.inputType || 'unknown' };
 }
 
 async function saveAccounts(){
@@ -934,36 +991,6 @@ async function persistAndRender(){
   await saveAccounts();
   await persistAccountSettings();
   render();
-}
-
-function expandMigrationIfNeeded(uri){
-  const value = String(uri || '').trim();
-  if(!value) return [];
-  if(
-    window.Vault2FAGoogleMigration &&
-    window.Vault2FAGoogleMigration.isGoogleMigrationUri(value)
-  ){
-    const decoded = window.Vault2FAGoogleMigration.decodeGoogleMigrationUri(value);
-    return (decoded.accounts || []).map(item =>
-      window.Vault2FAGoogleMigration.buildOtpAuthUri(item)
-    );
-  }
-  return [value];
-}
-
-function fromParsed(p){
-  return {
-    id: nextAccountId(),
-    type: p instanceof OTPAuth.TOTP ? 'totp' : 'hotp',
-    issuer: p.issuer,
-    label: p.label,
-    secret: p.secret.base32,
-    algorithm: p.algorithm || 'SHA1',
-    digits: p.digits,
-    period: p instanceof OTPAuth.TOTP ? p.period : undefined,
-    counter: p instanceof OTPAuth.HOTP ? p.counter : undefined,
-    autofillPatterns: [],
-  };
 }
 
 async function pushAccount(acc, opts = {}){
@@ -1185,10 +1212,10 @@ async function migrateAccountSequenceIfMissing(){
 async function boot(){
   const prefs = await browser.storage.local.get(['uiLanguage','uiTheme']);
   uiTheme = prefs.uiTheme || 'auto';
-  await loadPopupLocales();
+  await loadAvailableLanguages();
   await loadAccountSettings();
   const fallbackLocale = availableLanguages[0] ? availableLanguages[0].localeId : DEFAULT_LOCALE_ID;
-  setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
+  await setLanguage(resolveLocaleId(prefs.uiLanguage || fallbackLocale));
   applyTheme();
   
   await refreshVaultStatus();
@@ -1293,17 +1320,17 @@ byId('btnSave').addEventListener('click', async () => {
     let acc;
     if(activeTab === 'uri'){
       const uri = byId('fUri').value.trim();
-       if(!uri) throw new Error(t('needOtpAuthUri'));
- 
-       const expanded = expandMigrationIfNeeded(uri);
-       if(!expanded.length) throw new Error(t('needOtpAuthUri'));
- 
-       let addedCount = 0;
-       for(const item of expanded){
-         const added = await pushAccount(fromParsed(OTPAuth.URI.parse(item)));
-         if(added) addedCount++;
-       }
- 
+      if(!uri) throw new Error(t('needOtpAuthUri'));
+
+      const { parsed } = await parseImportData(uri);
+      if(!parsed.length) throw new Error(t('needOtpAuthUri'));
+
+      let addedCount = 0;
+      for(const item of parsed){
+        const added = await pushAccount(item);
+        if(added) addedCount++;
+      }
+
       if(addedCount > 0){
          closeD('drawAdd');
          resetForm();
@@ -1318,39 +1345,39 @@ byId('btnSave').addEventListener('click', async () => {
       const secretFormat = byId('fSecretFormat').value;
       if(!secret) throw new Error(t('secretRequired'));
       if(!label) throw new Error(t('accountNameRequired'));
-      let parsedSecret;
-      try {
-        parsedSecret = parseSecretByFormat(secret, secretFormat);
-      } catch(e){
-        debugInfo('Popup manual secret parse failed', {
-          secretFormat,
-          secretLength: secret.length,
-          parseError: e && e.message ? e.message : String(e),
-          issuer: byId('fIssuer').value.trim() || label,
-          label,
-        });
-        throw new Error(t('invalidSecretByFormat'));
-      }
-      debugInfo('Popup manual secret parsed', {
+      const draft = {
+        type: byId('fType').value,
+        issuer: byId('fIssuer').value.trim() || label,
+        label,
+        secret,
         secretFormat,
-        secretLength: secret.length,
-        normalizedBase32Length: parsedSecret.base32.length,
-        issuer: byId('fIssuer').value.trim() || label,
-        label,
-        type: byId('fType').value,
-      });
-      acc = {
-        id: nextAccountId(),
-        type: byId('fType').value,
-        issuer: byId('fIssuer').value.trim() || label,
-        label,
-        secret: parsedSecret.base32,
         algorithm: 'SHA1',
         digits: parseInt(byId('fDigits').value, 10),
         period: parseInt(byId('fPeriod').value, 10),
         counter: 0,
         autofillPatterns: parseAutofillPatterns(byId('fAutofillPatterns').value),
       };
+      try {
+        const normalized = await sendMessage({ action:'normalizeAccountForPopup', account: draft });
+        acc = normalized && normalized.account;
+      } catch(e){
+        debugInfo('Popup manual account normalization failed', {
+          secretFormat,
+          secretLength: secret.length,
+          parseError: e && e.message ? e.message : String(e),
+          issuer: draft.issuer,
+          label,
+        });
+        throw new Error(t('invalidSecretByFormat'));
+      }
+      debugInfo('Popup manual account normalized', {
+        secretFormat,
+        secretLength: secret.length,
+        normalizedBase32Length: acc && acc.secret ? acc.secret.length : 0,
+        issuer: draft.issuer,
+        label,
+        type: draft.type,
+      });
     }
     const added = await pushAccount(acc);
     debugInfo('Popup add account submit result', {
@@ -1371,18 +1398,11 @@ byId('btnSave').addEventListener('click', async () => {
   }
 });
 
-byId('btnExport').addEventListener('click', () => {
+byId('btnExport').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('noAccountsToExport')); return; }
-  const lines = accounts.map(acc => {
-    try {
-      const s = OTPAuth.Secret.fromBase32(acc.secret);
-      const o = acc.type === 'hotp'
-        ? new OTPAuth.HOTP({ issuer:acc.issuer, label:acc.label, secret:s, algorithm:acc.algorithm||'SHA1', digits:acc.digits, counter:acc.counter||0 })
-        : new OTPAuth.TOTP({ issuer:acc.issuer, label:acc.label, secret:s, algorithm:acc.algorithm||'SHA1', digits:acc.digits, period:acc.period });
-      return OTPAuth.URI.stringify(o);
-    } catch(e){ return null; }
-  }).filter(Boolean);
+  const resp = await sendMessage({ action:'buildOtpAuthUrisForExport' });
+  const lines = resp && Array.isArray(resp.uris) ? resp.uris : [];
   byId('exportData').value = lines.join('\n');
   openD('drawExport');
 });
@@ -1393,13 +1413,14 @@ byId('btnCopyExport').addEventListener('click', () => {
 byId('btnDownloadExportJson').addEventListener('click', async () => {
   if(!guardVaultUnlocked()) return;
   if(!accounts.length){ toast(t('exportJsonEmpty')); return; }
-  let payload = buildJsonExportPayload();
+  const jsonExport = await sendMessage({ action:'buildJsonExportPayload' });
+  let payload = jsonExport && jsonExport.payload;
   let exportedMode = 'plaintext';
   if(vaultStatus.encryptionEnabled){
     try {
       const vaultExport = await sendMessage({ action:'getEncryptedPayloadForExport' });
       const encryptedPayload = vaultExport && vaultExport.payload;
-      const hasEncryptedPayload = hasEncryptedPayloadHeader(encryptedPayload);
+      const hasEncryptedPayload = !!(vaultExport && vaultExport.hasPayload);
       await debugInfo('Popup JSON export encryption status checked', {
         encryptionEnabled: !!vaultStatus.encryptionEnabled,
         hasEncryptedPayload,
@@ -1447,9 +1468,9 @@ async function applyImportRawText(rawText){
   const errEl = byId('importErr');
   errEl.style.display = 'none';
   try {
-    const { parsed, fail } = parseImportData(rawText);
+    const { parsed, fail, inputType } = await parseImportData(rawText);
     debugInfo('Popup import parse finished', {
-      inputType: String(rawText || '').trim().startsWith('{') || String(rawText || '').trim().startsWith('[') ? 'json' : 'uri_lines',
+      inputType,
       parsedCount: parsed.length,
       failedCount: fail,
     });

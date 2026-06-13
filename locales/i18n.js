@@ -108,16 +108,25 @@
     return promise;
   }
 
+  async function getPreferredLocaleId(){
+    try {
+      const result = await browser.storage.local.get('uiLanguage');
+      if(result && result.uiLanguage) return localeIdFromLanguage(result.uiLanguage);
+    } catch (_) {}
+    try {
+      if(browser.i18n && typeof browser.i18n.getUILanguage === 'function'){
+        return localeIdFromLanguage(browser.i18n.getUILanguage());
+      }
+    } catch (_) {}
+    return DEFAULT_LOCALE_ID;
+  }
+
   async function getSection(sectionName, language){
-    const localeId = localeIdFromLanguage(language);
+    const localeId = language ? localeIdFromLanguage(language) : await getPreferredLocaleId();
+    const localeIds = await discoverLocaleIds();
+    if(!localeIds.includes(localeId)) return {};
     const data = await loadLocaleById(localeId);
-    const section = Object.assign({}, (data && data[sectionName]) || {});
-    if(Object.keys(section).length) return section;
-    if(localeId !== DEFAULT_LOCALE_ID){
-      const fallback = await loadLocaleById(DEFAULT_LOCALE_ID);
-      return Object.assign({}, (fallback && fallback[sectionName]) || {});
-    }
-    return section;
+    return Object.assign({}, (data && data[sectionName]) || {});
   }
 
   async function getAvailableLanguages(){
@@ -143,6 +152,7 @@
     normalizeLanguage,
     localeIdFromLanguage,
     loadLocaleById,
+    getPreferredLocaleId,
     getSection,
     discoverLocaleIds,
     getAvailableLanguages,

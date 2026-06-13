@@ -16,21 +16,21 @@
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
-  const I18N = {
-    'en-US': {
-      titleMain: 'Vault',
-      titleAccent: '2FA',
-      subtitle: 'Select a code to autofill',
-      accountFallback: 'Account',
-      hotp: 'Counter-based (HOTP)',
-      locked: '🔒Vault2FA is locked.',
-    },
+  const I18N = {};
+  const AUTOFILL_FALLBACK = {
+    titleMain: 'Vault',
+    titleAccent: '2FA',
+    subtitle: 'Select a code to autofill',
+    accountFallback: 'Account',
+    hotp: 'Counter-based (HOTP)',
+    locked: '🔒Vault2FA is locked.',
   };
 
   function byId(id){ return document.getElementById(id); }
   function t(key){
     return (I18N[state.language] && I18N[state.language][key])
       || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+      || AUTOFILL_FALLBACK[key]
       || key;
   }
   function currentTheme(){
@@ -62,8 +62,7 @@
       state.theme = result.uiTheme || 'auto';
       state.language = resolveLocaleId(result.uiLanguage);
       if(window.Vault2FALocales){
-        await applyAutofillLocale(DEFAULT_LOCALE_ID);
-        if(state.language !== DEFAULT_LOCALE_ID) await applyAutofillLocale(state.language);
+        await applyAutofillLocale(state.language);
       }
       if(state.dropdown){
         state.dropdown.dataset.theme = currentTheme();

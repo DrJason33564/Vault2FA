@@ -10,20 +10,35 @@ const errEl = document.getElementById('err');
 
 const I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const JSON_IMPORT_FALLBACK = {
+  titleSuffix: ' — JSON Import',
+  dzTitle: 'Drop a JSON file here',
+  dzSub: 'or click to choose a file',
+  waiting: 'Waiting for a JSON file…',
+  resultSub: 'Accounts imported — you can close this tab.',
+  resultEncryptedSub: 'Encrypted data imported. Vault is now locked.',
+  hint: 'Supports either { accounts: [...] } or a raw account array JSON.',
+  invalidJson: 'Invalid JSON file.',
+  missingAccounts: 'JSON must be an account array or contain an accounts array.',
+  notJsonFile: 'Please choose a JSON file.',
+  importing: 'Importing…',
+  importFailed: 'Import failed: ',
+  lockedHint: 'Unlock the vault first, then retry.',
+  importedSummary: '{count} account(s) imported.',
+};
 let lang = DEFAULT_LOCALE_ID;
 
-async function loadJsonImportLocales(){
+async function loadJsonImportLocale(localeId){
   if(!window.Vault2FALocales) return;
-  const localeIds = await window.Vault2FALocales.discoverLocaleIds();
-  for(const localeId of localeIds){
-    const section = await window.Vault2FALocales.getSection('json-import', localeId);
-    I18N[localeId] = Object.assign({}, I18N[localeId] || {}, section || {});
-  }
+  const targetLocaleId = window.Vault2FALocales.localeIdFromLanguage(localeId);
+  const section = await window.Vault2FALocales.getSection('json-import', targetLocaleId);
+  I18N[targetLocaleId] = Object.assign({}, I18N[targetLocaleId] || {}, section || {});
 }
 
 function t(key){
   return (I18N[lang] && I18N[lang][key])
     || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || JSON_IMPORT_FALLBACK[key]
     || key;
 }
 function tFmt(key, values = {}){
@@ -85,30 +100,6 @@ async function debugInfo(message, context){
   }
 }
 
-function parseJsonText(text){
-  let parsed;
-  try {
-    parsed = JSON.parse(String(text || ''));
-  } catch(_) {
-    throw new Error(t('invalidJson'));
-  }
-  const hasEncryptedHeader = !!(parsed && typeof parsed === 'object'
-    && typeof parsed.kdf === 'string'
-    && Number.isFinite(Number(parsed.iterations))
-    && typeof parsed.salt === 'string' && parsed.salt
-    && Number.isFinite(Number(parsed.keyLength))
-    && typeof parsed.cipher === 'string'
-    && Number.isFinite(Number(parsed.version))
-    && typeof parsed.iv === 'string' && parsed.iv
-    && typeof parsed.data === 'string' && parsed.data);
-  if(hasEncryptedHeader) return { encryptedPayload: parsed, format: 'encrypted_payload' };
-
-  const format = Array.isArray(parsed) ? 'array' : 'object_with_accounts';
-  const accounts = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.accounts) ? parsed.accounts : null);
-  if(!accounts) throw new Error(t('missingAccounts'));
-  return { accounts, format };
-}
-
 async function importFile(file){
   hideErr();
   resultEl.classList.remove('show');
@@ -129,38 +120,35 @@ async function importFile(file){
       fileSize: typeof file.size === 'number' ? file.size : null,
     });
     const text = await file.text();
-    const parsed = parseJsonText(text);
-    await debugInfo('JSON import parsed payload', {
-      accountCount: Array.isArray(parsed.accounts) ? parsed.accounts.length : null,
-      format: parsed.format,
-      hasEncryptedHeader: !!parsed.encryptedPayload,
+    await debugInfo('JSON import file read', {
+      textLength: text.length,
     });
     const resp = await browser.runtime.sendMessage({
       action:'importAccountsFromJson',
-      accounts: parsed.accounts,
-      encryptedPayload: parsed.encryptedPayload || null,
+      rawText: text,
     });
     if(!resp || resp.success === false){
       throw new Error((resp && resp.error) || 'Unknown error');
     }
     await debugInfo('JSON import persisted via background', {
-      importedCount: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0),
+      importedCount: resp.importedCount || 0,
       totalAccounts: resp.totalAccounts,
       importedEncrypted: !!resp.importedEncrypted,
     });
     setResultSub(!!resp.importedEncrypted);
-    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || (Array.isArray(parsed.accounts) ? parsed.accounts.length : 0) });
+    resultNameEl.textContent = tFmt('importedSummary', { count: resp.importedCount || 0 });
     resultEl.classList.add('show');
     showStatus('');
   } catch(err){
     const msg = String((err && err.message) || err);
-    const debugMsg = toDebugEnglishMessage(msg);
+    const displayMsg = err && err.name === 'SyntaxError' ? t('invalidJson') : msg;
+    const debugMsg = toDebugEnglishMessage(displayMsg);
     const extra = /Vault is locked|unlock/i.test(msg) ? ` ${t('lockedHint')}` : '';
     await debugInfo('JSON import failed', {
       error: debugMsg,
       vaultLockedHintShown: !!extra,
     });
-    showErr(t('importFailed') + msg + extra);
+    showErr(t('importFailed') + displayMsg + extra);
   }
 }
 
@@ -179,7 +167,7 @@ fileInput.addEventListener('change', async (e) => {
 
 browser.storage.local.get('uiLanguage').then(async (result) => {
   lang = window.Vault2FALocales ? window.Vault2FALocales.localeIdFromLanguage(result.uiLanguage) : DEFAULT_LOCALE_ID;
-  await loadJsonImportLocales();
+  await loadJsonImportLocale(lang);
   applyI18n();
 });
 
