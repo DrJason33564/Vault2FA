@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.7.3
+VERSION=2.8.2
 
 [Language]
 LANGUAGE=Español
@@ -167,8 +167,10 @@ confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda 
 downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
 permissionAutofillEnableText=Activar la función de autocompletado
 permissionAutofillEnableHint=Rellenar los campos de entrada relacionados con 2FA en los sitios web.
-permissionRightclickEnableText=Activar el escaneo de QR con clic derecho
-permissionRightclickEnableHint=Mostrar una acción para escanear códigos QR en el menú contextual al hacer clic derecho sobre
+permissionRightclickEnableQRScanText=Activar el escaneo de QR con clic derecho
+permissionRightclickEnableQRScanHint=Mostrar una acción para escanear códigos QR en el menú contextual al hacer clic derecho sobre
+permissionRightclickEnableAutofillText=Habilitar el autocompletado haciendo clic con el botón derecho.
+permissionRightclickEnableAutofillHint=Agregue una opción de autocompletar al menú contextual que aparece al hacer clic con el botón derecho en el cuadro de entrada.
 permissionSaveBtn=Guardar la configuración de permisos
 permissionSavedToast=Configuración de permisos guardada
 
@@ -220,6 +222,8 @@ subtitle=Selecciona un código para autocompletar
 accountFallback=Cuenta
 hotp=Basado en contador (HOTP)
 locked=🔒Vault2FA está bloqueado.
+unlockPlaceholder=Introduce la contraseña y pulsa Intro.
 
 [background]
 scanQrFromImage=Escanear código QR
+openAutofillPopup=Abra la ventana emergente de autocompletar aquí
