@@ -10,6 +10,22 @@ const errEl = document.getElementById('err');
 
 const I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const JSON_IMPORT_FALLBACK = {
+  titleSuffix: ' — JSON Import',
+  dzTitle: 'Drop a JSON file here',
+  dzSub: 'or click to choose a file',
+  waiting: 'Waiting for a JSON file…',
+  resultSub: 'Accounts imported — you can close this tab.',
+  resultEncryptedSub: 'Encrypted data imported. Vault is now locked.',
+  hint: 'Supports either { accounts: [...] } or a raw account array JSON.',
+  invalidJson: 'Invalid JSON file.',
+  missingAccounts: 'JSON must be an account array or contain an accounts array.',
+  notJsonFile: 'Please choose a JSON file.',
+  importing: 'Importing…',
+  importFailed: 'Import failed: ',
+  lockedHint: 'Unlock the vault first, then retry.',
+  importedSummary: '{count} account(s) imported.',
+};
 let lang = DEFAULT_LOCALE_ID;
 
 async function loadJsonImportLocales(){
@@ -24,6 +40,7 @@ async function loadJsonImportLocales(){
 function t(key){
   return (I18N[lang] && I18N[lang][key])
     || (I18N[DEFAULT_LOCALE_ID] && I18N[DEFAULT_LOCALE_ID][key])
+    || JSON_IMPORT_FALLBACK[key]
     || key;
 }
 function tFmt(key, values = {}){

@@ -145,11 +145,13 @@ function applyStaticTranslations(){
   for(const [id, key] of Object.entries(STATIC_TEXT_MAP)){
     const el = byId(id);
     if(!el) continue;
+    const value = t(key);
+    if(value === key) continue;
     if(id === 'btnAdd'){
-      el.textContent = '＋ ' + t(key);
+      el.textContent = '＋ ' + value;
       continue;
     }
-    el.textContent = t(key);
+    el.textContent = value;
   }
   const popupFallbackText = {
     settingDrawerTitle: 'Settings',
