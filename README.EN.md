@@ -20,7 +20,7 @@
 - Import/export account data via `otpauth://` URIs, json files or QR codes
 - Reorder accounts by dragging them  
 - Support importing account from Google Authenticator and Microsoft Authenticator
-- Recognizes and automatically fills in 2fa input fields based on custom URL matching rules
+- Recognizes and automatically fills in 2fa input fields based on custom URL matching rules, or call up autofill pop-up through right-click context menu  
 - Right-click to scan QR code images in web pages
 - Full-support for mobile devices
 
@@ -84,7 +84,7 @@ Exporting account data from Microsoft Authenticator is a bit more troublesome. S
 - `manifest.json`: Extension manifest
 - `popup/`: Main popup UI and logic
 - `qr/`: QR scanning and previewing pages
-- `background.js`: Background logic
+- `background/`: Background logic
 - `autofill/`: Autofill pop-up
 - `json-import/`: Import account via json file page
 - `migration/`: Decode third-party origins
