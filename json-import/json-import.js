@@ -31,7 +31,6 @@ let lang = DEFAULT_LOCALE_ID;
 async function loadJsonImportLocale(localeId){
   if(!window.Vault2FALocales) return;
   const targetLocaleId = window.Vault2FALocales.localeIdFromLanguage(localeId);
-  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
   const section = await window.Vault2FALocales.getSection('json-import', targetLocaleId);
   I18N[targetLocaleId] = Object.assign({}, I18N[targetLocaleId] || {}, section || {});
 }

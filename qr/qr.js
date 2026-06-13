@@ -35,7 +35,6 @@ let qrStatusBusy = false;
 async function loadQrLocale(localeId){
   if(!window.Vault2FALocales) return;
   const targetLocaleId = resolveLocaleId(localeId);
-  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
   const section = await window.Vault2FALocales.getSection('qr-scanner', targetLocaleId);
   QR_I18N[targetLocaleId] = Object.assign({}, QR_I18N[targetLocaleId] || {}, section || {});
 }

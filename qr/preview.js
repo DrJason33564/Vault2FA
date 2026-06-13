@@ -5,7 +5,7 @@ const PREVIEW_I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
 let previewLang = DEFAULT_LOCALE_ID;
 
-const ENGLISH_FALLBACK = {
+const PREVIEW_FALLBACK = {
   showQrCodeLibraryError: 'QR library loading failed.',
   showQrCodeGenerateError: 'Failed to generate QR code.',
 };
@@ -17,7 +17,6 @@ function resolveLocaleId(value){
 async function loadPreviewLocale(localeId){
   if(!window.Vault2FALocales) return;
   const targetLocaleId = resolveLocaleId(localeId);
-  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
   const section = await window.Vault2FALocales.getSection('qr-previewer', targetLocaleId);
   PREVIEW_I18N[targetLocaleId] = Object.assign({}, PREVIEW_I18N[targetLocaleId] || {}, section || {});
 }
@@ -25,7 +24,7 @@ async function loadPreviewLocale(localeId){
 function t(key){
   return (PREVIEW_I18N[previewLang] && PREVIEW_I18N[previewLang][key])
     || (PREVIEW_I18N[DEFAULT_LOCALE_ID] && PREVIEW_I18N[DEFAULT_LOCALE_ID][key])
-    || ENGLISH_FALLBACK[key]
+    || PREVIEW_FALLBACK[key]
     || key;
 }
 

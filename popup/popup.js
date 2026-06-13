@@ -215,7 +215,6 @@ function resolveLocaleId(value){
 async function loadPopupLocale(localeId){
   if(!window.Vault2FALocales) return;
   const target = resolveLocaleId(localeId);
-  if(target === DEFAULT_LOCALE_ID) return;
   const section = await window.Vault2FALocales.getSection('popup', target);
   I18N[target] = Object.assign({}, I18N[target] || {}, section || {});
 }

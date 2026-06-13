@@ -3,6 +3,9 @@
 
 const MENU_I18N = {};
 const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
+const BACKGROUND_FALLBACK = {
+  scanQrFromImage: 'Scan QR code',
+};
 
 const QR_CONTEXT_MENU_ID = 'vault2fa-scan-qr-image';
 function resolveLocaleId(value){
@@ -11,7 +14,6 @@ function resolveLocaleId(value){
 async function loadBackgroundLocale(localeId){
   if(!window.Vault2FALocales) return;
   const targetLocaleId = resolveLocaleId(localeId);
-  if(targetLocaleId === DEFAULT_LOCALE_ID) return;
   const section = await window.Vault2FALocales.getSection('background', targetLocaleId);
   MENU_I18N[targetLocaleId] = Object.assign({}, MENU_I18N[targetLocaleId] || {}, section || {});
 }
@@ -20,7 +22,7 @@ function getContextMenuTitle(language){
   const localeId = resolveLocaleId(language);
   return (MENU_I18N[localeId] && MENU_I18N[localeId].scanQrFromImage)
     || (MENU_I18N[DEFAULT_LOCALE_ID] && MENU_I18N[DEFAULT_LOCALE_ID].scanQrFromImage)
-    || 'Scan QR code';
+    || BACKGROUND_FALLBACK.scanQrFromImage;
 }
 async function resolveContextMenuLanguage(){
   try {
