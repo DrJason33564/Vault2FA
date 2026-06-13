@@ -18,6 +18,9 @@
     "scripting",
     "alarms"
   ],
+  "optional_permissions": [
+    "unlimitedStorage"
+  ],
   "background": {
     "scripts": [
       "third-party/otpauth.min.js",

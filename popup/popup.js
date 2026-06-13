@@ -1233,7 +1233,16 @@ async function boot(){
   render();
 }
 
-function handleDebugLogoTap(){
+async function requestUnlimitedStoragePermission(){
+  if(!browser.permissions || typeof browser.permissions.request !== 'function') return false;
+  try {
+    return !!(await browser.permissions.request({ permissions: ['unlimitedStorage'] }));
+  } catch(_) {
+    return false;
+  }
+}
+
+async function handleDebugLogoTap(){
   const now = Date.now();
   debugTapTimes.push(now);
   while(debugTapTimes.length && now - debugTapTimes[0] > DEBUG_TAP_WINDOW_MS){
@@ -1241,6 +1250,8 @@ function handleDebugLogoTap(){
   }
   if(debugTapTimes.length >= 5){
     debugTapTimes.length = 0;
+    const granted = await requestUnlimitedStoragePermission();
+    if(!granted) return;
     debugUiUnlocked = true;
     updateDebugUi();
     toast(t('debugUnlockedToast'));

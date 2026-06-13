@@ -413,9 +413,15 @@ if(browser.runtime && browser.runtime.onStartup){
   });
 }
 if(browser.contextMenus && browser.contextMenus.onClicked){
-  browser.contextMenus.onClicked.addListener((info) => {
-    if(!info || info.menuItemId !== QR_CONTEXT_MENU_ID) return;
-    openQrScannerForImageUrl(info.srcUrl).catch(() => {});
+  browser.contextMenus.onClicked.addListener((info, tab) => {
+    if(!info) return;
+    if(info.menuItemId === QR_CONTEXT_MENU_ID){
+      openQrScannerForImageUrl(info.srcUrl).catch(() => {});
+      return;
+    }
+    if(info.menuItemId === AUTOFILL_CONTEXT_MENU_ID){
+      openAutofillPopupForTab(tab).catch(() => {});
+    }
   });
 }
 if(browser.alarms && browser.alarms.onAlarm){

@@ -16,6 +16,7 @@
     unlockPassphrase: '',
     unlockError: '',
     repositionFrame: null,
+    lastContextInput: null,
   };
   const OTP_HINTS = ['otp','2fa','totp','token','code','verification','authenticator','mfa','one-time','one time','two-factor','2-step','two step'];
   const DEFAULT_LOCALE_ID = window.Vault2FALocales ? window.Vault2FALocales.DEFAULT_LOCALE_ID : 'en-US';
@@ -76,9 +77,15 @@
   }
   const preferencesReady = loadPreferences();
 
+  function isSupportedTextInput(input){
+    if(!input || !input.tagName) return false;
+    if(input.tagName === 'TEXTAREA') return !input.disabled && !input.readOnly;
+    if(input.tagName !== 'INPUT') return false;
+    if(['hidden','submit','button','checkbox','radio','file','image','reset','range','color'].includes(String(input.type || '').toLowerCase())) return false;
+    return !input.disabled && !input.readOnly;
+  }
   function isOtpInput(input){
-    if(!input || input.tagName !== 'INPUT') return false;
-    if(['hidden','submit','button','checkbox','radio'].includes(String(input.type || '').toLowerCase())) return false;
+    if(!isSupportedTextInput(input) || input.tagName !== 'INPUT') return false;
     const parts = [input.name, input.id, input.placeholder, input.className, input.getAttribute('aria-label'), input.getAttribute('autocomplete')]
       .filter(Boolean).join(' ').toLowerCase();
     if(OTP_HINTS.some(token => parts.includes(token))) return true;
@@ -391,22 +398,35 @@
     const shouldRerender = idSet.size !== state.accounts.filter(acc => acc.type !== 'hotp').length;
     if(shouldRerender) renderDropdown();
   }
-  async function onFocusIn(event){
+  async function showAutofillForInput(input){
     await preferencesReady.catch(() => {});
-    const input = event.target;
-    if(isInsideDropdown(input) || !isOtpInput(input)) return;
+    if(isInsideDropdown(input) || !isSupportedTextInput(input)) return false;
     state.activeInput = input;
     try {
       const response = await lookupAccounts(window.location.hostname || '');
       if(response.locked){
         showLockedDropdown(input);
-        return;
+        return true;
       }
       state.locked = false;
       state.accounts = response.accounts;
       if(state.accounts.length) renderDropdown();
       else hideDropdown();
-    } catch(_) { hideDropdown(); }
+      return true;
+    } catch(_) {
+      hideDropdown();
+      return false;
+    }
+  }
+  async function onFocusIn(event){
+    await preferencesReady.catch(() => {});
+    const input = event.target;
+    if(isInsideDropdown(input) || !isOtpInput(input)) return;
+    await showAutofillForInput(input);
+  }
+  function rememberContextInput(event){
+    const target = event.target;
+    state.lastContextInput = isSupportedTextInput(target) ? target : null;
   }
   function onDocClick(event){
     if(!state.dropdown || state.dropdown.style.display !== 'block') return;
@@ -423,9 +443,20 @@
   }
 
   document.addEventListener('focusin', onFocusIn, true);
+  document.addEventListener('contextmenu', rememberContextInput, true);
   document.addEventListener('click', onDocClick, true);
   window.addEventListener('scroll', onReposition, true);
   window.addEventListener('resize', onReposition);
+  if(browserApi.runtime && browserApi.runtime.onMessage){
+    browserApi.runtime.onMessage.addListener((message) => {
+      if(!message || message.action !== 'openAutofillPopupHere') return false;
+      const input = isSupportedTextInput(state.lastContextInput) && state.lastContextInput.isConnected
+        ? state.lastContextInput
+        : document.activeElement;
+      showAutofillForInput(input).catch(() => hideDropdown());
+      return false;
+    });
+  }
   if(browserApi.storage && browserApi.storage.onChanged){
     browserApi.storage.onChanged.addListener((changes, area) => {
       if(area !== 'local') return;
