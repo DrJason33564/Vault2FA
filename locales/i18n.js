@@ -129,24 +129,22 @@
     return Object.assign({}, (data && data[sectionName]) || {});
   }
 
-  function getLanguageDisplayName(localeId){
-    try {
-      if(typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function'){
-        const display = new Intl.DisplayNames([localeId, DEFAULT_LOCALE_ID], { type: 'language' }).of(localeId);
-        if(display) return display;
-      }
-    } catch (_) {}
-    return localeId;
-  }
-
   async function getAvailableLanguages(){
     const localeIds = await discoverLocaleIds();
-    return localeIds.map(localeId => ({
-      localeId,
-      language: getLanguageDisplayName(localeId),
-      translator: '',
-      version: '',
-    }));
+    const list = [];
+    for(const localeId of localeIds){
+      const parsed = await loadLocaleById(localeId);
+      const info = (parsed && parsed.Information) || {};
+      const language = (parsed && parsed.Language) || {};
+      if(!language.LOCALE_ID && !localeId) continue;
+      list.push({
+        localeId: language.LOCALE_ID || localeId,
+        language: language.LANGUAGE || localeId,
+        translator: info.TRANSLATOR || '',
+        version: info.VERSION || '',
+      });
+    }
+    return list;
   }
 
   window.Vault2FALocales = {
