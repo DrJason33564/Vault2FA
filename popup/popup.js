@@ -1233,10 +1233,10 @@ async function boot(){
   render();
 }
 
-async function requestUnlimitedStoragePermission(){
-  if(!browser.permissions || typeof browser.permissions.request !== 'function') return false;
+async function hasUnlimitedStoragePermission(){
+  if(!browser.permissions || typeof browser.permissions.contains !== 'function') return true;
   try {
-    return !!(await browser.permissions.request({ permissions: ['unlimitedStorage'] }));
+    return !!(await browser.permissions.contains({ permissions: ['unlimitedStorage'] }));
   } catch(_) {
     return false;
   }
@@ -1250,7 +1250,7 @@ async function handleDebugLogoTap(){
   }
   if(debugTapTimes.length >= 5){
     debugTapTimes.length = 0;
-    const granted = await requestUnlimitedStoragePermission();
+    const granted = await hasUnlimitedStoragePermission();
     if(!granted) return;
     debugUiUnlocked = true;
     updateDebugUi();
