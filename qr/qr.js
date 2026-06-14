@@ -231,6 +231,14 @@ function resizeImageData(imageData, width, height){
   return dst;
 }
 
+
+function toJsQrInversionAttempt(inversionAttempt){
+  // jsQR 1.4.0 does not build the inverted matrix for `onlyInvert`,
+  // which can make its locator receive an undefined matrix. `invertFirst`
+  // starts with the same inverted scan while keeping the vendored library intact.
+  return inversionAttempt === 'onlyInvert' ? 'invertFirst' : inversionAttempt;
+}
+
 async function decodeQrText(file){
   if(typeof window.jsQR !== 'function') throw new Error(qrt('qrLibFail'));
   const imageData = await imageDataFromFile(file);
@@ -245,10 +253,12 @@ async function decodeQrText(file){
   for(const candidate of candidates){
     for(const inversionAttempt of inversionAttempts){
       const startedAt = Date.now();
-      const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: inversionAttempt });
+      const jsQrInversionAttempt = toJsQrInversionAttempt(inversionAttempt);
+      const result = window.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: jsQrInversionAttempt });
       await debugInfo('QR decode attempt', {
         candidate: candidate.name,
         inversionAttempt,
+        jsQrInversionAttempt,
         width: candidate.width,
         height: candidate.height,
         elapsedMs: Date.now() - startedAt,
