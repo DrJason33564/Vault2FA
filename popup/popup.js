@@ -899,12 +899,19 @@ async function openQrPreviewTabForAccountId(accountId){
 function render(){
   const list = byId('list');
   const empty = byId('empty');
+  if(isVaultLocked()){
+    visibleAccounts = [];
+    empty.style.display = 'none';
+    list.replaceChildren(empty);
+    stopTicker();
+    return;
+  }
   const q = byId('search').value.toLowerCase().trim();
   visibleAccounts = accounts
     .filter(a => (a.issuer||'').toLowerCase().includes(q) || (a.label||'').toLowerCase().includes(q))
     .slice()
     .sort(compareAccountOrder);
-empty.style.display = visibleAccounts.length ? 'none' : 'flex';
+  empty.style.display = visibleAccounts.length ? 'none' : 'flex';
   const frag = document.createDocumentFragment();
   for(const acc of visibleAccounts) frag.appendChild(buildCard(acc));
   list.replaceChildren(empty, frag);
@@ -1156,7 +1163,7 @@ function updateVaultUi(){
   }
 
   const locked = isVaultLocked();
-  const gatedIds = ['btnAdd','btnImport','btnExport','btnSetting'];
+  const gatedIds = ['btnAdd','btnImport','btnExport','btnSetting','search','btnReorderAll'];
   for(const id of gatedIds){
     const el = byId(id);
     if(!el) continue;
@@ -1164,6 +1171,7 @@ function updateVaultUi(){
     el.classList.toggle('is-disabled', locked);
     el.setAttribute('aria-disabled', locked ? 'true' : 'false');
   }
+  render();
 }
 
 async function refreshVaultTimerSettings(){
