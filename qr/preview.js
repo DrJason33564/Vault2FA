@@ -108,6 +108,7 @@ async function init(){
     const accountId = getAccountIdFromHash();
     await debugInfo('QR export preview opened', { accountId });
     const response = await sendMessage({ action:'getOtpAuthUriForAccount', id: accountId });
+    await navigator.clipboard.writeText(response.uri);
     await generateQrCode(response.uri);
     await debugInfo('QR export preview generated code', {
       accountId,
