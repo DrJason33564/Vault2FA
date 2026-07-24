@@ -84,6 +84,12 @@ html, body {
 }
 .search-input:focus { border-color:var(--accent); }
 .search-input::placeholder { color:var(--dim); }
+.search-input:disabled,
+.search-input.is-disabled {
+  opacity:.45;
+  cursor:not-allowed;
+  pointer-events:none;
+}
 
 .search-action-btn {
   width:30px; height:30px;
@@ -394,7 +400,7 @@ html, body {
 }
 
 
-.lock-screen { position:absolute; inset:48px 0 44px 0; z-index:90; background:rgba(10,10,10,.96); display:flex; align-items:center; justify-content:center; padding:16px; }
+.lock-screen { position:absolute; inset:48px 0 44px 0; z-index:90; background:transparent; display:flex; align-items:center; justify-content:center; padding:16px; }
 .lock-card { width:100%; background:var(--surf); border:1px solid var(--border); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; align-items:stretch; text-align:center; }
 .lock-card .logo-img { align-self:center; width:42px; height:42px; }
 .lock-title { font-size:16px; font-weight:700; }

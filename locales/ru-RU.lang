@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.8.2
+VERSION=2.8.3
 
 [Language]
 LANGUAGE=Русский
@@ -24,7 +24,7 @@ copied=Скопировано!
 addAccount=Добавить аккаунт
 editAccount=Редактировать аккаунт
 showQrCode=Экспортировать через QR
-showQrCodeSuccess=QR-код создан в новой вкладке.
+showQrCodeSuccess=URI скопирован. QR-код сгенерирован
 reorderAccount=Пересортировать все аккаунты по первой букве издателя
 reorderAccountSuccess=Аккаунты пересортированы.
 noAccountsYet=Аккаунтов пока нет

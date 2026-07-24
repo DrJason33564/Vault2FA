@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.8.2
+VERSION=2.8.3
 
 [Language]
 LANGUAGE=简体中文
@@ -24,7 +24,7 @@ copied=已复制！
 addAccount=添加账号
 editAccount=编辑账号
 showQrCode=账号二维码
-showQrCodeSuccess=二维码已在新标签页中显示
+showQrCodeSuccess=URI已复制，二维码已生成
 reorderAccount=按发行方首字母顺序重新排列所有账号
 reorderAccountSuccess=账号已重排序
 noAccountsYet=还没有账号
