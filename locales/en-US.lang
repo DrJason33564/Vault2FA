@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.8.2
+VERSION=2.8.3
 
 [Language]
 LANGUAGE=English
@@ -24,7 +24,7 @@ copied=Copied!
 addAccount=Add Account
 editAccount=Edit Account
 showQrCode=Export via QR
-showQrCodeSuccess=QR Code generated in new tab.
+showQrCodeSuccess=URI copied. QR Code generated in new tab.
 reorderAccount=Reorder all accounts by issuers' first letter
 reorderAccountSuccess=Accounts reordered.
 noAccountsYet=No account yet

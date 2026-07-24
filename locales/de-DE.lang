@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.8.2
+VERSION=2.8.3
 
 [Language]
 LANGUAGE=Deutsch
@@ -24,7 +24,7 @@ copied=Kopiert!
 addAccount=Konto hinzufügen
 editAccount=Konto bearbeiten
 showQrCode=Per QR exportieren
-showQrCodeSuccess=QR-Code wurde in einem neuen Tab erzeugt.
+showQrCodeSuccess=URI wurde kopiert. QR-Code wurde generiert
 reorderAccount=Alle Konten nach dem ersten Buchstaben des Ausstellers neu anordnen
 reorderAccountSuccess=Konten neu angeordnet.
 noAccountsYet=Noch kein Konto
