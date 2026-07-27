@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vault2FA",
-  "version": "2.8.2",
+  "version": "2.9.0",
   "description": "A fine TOTP/HOTP 2FA extension with optional sync and auto fill.",
   "minimum_chrome_version": "102",
   "icons": {
