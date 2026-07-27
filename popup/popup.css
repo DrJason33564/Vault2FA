@@ -233,9 +233,6 @@ html, body {
 #settingPermissionTitle,
 #settingDebugTitle { font-size:0.928571rem; }
 .section-title { margin-bottom:8px; }
-.settings-drawer {
-  min-height:220px;
-}
 .list,
 .lang-drawer,
 .settings-drawer {
