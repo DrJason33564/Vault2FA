@@ -29,10 +29,16 @@
 #### 从AMO安装（发行版）
 [![Download button](firefox-addon.png)](https://addons.mozilla.org/zh-CN/firefox/addon/vault2fa)
 
-#### 从仓库安装（开发版）
+#### 从仓库安装（Chromium版）
+1. 打开[Release页](https://github.com/DrJason33564/Vault2FA/releases)
+2. 下载附件中的 `Vault2FA-chromium.crx`
+3. 使用基于Chromium的浏览器安装它
+> 对Chromium的支持是测试性的，使用过程中可能遇到各种问题
+
+#### 使用Firefox从仓库安装（开发版）
 1. 打开 Firefox，访问 `about:debugging#/runtime/this-firefox`  
 2. 点击 **临时加载附加组件...**  
-3. 选择本仓库中的 `manifest.json`  
+3. 选择本仓库中的 `manifest.json`
 
 #### 快速上手
 1. 点击插件图标，选择 **添加账号**  
