@@ -57,6 +57,9 @@
     <div class="empty-sub" id="emptySub">Add your first account using the<br/>+ button below.</div>
   </div>
 </div>
+<div class="custom-scrollbar" id="listScrollbar" aria-hidden="true">
+  <div class="custom-scrollbar-thumb"></div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -67,6 +70,9 @@
       <button class="ibtn" id="closeLang">&#x2715;</button>
     </div>
     <div class="lang-list" id="langList"></div>
+  </div>
+  <div class="custom-scrollbar" id="langScrollbar" aria-hidden="true">
+    <div class="custom-scrollbar-thumb"></div>
   </div>
 </div>
 
@@ -238,15 +244,33 @@
 
 <!-- SYNC DRAWER -->
 <div class="drawer-bg" id="drawSync">
-  <div class="drawer">
+  <div class="drawer settings-drawer">
     <div class="drw-hdr">
-      <div class="drw-title-wrap">
+      <button class="ibtn settings-back" id="backSyncSetting" aria-label="Back">&#x2190;</button>
+      <div class="drw-title-wrap settings-title-wrap">
         <div class="drw-title drw-title-major" id="settingDrawerTitle">Settings</div>
-        <br>
-        <div class="drw-title" id="settingSecurityTitle">Sync & Security</div>
+        <div class="drw-title settings-section-title" id="settingSectionTitle"></div>
       </div>
       <button class="ibtn" id="closeSync">&#x2715;</button>
     </div>
+    <div class="settings-menu" id="settingsMenu">
+      <button class="settings-menu-item" type="button" data-settings-section="security">
+        <img class="settings-menu-logo" src="../icons/sync%26security.svg" alt="" aria-hidden="true" />
+        <span class="settings-menu-label" id="settingSecurityTitle">Sync & Security</span>
+        <img class="settings-menu-chevron" src="../icons/enter.svg" alt="" aria-hidden="true" />
+      </button>
+      <button class="settings-menu-item" type="button" data-settings-section="permission">
+        <img class="settings-menu-logo" src="../icons/permission.svg" alt="" aria-hidden="true" />
+        <span class="settings-menu-label" id="settingPermissionTitle">Permissions</span>
+        <img class="settings-menu-chevron" src="../icons/enter.svg" alt="" aria-hidden="true" />
+      </button>
+      <button class="settings-menu-item" id="settingDebugMenuItem" type="button" data-settings-section="debug" style="display:none">
+        <img class="settings-menu-logo" src="../icons/debug.svg" alt="" aria-hidden="true" />
+        <span class="settings-menu-label" id="settingDebugTitle">Debugging</span>
+        <img class="settings-menu-chevron" src="../icons/enter.svg" alt="" aria-hidden="true" />
+      </button>
+    </div>
+    <div class="settings-section" data-settings-panel="security">
     <div class="fg sync-toggle-row">
       <label class="toggle-wrap">
         <input type="checkbox" id="syncEnabled" />
@@ -308,8 +332,8 @@
     </div>
     <div class="sync-meta" id="vaultMeta"></div>
     <div class="err" id="vaultErr"></div>
-    <hr class="sep" />
-    <div class="drw-title section-title" id="settingPermissionTitle">Permissions</div>
+    </div>
+    <div class="settings-section" data-settings-panel="permission">
     <div class="fg sync-toggle-row">
       <label class="toggle-wrap">
         <input type="checkbox" id="autofillEnabled" />
@@ -335,8 +359,8 @@
       <button class="btn-secondary" id="btnSavePermission">Save Permission Settings</button>
     </div>
     <div class="err" id="permissionErr"></div>
-    <hr class="sep" id="debugSep" style="display:none" />
-    <div class="drw-title section-title" id="settingDebugTitle" style="display:none">Debugging</div>
+    </div>
+    <div class="settings-section" data-settings-panel="debug">
     <div class="fg sync-toggle-row" id="debugPanel" style="display:none">
       <label class="toggle-wrap">
         <input type="checkbox" id="debugEnabled" />
@@ -348,7 +372,10 @@
       </div>
       <div class="err" id="debugErr"></div>
     </div>
-
+    </div>
+  </div>
+  <div class="custom-scrollbar" id="settingsScrollbar" aria-hidden="true">
+    <div class="custom-scrollbar-thumb"></div>
   </div>
 </div>
 
