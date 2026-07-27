@@ -947,8 +947,92 @@ async function debugInfo(message, context){
   }
 }
 
-function openD(id){ byId(id).classList.add('open'); }
+const customScrollbarControllers = [];
+
+function refreshCustomScrollbars(){
+  customScrollbarControllers.forEach(controller => controller.update());
+}
+
+function openD(id){
+  byId(id).classList.add('open');
+  requestAnimationFrame(refreshCustomScrollbars);
+}
 function closeD(id){ byId(id).classList.remove('open'); }
+
+let settingsScrollbarController = null;
+
+function updateSettingsScrollbar(show = false){
+  if(!settingsScrollbarController) return;
+  settingsScrollbarController.update();
+  if(show) settingsScrollbarController.revealTemporarily();
+}
+
+function updateSettingsDrawerView(update){
+  const drawer = byId('drawSync').querySelector('.settings-drawer');
+  const startHeight = drawer.getBoundingClientRect().height;
+  update(drawer);
+
+  if(!startHeight || !byId('drawSync').classList.contains('open')){
+    clearTimeout(drawer._settingsResizeTimer);
+    drawer.classList.remove('is-resizing');
+    drawer.style.height = '';
+    requestAnimationFrame(() => updateSettingsScrollbar());
+    return;
+  }
+
+  drawer.style.height = 'auto';
+  const maxHeight = parseFloat(getComputedStyle(drawer).maxHeight);
+  const endHeight = Math.min(drawer.scrollHeight, Number.isFinite(maxHeight) ? maxHeight : drawer.scrollHeight);
+  if(Math.abs(startHeight - endHeight) < 1 || window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    clearTimeout(drawer._settingsResizeTimer);
+    drawer.classList.remove('is-resizing');
+    drawer.style.height = '';
+    requestAnimationFrame(() => updateSettingsScrollbar());
+    return;
+  }
+
+  drawer.classList.add('is-resizing');
+  drawer.style.height = startHeight + 'px';
+  drawer.offsetHeight;
+  requestAnimationFrame(() => {
+    drawer.style.height = endHeight + 'px';
+  });
+  drawer.addEventListener('transitionend', e => {
+    if(e.propertyName !== 'height') return;
+    clearTimeout(drawer._settingsResizeTimer);
+    drawer.classList.remove('is-resizing');
+    drawer.style.height = '';
+    updateSettingsScrollbar();
+  }, { once:true });
+  clearTimeout(drawer._settingsResizeTimer);
+  drawer._settingsResizeTimer = setTimeout(() => {
+    drawer.classList.remove('is-resizing');
+    drawer.style.height = '';
+    updateSettingsScrollbar();
+  }, 300);
+}
+
+function showSettingsMenu(){
+  updateSettingsDrawerView(drawer => {
+    drawer.classList.remove('is-section-open');
+    drawer.querySelectorAll('[data-settings-panel]').forEach(panel => panel.classList.remove('active'));
+    byId('settingSectionTitle').textContent = '';
+    drawer.scrollTop = 0;
+  });
+}
+
+function showSettingsSection(section){
+  const drawer = byId('drawSync').querySelector('.settings-drawer');
+  const entry = drawer.querySelector('[data-settings-section="' + section + '"]');
+  const panel = drawer.querySelector('[data-settings-panel="' + section + '"]');
+  if(!entry || !panel || entry.style.display === 'none') return;
+  updateSettingsDrawerView(settingsDrawer => {
+    settingsDrawer.querySelectorAll('[data-settings-panel]').forEach(item => item.classList.toggle('active', item === panel));
+    byId('settingSectionTitle').textContent = entry.querySelector('.settings-menu-label').textContent;
+    settingsDrawer.classList.add('is-section-open');
+    settingsDrawer.scrollTop = 0;
+  });
+}
 
 function nextAccountId(){
   if(crypto && crypto.randomUUID) return 'acc_' + crypto.randomUUID().replace(/-/g, '');
@@ -1118,9 +1202,8 @@ function updateSyncBadgeFromResponse(resp){
 
 function updateDebugUi(){
   const shouldShow = debugState.enabled || debugUiUnlocked;
-  byId('settingDebugTitle').style.display = shouldShow ? 'block' : 'none';
+  byId('settingDebugMenuItem').style.display = shouldShow ? 'flex' : 'none';
   byId('debugPanel').style.display = shouldShow ? 'block' : 'none';
-  byId('debugSep').style.display = shouldShow ? 'block' : 'none';
   byId('debugEnabled').checked = !!debugState.enabled;
   byId('btnDownloadDebug').disabled = !debugState.enabled;
   const errEl = byId('debugErr');
@@ -1294,10 +1377,185 @@ byId('drawAdd').addEventListener('click', function(e){ if(e.target===this){ clos
 const syncEntryBtn = settingButton();
 if(syncEntryBtn) syncEntryBtn.addEventListener('click', () => {
   if(!guardVaultUnlocked()) return;
+  showSettingsMenu();
   openD('drawSync');
 });
-byId('closeSync').addEventListener('click', () => closeD('drawSync'));
-byId('drawSync').addEventListener('click', function(e){ if(e.target===this) closeD('drawSync'); });
+byId('backSyncSetting').addEventListener('click', showSettingsMenu);
+function createCustomScrollbar(scrollElement, scrollbarElement){
+  const thumb = scrollbarElement.querySelector('.custom-scrollbar-thumb');
+  let fadeTimer = 0;
+  let targetHovered = false;
+  let trackHovered = false;
+  let drag = null;
+
+  function hasOverflow(){
+    return scrollElement.scrollHeight - scrollElement.clientHeight > 1;
+  }
+
+  function reveal(){
+    if(!hasOverflow()) return;
+    if(scrollbarElement.style.display === 'none') update();
+    clearTimeout(fadeTimer);
+    scrollbarElement.classList.add('visible');
+  }
+
+  function fade(){
+    clearTimeout(fadeTimer);
+    if(targetHovered || trackHovered || drag) return;
+    fadeTimer = setTimeout(() => scrollbarElement.classList.remove('visible'), 650);
+  }
+
+  function revealTemporarily(){
+    reveal();
+    fade();
+  }
+
+  function update(){
+    const rect = scrollElement.getBoundingClientRect();
+    if(!rect.width || !rect.height || !hasOverflow()){
+      scrollbarElement.style.display = 'none';
+      scrollbarElement.classList.remove('visible');
+      return;
+    }
+
+    scrollbarElement.style.display = 'block';
+    const parent = scrollbarElement.offsetParent;
+    if(!parent){
+      scrollbarElement.style.display = 'none';
+      return;
+    }
+
+    const parentRect = parent.getBoundingClientRect();
+    const trackHeight = Math.max(0, scrollElement.clientHeight - 8);
+    const scrollRange = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    const thumbHeight = Math.max(24, trackHeight * scrollElement.clientHeight / scrollElement.scrollHeight);
+    const thumbRange = Math.max(0, trackHeight - thumbHeight);
+    const thumbOffset = scrollRange ? thumbRange * scrollElement.scrollTop / scrollRange : 0;
+
+    scrollbarElement.style.top = (rect.top - parentRect.top) + 'px';
+    scrollbarElement.style.right = Math.max(0, parentRect.right - rect.right) + 'px';
+    scrollbarElement.style.height = scrollElement.clientHeight + 'px';
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.transform = 'translateY(' + thumbOffset + 'px)';
+    if(targetHovered || trackHovered || drag){
+      scrollbarElement.classList.add('visible');
+    }
+  }
+
+  scrollElement.addEventListener('scroll', () => {
+    update();
+    revealTemporarily();
+  }, { passive:true });
+  scrollElement.addEventListener('pointerenter', e => {
+    if(e.pointerType === 'touch') return;
+    targetHovered = true;
+    reveal();
+  });
+  scrollElement.addEventListener('pointerleave', () => {
+    targetHovered = false;
+    fade();
+  });
+  scrollbarElement.addEventListener('pointerenter', e => {
+    if(e.pointerType === 'touch') return;
+    trackHovered = true;
+    reveal();
+  });
+  scrollbarElement.addEventListener('pointerleave', () => {
+    trackHovered = false;
+    fade();
+  });
+
+  scrollbarElement.addEventListener('pointerdown', e => {
+    update();
+    reveal();
+    const scrollRange = scrollElement.scrollHeight - scrollElement.clientHeight;
+    if(scrollRange <= 0) return;
+    const trackRect = scrollbarElement.getBoundingClientRect();
+    const thumbRect = thumb.getBoundingClientRect();
+    scrollElement.classList.add('custom-scroll-target-dragging');
+
+    if(e.target !== thumb){
+      const trackHeight = trackRect.height - 8;
+      const thumbRange = Math.max(1, trackHeight - thumbRect.height);
+      const desiredThumbTop = Math.max(0, Math.min(thumbRange, e.clientY - trackRect.top - 4 - thumbRect.height / 2));
+      scrollElement.scrollTop = scrollRange * desiredThumbTop / thumbRange;
+      update();
+    }
+
+    drag = {
+      pointerId:e.pointerId,
+      startY:e.clientY,
+      startScrollTop:scrollElement.scrollTop
+    };
+    scrollbarElement.classList.add('dragging');
+    scrollbarElement.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  scrollbarElement.addEventListener('pointermove', e => {
+    if(!drag || e.pointerId !== drag.pointerId) return;
+    const trackHeight = scrollbarElement.clientHeight - 8;
+    const thumbRange = Math.max(1, trackHeight - thumb.getBoundingClientRect().height);
+    const scrollRange = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+    scrollElement.scrollTop = drag.startScrollTop
+      + (e.clientY - drag.startY) * scrollRange / thumbRange;
+    update();
+    reveal();
+    e.preventDefault();
+  });
+
+  function stopDrag(e){
+    if(!drag || e.pointerId !== drag.pointerId) return;
+    drag = null;
+    scrollElement.classList.remove('custom-scroll-target-dragging');
+    scrollbarElement.classList.remove('dragging');
+    if(scrollbarElement.hasPointerCapture(e.pointerId)){
+      scrollbarElement.releasePointerCapture(e.pointerId);
+    }
+    update();
+    fade();
+  }
+
+  scrollbarElement.addEventListener('pointerup', stopDrag);
+  scrollbarElement.addEventListener('pointercancel', stopDrag);
+
+  if(typeof ResizeObserver === 'function'){
+    new ResizeObserver(update).observe(scrollElement);
+  }
+  if(typeof MutationObserver === 'function'){
+    new MutationObserver(() => requestAnimationFrame(update)).observe(scrollElement, {
+      childList:true,
+      subtree:true
+    });
+  }
+
+  const controller = { update, revealTemporarily };
+  customScrollbarControllers.push(controller);
+  update();
+  return controller;
+}
+
+createCustomScrollbar(byId('list'), byId('listScrollbar'));
+createCustomScrollbar(byId('drawLang').querySelector('.lang-drawer'), byId('langScrollbar'));
+settingsScrollbarController = createCustomScrollbar(
+  byId('drawSync').querySelector('.settings-drawer'),
+  byId('settingsScrollbar')
+);
+window.addEventListener('resize', refreshCustomScrollbars);
+byId('settingsMenu').addEventListener('click', e => {
+  const entry = e.target.closest('[data-settings-section]');
+  if(entry) showSettingsSection(entry.dataset.settingsSection);
+});
+byId('closeSync').addEventListener('click', () => {
+  closeD('drawSync');
+  showSettingsMenu();
+});
+byId('drawSync').addEventListener('click', function(e){
+  if(e.target===this){
+    closeD('drawSync');
+    showSettingsMenu();
+  }
+});
 byId('closeExport').addEventListener('click', () => closeD('drawExport'));
 byId('drawExport').addEventListener('click', function(e){ if(e.target===this) closeD('drawExport'); });
 byId('btnImport').addEventListener('click', () => {

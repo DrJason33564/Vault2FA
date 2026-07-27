@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Vault2FA",
+  "version": "2.9.0",
+  "description": "A fine TOTP/HOTP 2FA extension with optional sync and auto fill.",
+  "minimum_chrome_version": "102",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "64": "icons/icon64.png",
+    "96": "icons/icon96.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "contextMenus",
+    "scripting",
+    "alarms",
+    "unlimitedStorage"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Vault2FA",
+    "default_popup": "popup/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "locales/*.lang"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": []
+}

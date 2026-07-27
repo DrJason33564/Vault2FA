@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.8.3
+VERSION=2.9.0
 
 [Language]
 LANGUAGE=Português
@@ -10,7 +10,7 @@ LOCALE_ID=pt-PT
 localOnly=Apenas local
 syncOn=Sincronização ativada · 
 storageModeLabel=Modo de armazenamento: 
-storageModeSync=Local + envio para o Firefox Sync
+storageModeSync=Carregamento local + síncrono
 storageModeLocal=Apenas local
 lastUpload=Último envio: 
 lastDownload=Última substituição local a partir da cloud: 
@@ -33,8 +33,8 @@ vaultLocked=Cofre bloqueado
 vaultLockSub=O cofre local está bloqueado. Introduza a sua palavra-passe para desbloquear esta sessão do navegador.
 unlockVault=Desbloquear cofre
 searchPlaceholder=Pesquisar contas...
-syncEnabledHint=As contas são guardadas localmente por predefinição. Quando o envio automático está ativo, as alterações locais são enviadas no intervalo definido para o ID de sessão abaixo.
-syncEnableText=Ativar envio para o Firefox Sync
+syncEnabledHint=Por predefinição, apenas o salvamento local está ativado. A ativação do carregamento automático enviará as alterações locais para a função de sincronização do navegador em intervalos definidos.
+syncEnableText=Ativar upload síncrono
 syncSessionLabel=ID da sessão de sincronização
 syncSessionHint=Cada ID de sessão é isolado. Use um ID diferente para cada grupo de sincronização.
 syncIntervalLabel=Intervalo de envio automático (minutos)
@@ -162,7 +162,7 @@ popupLoadFailed=Falha ao carregar o pop-up
 migrationAccountsImported=Conta importada de fonte de terceiros!
 langVersionMismatch=A versão do ficheiro de idioma não corresponde à versão do extra
 syncUseEncryptedPayloadText=Enviar cofre local encriptado
-syncUseEncryptedPayloadHint=Quando a encriptação local estiver ativada, envie a carga encriptada para o Firefox Sync em vez de dados em texto simples.
+syncUseEncryptedPayloadHint=Após ativar a encriptação do cofre local, o conteúdo encriptado é carregado na nuvem em vez de ser carregado em texto não encriptado.
 confirmCloudEncryptedOverwrite=Os dados de sincronização transferidos estão encriptados e precisam de ser desencriptados. Substituir os dados locais pela carga encriptada e bloquear o cofre agora?
 downloadedEncryptedCloudData=Dados encriptados da cloud transferidos. O cofre está bloqueado.
 permissionAutofillEnableText=Ativar preenchimento automático

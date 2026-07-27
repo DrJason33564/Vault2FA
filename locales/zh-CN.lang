@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.8.3
+VERSION=2.9.0
 
 [Language]
 LANGUAGE=简体中文
@@ -10,7 +10,7 @@ LOCALE_ID=zh-CN
 localOnly=仅本地
 syncOn=同步已开启 · 
 storageModeLabel=存储模式：
-storageModeSync=本地 + Firefox 同步上传
+storageModeSync=本地 + 同步上传
 storageModeLocal=仅本地
 lastUpload=上次上传：
 lastDownload=上次从云端覆盖本地：
@@ -33,8 +33,8 @@ vaultLocked=保险库已锁定
 vaultLockSub=本地保险库已加密，请输入口令以解锁当前浏览器会话
 unlockVault=解锁保险库
 searchPlaceholder=搜索账号...
-syncEnabledHint=默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传到下方会话 ID
-syncEnableText=启用 Firefox 同步上传
+syncEnabledHint=默认仅本地保存。开启自动上传后，本地改动会按设定间隔上传至浏览器提供的同步功能
+syncEnableText=启用同步上传
 syncSessionLabel=同步会话 ID
 syncSessionHint=每个会话 ID 相互隔离。不同同步组请使用不同 ID
 syncIntervalLabel=自动上传间隔（分钟）
@@ -162,7 +162,7 @@ popupLoadFailed=弹窗加载失败
 migrationAccountsImported=已导入第三方账号数据
 langVersionMismatch=语言文件版本与插件版本不一致
 syncUseEncryptedPayloadText=上传加密后的保险库
-syncUseEncryptedPayloadHint=在开启本地保险库加密后，将加密后内容上传至Firefox Sync，而非明文上传
+syncUseEncryptedPayloadHint=在开启本地保险库加密后，将加密后内容上传至云端，而非明文上传
 confirmCloudEncryptedOverwrite=下载的云端数据是加密过的保险库，确认下载、覆盖并锁定保险库吗？
 downloadedEncryptedCloudData=已下载云端加密数据并锁定保险库
 permissionAutofillEnableText=启用自动填充

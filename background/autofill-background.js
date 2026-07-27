@@ -73,7 +73,7 @@ async function injectAutofillAssets(tabId){
   });
   await browser.scripting.executeScript({
     target: { tabId, allFrames: false },
-    files: ['locales/i18n.js', 'autofill/autofill-content.js'],
+    files: ['third-party/polyfill.min.js', 'locales/i18n.js', 'autofill/autofill-content.js'],
   });
 }
 async function maybeInjectAutofillForTab(tabId, url){

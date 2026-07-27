@@ -29,6 +29,12 @@
 #### Install from AMO (release)
 [![Download button](firefox-addon.png)](https://addons.mozilla.org/en-US/firefox/addon/vault2fa)
 
+#### Install from repository (for Chromium-based browsers)
+1. Navigate to [Release Page](https://github.com/DrJason33564/Vault2FA/releases)
+2. Download `Vault2FA-chromium.crx` from assets
+3. Load the add-on with a Chromium-based browser
+> Support for Chromium-based browsers is experimental. Various issues may arise
+
 #### Install from repository (development)
 1. Open Firefox and go to `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on...**
