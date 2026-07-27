@@ -21,6 +21,7 @@
   ],
   "background": {
     "scripts": [
+      "third-party/polyfill.min.js",
       "third-party/otpauth.min.js",
       "locales/i18n.js",
       "background/debug.js",
