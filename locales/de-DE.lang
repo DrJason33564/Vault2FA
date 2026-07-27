@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.8.3
+VERSION=2.9.0
 
 [Language]
 LANGUAGE=Deutsch
@@ -10,7 +10,7 @@ LOCALE_ID=de-DE
 localOnly=Nur lokal
 syncOn=Synchronisierung EIN · 
 storageModeLabel=Speichermodus: 
-storageModeSync=Lokal + Upload zu Firefox Sync
+storageModeSync=Lokaler + synchroner Upload
 storageModeLocal=Nur lokal
 lastUpload=Letzter Upload: 
 lastDownload=Letztes lokales Überschreiben aus der Cloud: 
@@ -33,8 +33,8 @@ vaultLocked=Tresor gesperrt
 vaultLockSub=Der lokale Tresor ist gesperrt. Gib deine Passphrase ein, um diese Browsersitzung zu entsperren.
 unlockVault=Tresor entsperren
 searchPlaceholder=Konten suchen...
-syncEnabledHint=Konten werden standardmäßig lokal gespeichert. Wenn automatischer Upload aktiviert ist, werden lokale Änderungen in dem festgelegten Intervall an die untenstehende Sitzungs-ID hochgeladen.
-syncEnableText=Firefox-Sync-Upload aktivieren
+syncEnabledHint=Standardmäßig ist nur das lokale Speichern aktiviert. Durch Aktivieren des automatischen Uploads werden lokale Änderungen in festgelegten Intervallen an die Synchronisierungsfunktion des Browsers übertragen.
+syncEnableText=Synchrones Hochladen aktivieren
 syncSessionLabel=Synchronisierungssitzungs-ID
 syncSessionHint=Jede Sitzungs-ID ist isoliert. Verwende für jede Synchronisierungsgruppe eine andere ID.
 syncIntervalLabel=Automatisches Upload-Intervall (Minuten)
@@ -162,7 +162,7 @@ popupLoadFailed=Popup konnte nicht geladen werden
 migrationAccountsImported=Konto aus Drittanbieterquelle importiert!
 langVersionMismatch=Die Version der Sprachdatei stimmt nicht mit der Add-on-Version überein
 syncUseEncryptedPayloadText=Verschlüsselten lokalen Tresor direkt hochladen
-syncUseEncryptedPayloadHint=Wenn die lokale Verschlüsselung aktiviert ist, wird die verschlüsselte Nutzlast an Firefox Sync hochgeladen statt Klartextdaten.
+syncUseEncryptedPayloadHint=Nach Aktivierung der lokalen Vault-Verschlüsselung werden die verschlüsselten Inhalte in die Cloud hochgeladen, anstatt im Klartext.
 confirmCloudEncryptedOverwrite=Die heruntergeladenen Synchronisierungsdaten sind verschlüsselt und müssen entschlüsselt werden. Lokale Daten mit verschlüsselter Nutzlast überschreiben und den Tresor jetzt sperren?
 downloadedEncryptedCloudData=Verschlüsselte Cloud-Daten heruntergeladen. Der Tresor ist gesperrt.
 permissionAutofillEnableText=Autofill-Funktion aktivieren

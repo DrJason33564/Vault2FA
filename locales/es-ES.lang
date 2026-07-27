@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=ChatGPT
-VERSION=2.8.3
+VERSION=2.9.0
 
 [Language]
 LANGUAGE=Español
@@ -10,7 +10,7 @@ LOCALE_ID=es-ES
 localOnly=Solo local
 syncOn=Sincronización activada · 
 storageModeLabel=Modo de almacenamiento: 
-storageModeSync=Local + subida a Firefox Sync
+storageModeSync=Local + subida a Sync
 storageModeLocal=Solo local
 lastUpload=Última subida: 
 lastDownload=Última sobrescritura local desde la nube: 
@@ -33,8 +33,8 @@ vaultLocked=Bóveda bloqueada
 vaultLockSub=La bóveda local está bloqueada. Introduce tu contraseña para desbloquear esta sesión del navegador.
 unlockVault=Desbloquear bóveda
 searchPlaceholder=Buscar cuentas...
-syncEnabledHint=Las cuentas se almacenan localmente por defecto. Cuando la subida automática está activada, los cambios locales se suben por intervalos al ID de sesión de abajo.
-syncEnableText=Activar subida a Firefox Sync
+syncEnabledHint=De forma predeterminada, solo está habilitado el guardado local. Al habilitar la carga automática, los cambios locales se subirán a la función de sincronización del navegador a intervalos preestablecidos.
+syncEnableText=Habilitar la carga síncrona
 syncSessionLabel=ID de sesión de sincronización
 syncSessionHint=Cada ID de sesión está aislado. Usa un ID distinto para cada grupo de sincronización.
 syncIntervalLabel=Intervalo de subida automática (minutos)
@@ -162,7 +162,7 @@ popupLoadFailed=No se pudo cargar la ventana emergente
 migrationAccountsImported=¡Cuenta importada desde una fuente de terceros!
 langVersionMismatch=La versión del archivo de idioma no coincide con la versión del complemento
 syncUseEncryptedPayloadText=Subir la bóveda cifrada
-syncUseEncryptedPayloadHint=Después de activar el cifrado local de la bóveda, subir a Firefox Sync el contenido ya cifrado, en lugar de subirlo en texto plano
+syncUseEncryptedPayloadHint=Tras habilitar el cifrado de la bóveda local, el contenido cifrado se carga en la nube en lugar de cargarse en texto plano.
 confirmCloudEncryptedOverwrite=Los datos descargados de la nube son una bóveda cifrada. ¿Confirmas la descarga, la sobrescritura y el bloqueo de la bóveda?
 downloadedEncryptedCloudData=Se descargaron los datos cifrados de la nube y la bóveda quedó bloqueada
 permissionAutofillEnableText=Activar la función de autocompletado

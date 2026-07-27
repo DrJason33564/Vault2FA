@@ -1,6 +1,6 @@
 [Information]
 TRANSLATOR=DrJason33564
-VERSION=2.8.3
+VERSION=2.9.0
 
 [Language]
 LANGUAGE=English
@@ -10,7 +10,7 @@ LOCALE_ID=en-US
 localOnly=Local only
 syncOn=Sync ON · 
 storageModeLabel=Storage mode: 
-storageModeSync=Local + Firefox Sync upload
+storageModeSync=Local + Sync upload
 storageModeLocal=Local only
 lastUpload=Last upload: 
 lastDownload=Last local overwrite from cloud: 
@@ -33,8 +33,8 @@ vaultLocked=Vault Locked
 vaultLockSub=Local vault is locked. Enter your passphrase to unlock this browser session.
 unlockVault=Unlock Vault
 searchPlaceholder=Search accounts...
-syncEnabledHint=Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the session ID below.
-syncEnableText=Enable Firefox Sync upload
+syncEnabledHint=Accounts are stored locally by default. When auto upload is on, local changes upload by interval to the sync service provided by your browser.
+syncEnableText=Enable Sync upload
 syncSessionLabel=Sync Session ID
 syncSessionHint=Each session ID is isolated. Use a different ID for each sync group.
 syncIntervalLabel=Auto Upload Interval (minutes)
@@ -162,7 +162,7 @@ popupLoadFailed=Failed to load popup
 migrationAccountsImported=Account imported from third-party source!
 langVersionMismatch=Language file version mismatches with add-on version
 syncUseEncryptedPayloadText=Upload encrypted local vault directlly
-syncUseEncryptedPayloadHint=When local encryption is enabled, upload the encrypted payload to Firefox Sync instead of plaintext data.
+syncUseEncryptedPayloadHint=When local encryption is enabled, upload the encrypted payload to Cloud instead of plaintext data.
 confirmCloudEncryptedOverwrite=The downloaded sync data is encrypted and needs decryption. Overwrite local data with encrypted payload and lock vault now?
 downloadedEncryptedCloudData=Encrypted cloud data downloaded. Vault is locked.
 permissionAutofillEnableText=Enable autofill feature
